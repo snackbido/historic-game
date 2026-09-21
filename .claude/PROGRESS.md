@@ -7,7 +7,8 @@
 - **Cập nhật lần cuối**: 2026-09-21
 
 ## Milestone 0 — Setup môi trường
-- [ ] Cài Unity Hub + Unity Editor (bản LTS)
+- [x] Cài Unity Hub
+- [ ] Cài Unity Editor (bản LTS) qua Unity Hub
 - [ ] Cài VS Code + extension C# Dev Kit + extension Unity
 - [ ] Set VS Code làm External Script Editor trong Unity Preferences
 - [ ] Tạo project Unity mới (template 2D Core)

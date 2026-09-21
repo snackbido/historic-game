@@ -3,7 +3,7 @@
 ## 1. Tổng quan
 - **Tên dự án (tạm)**: Prehistoric Tribe (đặt tên chính thức sau)
 - **Thể loại**: Survival + City-Builder + Base Management, bối cảnh thời tiền sử
-- **Nền tảng**: Desktop (Windows/Mac/Linux), có thể phát hành Steam sau này
+- **Nền tảng**: Desktop (Windows/Mac/Linux), có thể phát hành Steam sau này; định hướng phát hành thêm trên **Mobile (Android qua Google Play, iOS qua App Store)** ở giai đoạn sau. Kéo theo yêu cầu thiết kế thêm: UI/input hỗ trợ cảm ứng (touch) song song với chuột/bàn phím, tối ưu hiệu năng/kích thước build cho thiết bị di động, và build iOS bắt buộc cần máy Mac + Xcode.
 - **Góc nhìn**: 2D top-down (giai đoạn đầu). Có thể nâng lên isometric hoặc 3D ở phiên bản sau.
 - **Engine**: Unity (C#), IDE: VS Code
 - **Người phát triển**: 1 người (solo dev), nền tảng web dev, chưa có kinh nghiệm Unity
