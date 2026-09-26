@@ -3,8 +3,8 @@
 > Cập nhật file này sau mỗi buổi làm việc: đánh dấu việc đã xong, ghi chú vấn đề gặp phải, quyết định đã chốt.
 
 ## Trạng thái hiện tại
-- **Giai đoạn**: Milestone 1-4 đã xác nhận chạy được trong Unity Editor thật (Milestone 5 chưa bắt đầu)
-- **Cập nhật lần cuối**: 2026-09-25
+- **Giai đoạn**: Milestone 1 đã xác nhận chạy đúng qua test tay trong Editor thật; Milestone 2-4 đã xác nhận đúng logic qua bộ test PlayMode tự động chạy trong Unity Editor thật (8/8 pass) — còn thiếu xác nhận thủ công phần input/UI trực quan (Milestone 5 chưa bắt đầu)
+- **Cập nhật lần cuối**: 2026-09-26
 
 ## Milestone 0 — Setup môi trường
 - [x] Cài Unity Hub
@@ -43,8 +43,8 @@
 
 **Ghi chú milestone này**:
 - Chưa tạo `CropController` riêng như phác thảo ban đầu trong ARCHITECTURE.md — logic vòng đời cây gộp thẳng vào `FarmPlot` vì đơn giản, tránh tách lớp không cần thiết (mirror cách `ResourceNode` tự xử lý harvest).
-- **Chưa test trong Unity Editor** (máy dev chưa cài Unity) — các bước thủ công cần làm khi cài xong: tạo asset `Wood.asset` (ResourceTypeData), gán vào `ResourceNode`/`ResourceBarUI`/`ResourceManager.knownResourceTypes`; tạo asset crop (VD `Wheat.asset`), scene `FarmPlot` prefab (SpriteRenderer + Collider2D), gán `CropSelectionUI.availableCrops` + `buttonPrefab`.
-- Chưa làm save/load cho trạng thái `FarmPlot` (đất đã trồng gì, đang ở giai đoạn nào) — nằm ngoài phạm vi 5 việc gốc của Milestone 2, để dành xem xét sau khi test được trong Editor.
+- **Đã xác nhận đúng logic qua test tự động (2026-09-26)**: `Assets/Tests/PlayMode/Milestone2FarmingTests.cs` chạy trong Unity Editor thật (batch mode, `-runTests -testPlatform PlayMode`) trên scene `Gameplay.unity` — xác nhận vòng đời Seed→Sprouting→Mature→Harvest cộng đúng tài nguyên và reset ô đất, cây héo đúng giờ nếu không thu hoạch kịp và dọn được, trồng thất bại khi chưa chọn giống. Chưa xác nhận phần input/UI trực quan (bấm phím tương tác thật, nhìn sprite đổi giai đoạn) — cần test tay.
+- Chưa làm save/load cho trạng thái `FarmPlot` (đất đã trồng gì, đang ở giai đoạn nào) — nằm ngoài phạm vi 5 việc gốc của Milestone 2, để dành xem xét sau.
 
 ## Milestone 3 — Chăn nuôi
 - [x] Định nghĩa AnimalData (ScriptableObject) — `Data/AnimalData.cs`
@@ -57,8 +57,8 @@
 - Chưa tách `AnimalNeeds` riêng như phác thảo ban đầu trong ARCHITECTURE.md — nhu cầu đói/sinh sản/sản xuất gộp vào `AnimalController` cho gọn, cùng tinh thần đã bỏ `CropController` ở Milestone 2.
 - Sinh sản: vật nuôi tamed tự `Instantiate` một bản sao gần đó khi đủ điều kiện (không dùng EventBus/manager riêng vì chỉ 1 hành vi đơn giản, tương tự cách `ResourceNode` tự gọi thẳng `ResourceManager`).
 - Một phím tương tác giờ xử lý cả 3 loại: `ResourceNode` (harvest), `FarmPlot` (trồng/thu hoạch/dọn héo), `AnimalController` (cho ăn/thuần hóa/thu sản phẩm) — logic chọn nearest interactable không đổi từ Milestone 2.
-- **Chưa test trong Unity Editor** — việc thủ công cần làm khi cài xong Unity: tạo asset AnimalData (VD `WildBoar.asset`), gán `prefab` (dùng chính prefab con vật để spawn khi sinh sản), cấu hình `feedCost`/`products` tham chiếu đến `ResourceTypeData` đã tạo.
-- Chưa làm save/load cho trạng thái vật nuôi (đã thuần hóa chưa, độ đói...) — ngoài phạm vi gốc của Milestone 3, để dành xem xét sau khi test được trong Editor (cùng nhóm với việc save FarmPlot còn nợ ở Milestone 2).
+- **Đã xác nhận đúng logic qua test tự động (2026-09-26)**: `Assets/Tests/PlayMode/Milestone3AnimalTests.cs` — cho ăn đủ `feedingsToTame` lần thì thuần hóa thành công, sau đó đợi đúng `productionInterval` thì có sản phẩm để thu và cộng đúng tài nguyên, cho ăn thất bại khi không đủ tài nguyên. Chưa test sinh sản (Reproduce) và chưa xác nhận phần input thật (bấm phím cho ăn/thuần hóa ngoài Editor).
+- Chưa làm save/load cho trạng thái vật nuôi (đã thuần hóa chưa, độ đói...) — ngoài phạm vi gốc của Milestone 3, để dành xem xét sau (cùng nhóm với việc save FarmPlot còn nợ ở Milestone 2).
 
 ## Milestone 4 — Tech Tree / Progression
 - [x] Định nghĩa TechNode (ScriptableObject), điều kiện mở khóa — `Data/TechNode.cs` (chi phí + `prerequisites` + danh sách building/crop id mở khóa)
@@ -70,7 +70,7 @@
 - Refactor lớn kèm theo: `BuildingPlacer` chuyển từ 1 field `buildingToPlace` cố định sang registry `List<BuildingData>` + `SelectBuilding()` + singleton `Instance` (giống `FarmManager`/`TamingSystem`), để hỗ trợ nhiều loại công trình và tra cứu theo id khi `LoadFromSaveData` — xử lý luôn nợ kỹ thuật đã ghi từ Milestone 1.
 - Tạo mới `UI/BuildMenuUI.cs` (trước đây chưa có, vì M1 chỉ có 1 loại công trình gán tay) — cùng cấu trúc với `CropSelectionUI`: liệt kê lựa chọn đã mở khóa, lắng nghe `EventBus.OnTechUnlocked` để tự cập nhật danh sách.
 - Combat chưa tồn tại (Milestone 5 chưa làm) nên `TechNode` chỉ có danh sách unlock cho building/crop, chưa có unlock cho combat — sẽ thêm trường tương ứng khi làm Milestone 5.
-- **Chưa test trong Unity Editor** — việc thủ công khi cài xong Unity: tạo asset `ResourceTypeData` "Tri thức" gán vào `TechManager.knowledgeResource`; tạo các asset `TechNode`; đánh dấu `unlockedByDefault = true` cho Tent.asset/Wheat.asset (công trình/cây khởi điểm không cần tech); gán danh sách building/crop cho `BuildMenuUI`/`CropSelectionUI`/`TechTreeUI` trong Inspector.
+- **Đã xác nhận đúng logic qua test tự động (2026-09-26)**: `Assets/Tests/PlayMode/Milestone4TechTests.cs` — tri thức tự sinh theo thời gian, đủ tri thức thì mở khóa được `TechNode_Farming`, mở khóa đúng công trình (Storage) + cây trồng (Berry) liên kết, `BuildMenuUI`/`CropSelectionUI` tự rebuild và hiện thêm nút khi có tech mới mở, mở khóa thất bại khi chưa đủ tri thức. Chưa test nhấn nút thật trên UI (click chuột qua `EventSystem`) và chưa test prerequisites nhiều tầng (hiện chỉ có 1 `TechNode` không phụ thuộc tech khác).
 
 ## Milestone 5 — Combat
 - [ ] Quyết định chế độ chiến đấu: điều khiển trực tiếp hay chỉ huy nhóm (RTS nhẹ)
@@ -111,8 +111,16 @@
 - **Gotcha phát hiện được khi test**: nếu để `TechTreeUI`/`BuildMenuUI`/`CropSelectionUI` dùng chung 1 `Transform` làm container (VD gắn cả 3 lên thẳng `Canvas`), nút của script chạy trước sẽ bị script chạy sau **xóa nhầm** — vì `BuildMenuUI.Rebuild()`/`CropSelectionUI.Rebuild()` đều `Destroy()` toàn bộ children của container trước khi thêm nút mới, không phân biệt nút đó của ai. Cách sửa: mỗi script phải có container riêng (3 child Transform riêng dưới Canvas, VD `TechPanel`/`BuildPanel`/`CropPanel`). Ghi nhớ áp dụng tương tự khi dựng HUD thật ở Gameplay scene sau này nếu có nhiều UI list cùng dùng chung 1 khu vực.
 - Đã soạn (nhưng **chưa thực hiện**) hướng dẫn dựng scene placeholder `Assets/Scenes/Gameplay.unity`: Player (Square sprite + Rigidbody2D gravity=0 + PlayerController + PlayerInteraction), 1 `Tree` (ResourceNode + BoxCollider2D, dùng `ResourceType_Wood`), `ResourceManager` trong scene, `CameraFollow` gắn Main Camera target=Player. Mục đích: xác nhận vòng lặp di chuyển + thu thập tài nguyên chạy đúng trước khi đầu tư sprite/tileset thật. **Tạm dừng tại đây, chưa build/test.**
 
+## Nhật ký phiên làm việc 2026-09-26 (test tự động Milestone 2-4)
+- Không có công cụ điều khiển GUI Unity Editor trực tiếp, nên thay vì test tay, đã viết bộ **PlayMode test tự động** (`Assets/Tests/PlayMode/`) chạy thật trong Unity Editor ở chế độ batch/headless (`Unity.exe -batchmode -nographics -runTests -testPlatform PlayMode`), load scene `Gameplay.unity` thật (đã được `GameplaySceneBuilder`/`GameContentBuilder` dựng sẵn với đủ FarmManager/TamingSystem/TechManager/2 FarmPlot/WildBoar/UI panel), tăng `Time.timeScale` để không phải chờ thật các khung thời gian (`timeToMature`, `productionInterval`...).
+- Kết quả: **8/8 test pass** — xác nhận đúng logic Farming (M2), Chăn nuôi (M3), Tech Tree (M4) như ghi ở từng milestone phía trên.
+- Cần tách `Assets/_Scripts/` ra `PrehistoricTribe.asmdef` riêng để test assembly có thể tham chiếu được (assembly ngầm định `Assembly-CSharp` không thể là dependency của asmdef khác).
+- **Gotcha phát hiện được**: asmdef của test PlayMode nếu đặt `includePlatforms: ["Editor"]` hoặc tham chiếu `UnityEditor.TestRunner`, Unity sẽ **âm thầm xếp nhầm nó vào EditMode** (test-runner tìm ra 0 test khi chạy `-testPlatform PlayMode`, dù compile không lỗi). Cách đúng: để `includePlatforms: []` (không giới hạn platform) và dùng `#if UNITY_EDITOR` để bọc các API `UnityEditor`/`AssetDatabase` cần dùng trong test.
+- **Giới hạn của cách test này**: chỉ xác nhận đúng logic gameplay (state machine, cộng/trừ tài nguyên, mở khóa, rebuild UI) chạy trong Play Mode thật — **không** xác nhận được: bấm phím tương tác thật qua `Input`/`PlayerInteraction`, đặt công trình bằng chuột qua `BuildingPlacer`, sprite hiển thị đúng trên màn hình, layout UI nhìn có ổn không. Những phần này vẫn cần người dùng tự mở Editor, bấm Play, và quan sát bằng mắt.
+
 ## Vấn đề đang tồn đọng (Known issues / Open questions)
 - [ ] Chưa quyết định: chế độ combat (trực tiếp hay chỉ huy nhóm)?
 - [ ] Chưa có tên chính thức cho dự án
-- [ ] Chưa test Milestone 1 (di chuyển + thu thập tài nguyên) trong Unity Editor thật — đã soạn sẵn hướng dẫn dựng scene `Gameplay.unity` placeholder, chưa thực hiện (xem nhật ký phiên 2026-09-22 ở trên)
-- [ ] Milestone 4 (Tech Tree UI) đã wiring xong trong `testUI.unity` với data mẫu, chưa xác nhận chạy đúng trong Play mode (chờ user báo kết quả sau khi tách container riêng)
+- [ ] Milestone 2-4: đã xác nhận đúng logic qua test tự động (2026-09-26), nhưng chưa có ai tự tay mở Editor, bấm Play, bấm phím/chuột thật để xác nhận trải nghiệm chơi thực tế (input, sprite, UI layout)
+- [ ] Chưa làm save/load cho trạng thái FarmPlot (đang trồng gì, giai đoạn nào) và trạng thái vật nuôi (đã thuần hóa chưa, độ đói) — nợ kỹ thuật từ M2/M3
+- [ ] Save/load (F5/F9) của Milestone 1 vẫn chưa được test trong Play mode
