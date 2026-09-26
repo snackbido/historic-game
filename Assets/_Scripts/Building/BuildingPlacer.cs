@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.EventSystems;
 
 namespace PrehistoricTribe
 {
@@ -14,23 +15,67 @@ namespace PrehistoricTribe
 
     public class BuildingPlacer : MonoBehaviour
     {
+        public static BuildingPlacer Instance { get; private set; }
+
         [SerializeField] private Grid grid;
-        [SerializeField] private BuildingData buildingToPlace;
+        [SerializeField] private List<BuildingData> availableBuildings = new List<BuildingData>();
         [SerializeField] private GameObject placementPreview;
 
+        private readonly Dictionary<string, BuildingData> buildingsById = new Dictionary<string, BuildingData>();
         private readonly HashSet<Vector3Int> occupiedCells = new HashSet<Vector3Int>();
         private readonly List<BuildingInstance> placedBuildings = new List<BuildingInstance>();
 
+        private BuildingData selectedBuilding;
+        private int selectionFrame = -1;
+
+        private void Awake()
+        {
+            if (Instance != null && Instance != this)
+            {
+                Destroy(gameObject);
+                return;
+            }
+            Instance = this;
+
+            foreach (var building in availableBuildings)
+                if (building != null) buildingsById[building.id] = building;
+        }
+
+        public void SelectBuilding(BuildingData data)
+        {
+            selectedBuilding = data;
+            selectionFrame = Time.frameCount;
+        }
+
+        public void CancelSelection()
+        {
+            selectedBuilding = null;
+            if (placementPreview != null) placementPreview.SetActive(false);
+        }
+
         private void Update()
         {
-            if (buildingToPlace == null || grid == null) return;
+            if (Input.GetKeyDown(KeyCode.Escape) || Input.GetMouseButtonDown(1))
+                CancelSelection();
+
+            if (selectedBuilding == null || grid == null)
+            {
+                if (placementPreview != null) placementPreview.SetActive(false);
+                return;
+            }
+
+            if (placementPreview != null) placementPreview.SetActive(true);
 
             Vector3Int cell = GetCellUnderMouse();
             UpdatePreview(cell);
 
-            if (Input.GetMouseButtonDown(0))
+            bool justSelected = Time.frameCount == selectionFrame;
+            if (Input.GetMouseButtonDown(0) && !IsPointerOverUI() && !justSelected)
                 TryPlace(cell);
         }
+
+        private static bool IsPointerOverUI() =>
+            EventSystem.current != null && EventSystem.current.IsPointerOverGameObject();
 
         private Vector3Int GetCellUnderMouse()
         {
@@ -48,8 +93,9 @@ namespace PrehistoricTribe
         private void TryPlace(Vector3Int cell)
         {
             if (occupiedCells.Contains(cell)) return;
+            if (TechManager.Instance != null && !TechManager.Instance.IsBuildingUnlocked(selectedBuilding)) return;
 
-            PlaceBuilding(buildingToPlace, cell, spendResources: true);
+            PlaceBuilding(selectedBuilding, cell, spendResources: true);
         }
 
         private BuildingInstance PlaceBuilding(BuildingData data, Vector3Int cell, bool spendResources)
@@ -95,10 +141,10 @@ namespace PrehistoricTribe
 
             foreach (var entry in data)
             {
-                if (buildingToPlace == null || buildingToPlace.id != entry.buildingId) continue;
+                if (!buildingsById.TryGetValue(entry.buildingId, out var buildingData)) continue;
 
                 Vector3Int cell = new Vector3Int(entry.cellX, entry.cellY, entry.cellZ);
-                PlaceBuilding(buildingToPlace, cell, spendResources: false);
+                PlaceBuilding(buildingData, cell, spendResources: false);
             }
         }
     }

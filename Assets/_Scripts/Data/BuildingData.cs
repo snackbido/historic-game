@@ -11,5 +11,8 @@ namespace PrehistoricTribe
         public GameObject prefab;
         public Vector2Int footprint = Vector2Int.one;
         public List<ResourceAmount> costs = new List<ResourceAmount>();
+
+        [Tooltip("Mở khóa sẵn ngay từ đầu game, không cần tech")]
+        public bool unlockedByDefault;
     }
 }
