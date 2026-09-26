@@ -132,6 +132,13 @@
 - **Save/Load Milestone 1 đã xác nhận chạy đúng trong Play mode thật**: gọi `GameManager.Instance.SaveGame()`/`LoadGame()` trực tiếp qua RunCommand — lưu vị trí player + số gỗ, đổi state, tải lại, khôi phục đúng chính xác cả vị trí lẫn tài nguyên.
 - Package `com.unity.ai.assistant` hiện có trong `Packages/manifest.json` nhưng **chưa commit** — cần hỏi ý kiến trước khi đưa gói dev-tool này vào repo chung (có thể muốn giữ máy ai nấy cài, không ép vào git).
 
+## Nhật ký phiên làm việc 2026-09-26 (phần 3 — feedback tương tác vật nuôi)
+- Việc #1 của kế hoạch trả nợ kỹ thuật: thêm phản hồi (notification) khi tương tác với vật nuôi, để tránh lặp lại nhầm lẫn "heo rừng sinh sản" đã gặp trước đó.
+- Thêm `EventBus.OnNotification`/`RaiseNotification(string)`, `TamingSystem.cs` phát thông báo tại 4 nhánh: không đủ tài nguyên, đã cho ăn (kèm tiến độ thuần hóa X/Y), đã thuần hóa thành công, thu hoạch sản phẩm (kèm số lượng). Thêm `UI/NotificationUI.cs` (label TMP đơn giản, tự ẩn sau `displayDuration`) + gắn vào `Gameplay.unity` qua `GameplaySceneBuilder.CreateNotificationLabel()`.
+- **Đã xác nhận trực tiếp qua Unity MCP (Play mode thật)** 4/5 thông báo: "Không đủ tài nguyên...", "Đã cho ăn (X/Y)", "Đã thuần hóa...!", "Đã cho ăn" (refill khi đã thuần) — tất cả hiển thị đúng nội dung trên `NotificationLabel`.
+- Thông báo còn lại (thu hoạch sản phẩm) **chưa xác nhận trực tiếp**: phát hiện cửa sổ Unity Editor bị throttle framerate rất thấp khi không có focus (`Time.time` gần như đứng yên dù đã đợi thật), nên không chờ được `productionInterval` trôi qua trong phiên Play mode sống. Thử dùng `TestRunnerApi` chạy PlayMode test ngay trong phiên Editor đang mở (để né việc phải mở process Unity thứ 2, vốn bị khóa vì Editor GUI đang mở project) nhưng callback bị mất qua domain reload khi vào Play mode, không lấy được kết quả.
+- Đã bổ sung assertion cho cả 5 thông báo vào `Assets/Tests/PlayMode/Milestone3AnimalTests.cs` (dùng `StringAssert.Contains` trên `EventBus.OnNotification`) — **chưa chạy lại được bằng batch mode** vì Editor GUI đang mở khóa project (Unity không cho 2 instance mở cùng 1 project). Cần chạy `Assets/Tests/PlayMode` lại (đóng Editor GUI trước, hoặc dùng Test Runner window trong Editor) ở phiên sau để xác nhận nốt nhánh thu hoạch.
+
 ## Vấn đề đang tồn đọng (Known issues / Open questions)
 - [ ] Chưa quyết định: chế độ combat (trực tiếp hay chỉ huy nhóm)?
 - [ ] Chưa có tên chính thức cho dự án
@@ -140,3 +147,4 @@
 - [x] Save/load (F5/F9) của Milestone 1 đã test trong Play mode thật (2026-09-26) — đúng
 - [ ] Camera dùng Skybox clear flags gây nền trời không hợp — đổi Solid Color khi polish (M7)
 - [ ] `com.unity.ai.assistant` đã cài local, chưa quyết định có commit vào repo chung không
+- [x] Feedback tương tác vật nuôi (việc #1 trả nợ kỹ thuật, 2026-09-26) — đã code + xác nhận sống 4/5 thông báo, còn nhánh "thu hoạch sản phẩm" chỉ mới code-review + assertion tự động (chưa chạy lại batch để xác nhận, xem nhật ký phiên phần 3)

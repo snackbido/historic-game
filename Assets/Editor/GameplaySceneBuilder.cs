@@ -172,6 +172,7 @@ namespace PrehistoricTribe.EditorTools
             CreateBuildMenuPanel(canvasGO.transform, buttonPrefab, hut, storage);
             CreateCropSelectionPanel(canvasGO.transform, buttonPrefab, berry);
             CreateTechTreePanel(canvasGO.transform, buttonPrefab, techFarming);
+            CreateNotificationLabel(canvasGO.transform);
 
             EditorSceneManager.SaveScene(scene, ScenePath);
             AssetDatabase.SaveAssets();
@@ -212,6 +213,24 @@ namespace PrehistoricTribe.EditorTools
             var barUI = labelGO.AddComponent<ResourceBarUI>();
             SetPrivateField(barUI, "displayedResource", resource);
             SetPrivateField(barUI, "label", tmp);
+        }
+
+        private static void CreateNotificationLabel(Transform canvasTransform)
+        {
+            var labelGO = new GameObject("NotificationLabel");
+            labelGO.transform.SetParent(canvasTransform, false);
+            var rect = labelGO.AddComponent<RectTransform>();
+            rect.anchorMin = new Vector2(0.5f, 1f);
+            rect.anchorMax = new Vector2(0.5f, 1f);
+            rect.pivot = new Vector2(0.5f, 1f);
+            rect.anchoredPosition = new Vector2(0f, -20f);
+            rect.sizeDelta = new Vector2(600f, 40f);
+            var tmp = labelGO.AddComponent<TextMeshProUGUI>();
+            tmp.fontSize = 24f;
+            tmp.alignment = TextAlignmentOptions.Center;
+            tmp.text = string.Empty;
+            var notificationUI = labelGO.AddComponent<NotificationUI>();
+            SetPrivateField(notificationUI, "label", tmp);
         }
 
         private static Transform CreatePanelContainer(Transform canvasTransform, string name, Vector2 anchoredPosition)
