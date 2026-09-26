@@ -9,7 +9,7 @@ namespace PrehistoricTribe
     {
         public float playerX;
         public float playerY;
-        public List<ResourceAmount> resources = new List<ResourceAmount>();
+        public List<ResourceSaveEntry> resources = new List<ResourceSaveEntry>();
         public List<PlacedBuildingData> buildings = new List<PlacedBuildingData>();
     }
 

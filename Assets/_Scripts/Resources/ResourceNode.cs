@@ -4,11 +4,11 @@ namespace PrehistoricTribe
 {
     public class ResourceNode : MonoBehaviour
     {
-        [SerializeField] private ResourceType resourceType = ResourceType.Wood;
+        [SerializeField] private ResourceTypeData resourceType;
         [SerializeField] private int amountRemaining = 10;
         [SerializeField] private int yieldPerHit = 1;
 
-        public ResourceType ResourceType => resourceType;
+        public ResourceTypeData ResourceType => resourceType;
 
         public void Harvest()
         {

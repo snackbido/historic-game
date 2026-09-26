@@ -6,7 +6,14 @@ namespace PrehistoricTribe
     [System.Serializable]
     public struct ResourceAmount
     {
-        public ResourceType type;
+        public ResourceTypeData type;
+        public int amount;
+    }
+
+    [System.Serializable]
+    public struct ResourceSaveEntry
+    {
+        public string resourceId;
         public int amount;
     }
 
@@ -14,7 +21,10 @@ namespace PrehistoricTribe
     {
         public static ResourceManager Instance { get; private set; }
 
-        private readonly Dictionary<ResourceType, int> amounts = new Dictionary<ResourceType, int>();
+        [SerializeField] private List<ResourceTypeData> knownResourceTypes = new List<ResourceTypeData>();
+
+        private readonly Dictionary<ResourceTypeData, int> amounts = new Dictionary<ResourceTypeData, int>();
+        private readonly Dictionary<string, ResourceTypeData> typesById = new Dictionary<string, ResourceTypeData>();
 
         private void Awake()
         {
@@ -24,21 +34,24 @@ namespace PrehistoricTribe
                 return;
             }
             Instance = this;
+
+            foreach (var type in knownResourceTypes)
+                if (type != null) typesById[type.id] = type;
         }
 
-        public int GetAmount(ResourceType type)
+        public int GetAmount(ResourceTypeData type)
         {
             return amounts.TryGetValue(type, out int amount) ? amount : 0;
         }
 
-        public void AddResource(ResourceType type, int amount)
+        public void AddResource(ResourceTypeData type, int amount)
         {
             if (amount <= 0) return;
             amounts[type] = GetAmount(type) + amount;
             EventBus.RaiseResourceChanged(type, amounts[type]);
         }
 
-        public bool TrySpend(ResourceType type, int amount)
+        public bool TrySpend(ResourceTypeData type, int amount)
         {
             if (GetAmount(type) < amount) return false;
             amounts[type] = GetAmount(type) - amount;
@@ -61,23 +74,24 @@ namespace PrehistoricTribe
             return true;
         }
 
-        public List<ResourceAmount> GetSaveData()
+        public List<ResourceSaveEntry> GetSaveData()
         {
-            var data = new List<ResourceAmount>();
+            var data = new List<ResourceSaveEntry>();
             foreach (var pair in amounts)
-                data.Add(new ResourceAmount { type = pair.Key, amount = pair.Value });
+                data.Add(new ResourceSaveEntry { resourceId = pair.Key.id, amount = pair.Value });
             return data;
         }
 
-        public void LoadFromSaveData(List<ResourceAmount> data)
+        public void LoadFromSaveData(List<ResourceSaveEntry> data)
         {
             amounts.Clear();
             if (data == null) return;
 
             foreach (var entry in data)
             {
-                amounts[entry.type] = entry.amount;
-                EventBus.RaiseResourceChanged(entry.type, entry.amount);
+                if (!typesById.TryGetValue(entry.resourceId, out var type)) continue;
+                amounts[type] = entry.amount;
+                EventBus.RaiseResourceChanged(type, entry.amount);
             }
         }
     }

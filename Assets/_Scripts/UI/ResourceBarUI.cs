@@ -5,7 +5,7 @@ namespace PrehistoricTribe
 {
     public class ResourceBarUI : MonoBehaviour
     {
-        [SerializeField] private ResourceType displayedResource = ResourceType.Wood;
+        [SerializeField] private ResourceTypeData displayedResource;
         [SerializeField] private TMP_Text label;
 
         private void OnEnable()
@@ -20,7 +20,7 @@ namespace PrehistoricTribe
             EventBus.OnResourceChanged -= HandleResourceChanged;
         }
 
-        private void HandleResourceChanged(ResourceType type, int newAmount)
+        private void HandleResourceChanged(ResourceTypeData type, int newAmount)
         {
             if (type == displayedResource)
                 UpdateLabel(newAmount);
@@ -28,8 +28,8 @@ namespace PrehistoricTribe
 
         private void UpdateLabel(int amount)
         {
-            if (label != null)
-                label.text = $"Gỗ: {amount}";
+            if (label != null && displayedResource != null)
+                label.text = $"{displayedResource.displayName}: {amount}";
         }
     }
 }
