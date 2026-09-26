@@ -11,29 +11,42 @@ namespace PrehistoricTribe
         private void Update()
         {
             if (Input.GetKeyDown(interactKey))
-                TryHarvestNearest();
+                TryInteractNearest();
         }
 
-        private void TryHarvestNearest()
+        private void TryInteractNearest()
         {
             Collider2D[] hits = Physics2D.OverlapCircleAll(transform.position, interactRadius, resourceLayer);
-            ResourceNode nearest = null;
+            Component nearest = null;
             float nearestDistance = float.MaxValue;
 
             foreach (var hit in hits)
             {
-                var node = hit.GetComponent<ResourceNode>();
-                if (node == null) continue;
+                Component interactable = hit.GetComponent<ResourceNode>();
+                if (interactable == null) interactable = hit.GetComponent<FarmPlot>();
+                if (interactable == null) interactable = hit.GetComponent<AnimalController>();
+                if (interactable == null) continue;
 
                 float distance = Vector2.Distance(transform.position, hit.transform.position);
                 if (distance < nearestDistance)
                 {
-                    nearest = node;
+                    nearest = interactable;
                     nearestDistance = distance;
                 }
             }
 
-            nearest?.Harvest();
+            switch (nearest)
+            {
+                case ResourceNode node:
+                    node.Harvest();
+                    break;
+                case FarmPlot plot:
+                    FarmManager.Instance.TryInteract(plot);
+                    break;
+                case AnimalController animal:
+                    TamingSystem.Instance.TryInteract(animal);
+                    break;
+            }
         }
     }
 }
