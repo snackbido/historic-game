@@ -3,7 +3,7 @@
 > Cập nhật file này sau mỗi buổi làm việc: đánh dấu việc đã xong, ghi chú vấn đề gặp phải, quyết định đã chốt.
 
 ## Trạng thái hiện tại
-- **Giai đoạn**: Milestone 1 đã xác nhận chạy đúng qua test tay trong Editor thật; Milestone 2-4 đã xác nhận đúng logic qua bộ test PlayMode tự động chạy trong Unity Editor thật (8/8 pass) — còn thiếu xác nhận thủ công phần input/UI trực quan (Milestone 5 chưa bắt đầu)
+- **Giai đoạn**: Milestone 1 đã xác nhận chạy đúng (kể cả Save/Load F5/F9); Milestone 2-4 đã xác nhận đúng logic qua test PlayMode tự động (8/8 pass) + xác nhận thêm qua Unity MCP (Play mode thật không lỗi Console). Còn thiếu xác nhận input/UI trực quan bằng người thật (Milestone 5 chưa bắt đầu)
 - **Cập nhật lần cuối**: 2026-09-26
 
 ## Milestone 0 — Setup môi trường
@@ -59,6 +59,8 @@
 - Một phím tương tác giờ xử lý cả 3 loại: `ResourceNode` (harvest), `FarmPlot` (trồng/thu hoạch/dọn héo), `AnimalController` (cho ăn/thuần hóa/thu sản phẩm) — logic chọn nearest interactable không đổi từ Milestone 2.
 - **Đã xác nhận đúng logic qua test tự động (2026-09-26)**: `Assets/Tests/PlayMode/Milestone3AnimalTests.cs` — cho ăn đủ `feedingsToTame` lần thì thuần hóa thành công, sau đó đợi đúng `productionInterval` thì có sản phẩm để thu và cộng đúng tài nguyên, cho ăn thất bại khi không đủ tài nguyên. Chưa test sinh sản (Reproduce) và chưa xác nhận phần input thật (bấm phím cho ăn/thuần hóa ngoài Editor).
 - Chưa làm save/load cho trạng thái vật nuôi (đã thuần hóa chưa, độ đói...) — ngoài phạm vi gốc của Milestone 3, để dành xem xét sau (cùng nhóm với việc save FarmPlot còn nợ ở Milestone 2).
+- **Hiện tượng gây nhầm lẫn khi test tay (2026-09-26), không phải bug**: User báo "lần cho ăn đầu tiên thì tài nguyên tăng lên 2 thay vì giảm 3, từ lần 2 trở đi mới giảm 3 đúng". Điều tra trực tiếp qua Unity MCP (`RunCommand` đọc state live) phát hiện: con heo đã **sinh sản** ra `WildBoar(Clone)` nằm sát con gốc — con non sinh ra qua `InitializeAsTamed()` nên **đã Tamed sẵn**, không phải hoang dã. User tưởng đang "cho ăn lần đầu" một con hoang dã nhưng thực ra đang tương tác với con clone đã thuần *đúng lúc nó có sản phẩm sẵn sàng thu* → chạy nhánh `CollectProduct()` (+2 Food) thay vì `TryFeed()` (-3 Food) trong `TamingSystem.TryInteract()`. Logic code đúng như thiết kế, đây là lỗ hổng UX: không có phản hồi (log/UI) cho biết vừa xảy ra hành động gì (cho ăn/thuần hóa/thu hoạch), và tamed vs wild chỉ khác nhau qua tint màu nhẹ (`TamedColor`) nên dễ nhầm giữa 2 con giống hệt nhau đứng sát nhau.
+  - **Đề xuất cải thiện (chưa làm)**: thêm log/thông báo ngắn khi tương tác với vật nuôi (VD "Đã cho ăn", "Đã thuần hóa!", "Thu hoạch: +2 Food") để người chơi luôn biết vừa xảy ra hành động gì.
 
 ## Milestone 4 — Tech Tree / Progression
 - [x] Định nghĩa TechNode (ScriptableObject), điều kiện mở khóa — `Data/TechNode.cs` (chi phí + `prerequisites` + danh sách building/crop id mở khóa)
@@ -118,9 +120,20 @@
 - **Gotcha phát hiện được**: asmdef của test PlayMode nếu đặt `includePlatforms: ["Editor"]` hoặc tham chiếu `UnityEditor.TestRunner`, Unity sẽ **âm thầm xếp nhầm nó vào EditMode** (test-runner tìm ra 0 test khi chạy `-testPlatform PlayMode`, dù compile không lỗi). Cách đúng: để `includePlatforms: []` (không giới hạn platform) và dùng `#if UNITY_EDITOR` để bọc các API `UnityEditor`/`AssetDatabase` cần dùng trong test.
 - **Giới hạn của cách test này**: chỉ xác nhận đúng logic gameplay (state machine, cộng/trừ tài nguyên, mở khóa, rebuild UI) chạy trong Play Mode thật — **không** xác nhận được: bấm phím tương tác thật qua `Input`/`PlayerInteraction`, đặt công trình bằng chuột qua `BuildingPlacer`, sprite hiển thị đúng trên màn hình, layout UI nhìn có ổn không. Những phần này vẫn cần người dùng tự mở Editor, bấm Play, và quan sát bằng mắt.
 
+## Nhật ký phiên làm việc 2026-09-26 (phần 2 — Unity MCP, sự cố pagefile, test Save/Load)
+- Cài package `com.unity.ai.assistant` (Unity AI/MCP bridge) cho phép điều khiển Editor trực tiếp từ ngoài: Play/Stop, chụp ảnh camera, đọc Console, chạy C# tùy ý qua `RunCommand`. Rất hữu ích để tự động hóa việc test thay vì phải nhờ người dùng thao tác tay.
+- **Sự cố gặp phải**: sau khi cài `com.unity.ai.assistant`, Package Manager tự thêm kèm `com.unity.ai.inference` (engine ML/Sentis, không phải dependency thật của `ai.assistant`) khiến project phải IL-postprocess tới **1043 assembly** khi compile — quá nặng cho máy chỉ có 8GB RAM + ổ C gần đầy (2.3GB trống). Compile luôn fail ở bước ILPP với lỗi Windows `GetLastError 1455: The paging file is too small`, khiến Unity chặn Play mode dù code không có lỗi C#.
+- **Đã fix**: dọn ổ C (Recycle Bin + temp + installer cũ trong Downloads, +1.27GB) không đủ; gốc rễ thật sự là gỡ `com.unity.ai.inference` (xác nhận qua `package.json` là không phải dependency bắt buộc của `ai.assistant`) — sau khi gỡ, compile chạy sạch (`EditorUtility.scriptCompilationFailed = False`).
+- **Đã xác nhận thêm qua Unity MCP (Play mode thật, không phải batch mode)**: Console sạch, không lỗi/exception khi chạy scene `Gameplay.unity`. Chụp ảnh camera xác nhận vị trí sprite Player/Tree/FarmPlot/WildBoar đúng như code dựng scene — nhưng công cụ chụp ảnh qua Camera không hiển thị được UI Canvas (ScreenSpaceOverlay), nên vẫn chưa xác nhận trực quan được layout UI.
+- **Lưu ý polish nhỏ phát hiện được**: Camera dùng `clearFlags` mặc định (Skybox) nên nền có gradient bầu trời/đường chân trời phía sau sprite 2D — nhìn không hợp với game top-down 2D, nên đổi sang Solid Color khi làm polish (Milestone 7).
+- **Save/Load Milestone 1 đã xác nhận chạy đúng trong Play mode thật**: gọi `GameManager.Instance.SaveGame()`/`LoadGame()` trực tiếp qua RunCommand — lưu vị trí player + số gỗ, đổi state, tải lại, khôi phục đúng chính xác cả vị trí lẫn tài nguyên.
+- Package `com.unity.ai.assistant` hiện có trong `Packages/manifest.json` nhưng **chưa commit** — cần hỏi ý kiến trước khi đưa gói dev-tool này vào repo chung (có thể muốn giữ máy ai nấy cài, không ép vào git).
+
 ## Vấn đề đang tồn đọng (Known issues / Open questions)
 - [ ] Chưa quyết định: chế độ combat (trực tiếp hay chỉ huy nhóm)?
 - [ ] Chưa có tên chính thức cho dự án
-- [ ] Milestone 2-4: đã xác nhận đúng logic qua test tự động (2026-09-26), nhưng chưa có ai tự tay mở Editor, bấm Play, bấm phím/chuột thật để xác nhận trải nghiệm chơi thực tế (input, sprite, UI layout)
+- [ ] Milestone 2-4: đã xác nhận logic (test tự động) + Console sạch khi Play thật, nhưng chưa có ai tự tay bấm phím/chuột thật để xác nhận input (`PlayerInteraction`, `BuildingPlacer`) và chưa xác nhận trực quan layout UI (công cụ chụp ảnh hiện tại không thấy được Canvas ScreenSpaceOverlay)
 - [ ] Chưa làm save/load cho trạng thái FarmPlot (đang trồng gì, giai đoạn nào) và trạng thái vật nuôi (đã thuần hóa chưa, độ đói) — nợ kỹ thuật từ M2/M3
-- [ ] Save/load (F5/F9) của Milestone 1 vẫn chưa được test trong Play mode
+- [x] Save/load (F5/F9) của Milestone 1 đã test trong Play mode thật (2026-09-26) — đúng
+- [ ] Camera dùng Skybox clear flags gây nền trời không hợp — đổi Solid Color khi polish (M7)
+- [ ] `com.unity.ai.assistant` đã cài local, chưa quyết định có commit vào repo chung không
