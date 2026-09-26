@@ -75,10 +75,11 @@
 - **Đã xác nhận đúng logic qua test tự động (2026-09-26)**: `Assets/Tests/PlayMode/Milestone4TechTests.cs` — tri thức tự sinh theo thời gian, đủ tri thức thì mở khóa được `TechNode_Farming`, mở khóa đúng công trình (Storage) + cây trồng (Berry) liên kết, `BuildMenuUI`/`CropSelectionUI` tự rebuild và hiện thêm nút khi có tech mới mở, mở khóa thất bại khi chưa đủ tri thức. Chưa test nhấn nút thật trên UI (click chuột qua `EventSystem`) và chưa test prerequisites nhiều tầng (hiện chỉ có 1 `TechNode` không phụ thuộc tech khác).
 
 ## Milestone 5 — Combat
-- [ ] Quyết định chế độ chiến đấu: điều khiển trực tiếp hay chỉ huy nhóm (RTS nhẹ)
+- [x] Quyết định chế độ chiến đấu (hướng chung, 2026-09-26): **lai** — vừa điều khiển trực tiếp nhân vật chính, vừa chỉ huy được nhóm NPC. Chưa chốt chi tiết: NPC nào chỉ huy được (dân làng đã có công việc? hay cần "lính" riêng?), cơ chế ra lệnh (click chọn + click ra lệnh kiểu RTS, hay đơn giản hơn như "theo tôi"/"tấn công mục tiêu này"), UI hiển thị nhóm đang chỉ huy — cần bàn kỹ trước khi code
 - [ ] HealthComponent dùng chung cho Player/NPC/Building
 - [ ] Enemy AI cơ bản (patrol/chase/attack)
 - [ ] Vũ khí cơ bản (giáo/đá ném)
+- [ ] Cơ chế chỉ huy nhóm: chọn NPC + ra lệnh (thiết kế chi tiết còn thiếu, xem quyết định 2026-09-26 ở Decision Log)
 
 ## Milestone 6 — Thiên tai
 - [ ] DisasterManager: hệ thống sự kiện ngẫu nhiên
@@ -105,6 +106,8 @@
 | 2026-09-22 | Thuần hóa thú hoang ở Milestone 3: cho ăn (tốn tài nguyên) thay vì tương tác phím đơn thuần | Gần sát mô tả SPEC.md hơn, tái dùng pattern chi phí `ResourceAmount` đã có ở `BuildingData`, tránh thuần hóa quá dễ dàng |
 | 2026-09-22 | Tài nguyên "tri thức" (Milestone 4) tự sinh theo thời gian (tốc độ cố định), không gắn vào hành động gameplay | Đơn giản nhất, không phụ thuộc EventBus của các hệ thống khác; dễ cân bằng lại tốc độ sau này |
 | 2026-09-22 | Refactor `BuildingPlacer` từ 1 field `buildingToPlace` sang registry nhiều `BuildingData` + `SelectBuilding()` | Cần thiết để Tech Tree mở khóa được nhiều loại công trình khác nhau; đã ghi nợ từ Milestone 1 |
+| 2026-09-26 | Thứ tự triển khai tiếp theo: trả nợ kỹ thuật (feedback UX vật nuôi, save/load FarmPlot + Animal, test tay input) **trước** khi bắt đầu Milestone 5 | Đảm bảo M1-4 vững chắc, không cộng dồn nợ kỹ thuật trước khi mở rộng sang hệ thống mới |
+| 2026-09-26 | Milestone 5 (Combat): chế độ **lai** — vừa điều khiển trực tiếp nhân vật chính, vừa chỉ huy được nhóm NPC | User muốn cả hai, khác với 2 lựa chọn thuần trong SPEC.md § 3.5; cần thiết kế chi tiết thêm trước khi code (NPC nào chỉ huy được, cơ chế ra lệnh ra sao) — **chưa chốt chi tiết, chỉ mới chốt hướng chung** |
 
 ## Nhật ký phiên làm việc 2026-09-22 (đang bắt đầu test trong Editor thật)
 - Cài xong Unity Editor 6000.6.2f1, mở project lần đầu → gặp lỗi `CS0246: Button could not be found` ở `TechTreeUI.cs`/`BuildMenuUI.cs`/`CropSelectionUI.cs`. Nguyên nhân: `Packages/manifest.json` thiếu package `com.unity.ugui` (namespace `UnityEngine.UI` tồn tại qua `com.unity.modules.ui` nhưng rỗng, không có `Button`/`Text`/`Image`). **Đã fix**: thêm `com.unity.ugui` vào manifest, Unity tự resolve về bản `2.6.0`. Build lại (`Assembly-CSharp.dll` compile sạch) — hết lỗi.
