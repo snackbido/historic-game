@@ -13,14 +13,14 @@ Assets/
     Core/                → GameManager, SaveSystem, InputManager, EventBus
     Player/               → PlayerController, PlayerInteraction
     Building/             → BuildingPlacer, BuildingData, BuildingInstance
-    Resources/            → ResourceManager, ResourceNode, ResourceType (enum/SO)
-    Farming/              → CropController, FarmPlot, CropData
-    Animals/              → AnimalController, AnimalNeeds, TamingSystem
-    Tech/                 → TechTree, TechNode, TechManager
+    Resources/            → ResourceManager, ResourceNode
+    Farming/              → FarmPlot, FarmManager
+    Animals/              → AnimalController, TamingSystem
+    Tech/                 → TechManager
     Combat/               → HealthComponent, CombatController, EnemyAI
     Disaster/             → DisasterManager, DisasterEvent (base class)
-    UI/                   → HUDController, BuildMenuUI, ResourceBarUI
-    Data/                 → chứa tất cả ScriptableObject definitions
+    UI/                   → HUDController, BuildMenuUI, ResourceBarUI, CropSelectionUI, TechTreeUI
+    Data/                 → chứa tất cả ScriptableObject definitions (BuildingData, ResourceTypeData, CropData, AnimalData, TechNode...)
     Utils/                → helper functions, extension methods
 
   Prefabs/
