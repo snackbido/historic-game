@@ -78,6 +78,19 @@ namespace PrehistoricTribe
             Tame();
         }
 
+        public void LoadState(AnimalData source, AnimalState loadedState, int tamingProgress, float hunger, bool productReady)
+        {
+            data = source;
+            State = loadedState;
+            TamingProgress = tamingProgress;
+            Hunger = hunger;
+            ProductReady = productReady;
+            hungerTimer = 0f;
+            reproductionTimer = 0f;
+            productionTimer = 0f;
+            UpdateVisual();
+        }
+
         private void Tame()
         {
             State = AnimalState.Tamed;

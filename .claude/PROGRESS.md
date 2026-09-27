@@ -3,8 +3,30 @@
 > Cập nhật file này sau mỗi buổi làm việc: đánh dấu việc đã xong, ghi chú vấn đề gặp phải, quyết định đã chốt.
 
 ## Trạng thái hiện tại
-- **Giai đoạn**: Milestone 1 đã xác nhận chạy đúng (kể cả Save/Load F5/F9); Milestone 2-4 đã xác nhận đúng logic qua test PlayMode tự động (8/8 pass) + xác nhận thêm qua Unity MCP (Play mode thật không lỗi Console). Còn thiếu xác nhận input/UI trực quan bằng người thật (Milestone 5 chưa bắt đầu)
-- **Cập nhật lần cuối**: 2026-09-26
+- **Giai đoạn**: Milestone 1-4 đã xác nhận chạy đúng qua cả test tự động lẫn user tự playtest thật (2026-09-27) — nợ kỹ thuật M1-M4 đã trả xong (xem log phiên 2026-09-27). Đang ở bước lên kế hoạch cho **Milestone 4.5 — Dân làng (Villager NPC)**, milestone mới chèn thêm trước Combat sau khi phát hiện game chưa có NPC dân làng nào cả (SPEC.md §4 mô tả nhưng chưa từng triển khai) — cần làm trước vì Milestone 5 (Combat) đã chốt hướng "chỉ huy dân làng + lính"
+- **Cập nhật lần cuối**: 2026-09-27
+- **⏸ Tạm dừng tại đây (2026-09-27)**: đã lên kế hoạch xong Milestone 4.5, **chưa code gì cho Villager**. Toàn bộ thay đổi trong phiên 2026-09-27 (save/load Farm+Animal, thông báo xây dựng/thu hoạch, tài nguyên tự mọc lại, thêm 2 cây gỗ, cập nhật kế hoạch) **còn nằm ở working tree, chưa commit**. Unity Editor đang mở ở Edit mode, console sạch. Có 1 file đổi ngoài ý muốn: `Assets/TextMesh Pro/Resources/Fonts & Materials/LiberationSans SDF - Fallback.asset` (nhiều khả năng do Unity tự cập nhật fallback font khi rebuild scene, không phải do sửa code chủ đích — kiểm tra lại trước khi commit). **Phiên sau tiếp tục từ**: bắt đầu code Milestone 4.5, việc đầu tiên là `Data/VillagerData.cs` + `Villager/VillagerController.cs` (xem breakdown task đầy đủ ở mục Milestone 4.5 bên dưới).
+
+## Kế hoạch triển khai tiếp theo (ưu tiên, cập nhật 2026-09-27)
+
+**Ưu tiên 1 — Trả nợ kỹ thuật còn lại của M1-M4** — ✅ **Hoàn thành (2026-09-27)**
+1. ~~Xác nhận nhánh thông báo "thu hoạch sản phẩm"~~ — Xong, xác nhận sống qua Unity MCP.
+2. ~~Save/Load cho `FarmPlot` và `AnimalController`/`TamingSystem`~~ — Xong.
+3. ~~Test tay input/UI trực quan~~ — **Xong, user đã tự playtest thật** (di chuyển, tương tác phím, Tech Tree, Build Menu). Qua đó phát hiện thêm 2 việc và đã xử lý luôn: (a) `BuildingPlacer` im lặng khi đặt công trình thất bại → đã thêm thông báo; (b) tài nguyên biến mất vĩnh viễn sau khi hết → đã đổi thành tự mọc lại (60-120s) + thêm thông báo thu hoạch cho mọi loại tài nguyên (node lẫn nông sản) + thêm 2 cây gỗ nữa (tổng 3 cây).
+4. ~~Đổi Camera `clearFlags` từ Skybox → Solid Color~~ — Xong.
+
+**Ưu tiên 2 — Milestone 4.5 (Dân làng) — chèn mới, chặn Combat** ⬅ **đang ở đây**
+- Quyết định thiết kế Combat đã chốt (2026-09-27, xem Decision Log): chỉ huy được cả dân làng rảnh lẫn "lính" chuyên; ra lệnh bằng kéo-chọn-vùng (drag box-select) kiểu RTS thật + click ra lệnh; có UI danh sách/icon riêng cho nhóm đang chỉ huy.
+- Phát hiện khi lên kế hoạch: game **chưa có NPC dân làng nào** (SPEC.md §4 mô tả nhưng chưa triển khai milestone nào). User chọn: làm hệ thống dân làng **đầy đủ** (nhu cầu đói/ngủ/ấm + gán công việc thu thập/xây dựng/canh gác) trước, không rút gọn — xem breakdown task ở "Milestone 4.5" bên dưới (chèn giữa Milestone 4 và 5 trong danh sách milestone).
+- `SelectionManager`/`CommandSystem` (kéo chọn + ra lệnh) sẽ xây 1 lần, dùng chung cho cả gán việc dân làng (M4.5) lẫn chỉ huy chiến đấu (M5) — tránh làm 2 hệ thống chọn/ra lệnh riêng biệt.
+
+**Ưu tiên 3 — Milestone 5 (Combat)**, sau khi Dân làng xong: `HealthComponent` dùng chung Player/NPC/Building → vũ khí cơ bản (giáo/đá ném) → Enemy AI cơ bản (patrol/chase/attack) → mở rộng `CommandSystem` đã có ở M4.5 để ra lệnh tấn công/theo tôi → UI danh sách nhóm chỉ huy.
+
+**Ưu tiên 4 — Milestone 6 (Thiên tai)**, sau khi Combat ổn định: `DisasterManager`, base class `DisasterEvent`, 1-2 loại thiên tai đầu tiên (cháy rừng/lũ lụt), cảnh báo trước, hiệu ứng lên Building/Resource/Animal/Farming.
+
+**Ưu tiên 5 — Milestone 7 (Polish)**: âm thanh, VFX, cân bằng số liệu, main menu/settings.
+
+**Việc phụ, làm khi thuận tiện (không chặn tiến độ)**: đặt tên chính thức cho dự án.
 
 ## Milestone 0 — Setup môi trường
 - [x] Cài Unity Hub
@@ -74,12 +96,29 @@
 - Combat chưa tồn tại (Milestone 5 chưa làm) nên `TechNode` chỉ có danh sách unlock cho building/crop, chưa có unlock cho combat — sẽ thêm trường tương ứng khi làm Milestone 5.
 - **Đã xác nhận đúng logic qua test tự động (2026-09-26)**: `Assets/Tests/PlayMode/Milestone4TechTests.cs` — tri thức tự sinh theo thời gian, đủ tri thức thì mở khóa được `TechNode_Farming`, mở khóa đúng công trình (Storage) + cây trồng (Berry) liên kết, `BuildMenuUI`/`CropSelectionUI` tự rebuild và hiện thêm nút khi có tech mới mở, mở khóa thất bại khi chưa đủ tri thức. Chưa test nhấn nút thật trên UI (click chuột qua `EventSystem`) và chưa test prerequisites nhiều tầng (hiện chỉ có 1 `TechNode` không phụ thuộc tech khác).
 
+## Milestone 4.5 — Dân làng (Villager NPC)
+> Chèn mới (2026-09-27), chặn Milestone 5 vì Combat đã chốt "chỉ huy dân làng" nhưng dân làng chưa tồn tại. Theo đúng SPEC.md §4: "NPC dân làng: có nhu cầu cơ bản (đói, ngủ, ấm), có thể gán công việc (thu thập, xây dựng, canh gác)".
+- [ ] `Data/VillagerData.cs` (ScriptableObject) — tốc độ di chuyển, tốc độ giảm đói/ngủ/ấm, sprite
+- [ ] `Villager/VillagerController.cs` — 3 chỉ số nhu cầu (Hunger/Sleep/Warmth) giảm dần theo thời gian (mirror pattern `AnimalController` đã có cho đói); đói thấp tự tiêu Food từ `ResourceManager`; ngủ/ấm thấp giai đoạn đầu chỉ cảnh báo qua `EventBus.RaiseNotification` (chưa cần hiệu ứng gameplay phức tạp — tránh over-engineering giống các milestone trước, mở rộng sau nếu cần)
+- [ ] `Villager/VillagerJob` (enum: None/Gathering/Building/Guarding) + logic thực thi từng job trên `VillagerController` (Gathering: tự đi tới `ResourceNode`/`FarmPlot` gần nhất được giao và Harvest lặp lại; Guarding: di chuyển tới vị trí chỉ định rồi đứng yên)
+- [ ] `Villager/SelectionManager.cs` — kéo chọn vùng bằng chuột (drag box-select), highlight visual quanh villager đã chọn (dùng chung sau cho Combat)
+- [ ] `Villager/CommandSystem.cs` — click phải ra lệnh theo mục tiêu (lên `ResourceNode`/`FarmPlot` = gán Gathering, lên vị trí trống = Guarding tại đó) (dùng chung sau cho Combat)
+- [ ] `UI/VillagerPanelUI.cs` — danh sách/icon các villager đang được chọn (đã quyết định dùng UI riêng thay vì chỉ hiệu ứng trên map, xem Decision Log 2026-09-27)
+- [ ] Spawn 1-2 villager mẫu qua `GameplaySceneBuilder.cs`
+- [ ] Save/Load cho trạng thái villager (vị trí, nhu cầu, job đang gán) — theo đúng pattern `GetSaveData()/LoadFromSaveData()` đã dùng cho Farm/Animal, tránh lặp lại nợ kỹ thuật
+
+**Ghi chú milestone này**:
+- Job "Building" (villager tự đi xây) cần khái niệm "công trường/thời gian thi công" chưa tồn tại (hiện Player tự đặt building tức thời qua `BuildingPlacer`) — sẽ quyết định cách đơn giản hóa cụ thể khi bắt đầu code phần này (có thể: villager di chuyển tới ô đã chọn rồi giữ nguyên cơ chế đặt tức thời của `BuildingPlacer`, chỉ thêm bước "đi tới nơi" mang tính hình thức trước, chưa mô phỏng tiến độ xây dựng thật).
+
 ## Milestone 5 — Combat
-- [x] Quyết định chế độ chiến đấu (hướng chung, 2026-09-26): **lai** — vừa điều khiển trực tiếp nhân vật chính, vừa chỉ huy được nhóm NPC. Chưa chốt chi tiết: NPC nào chỉ huy được (dân làng đã có công việc? hay cần "lính" riêng?), cơ chế ra lệnh (click chọn + click ra lệnh kiểu RTS, hay đơn giản hơn như "theo tôi"/"tấn công mục tiêu này"), UI hiển thị nhóm đang chỉ huy — cần bàn kỹ trước khi code
+- [x] Quyết định chế độ chiến đấu (hướng chung, 2026-09-26): **lai** — vừa điều khiển trực tiếp nhân vật chính, vừa chỉ huy được nhóm NPC.
+- [x] Quyết định chi tiết (2026-09-27): NPC chỉ huy được = **cả dân làng rảnh lẫn "lính" chuyên** (lính là loại unit mới, mở rộng sau khi Villager MVP xong); cơ chế ra lệnh = **kéo chọn vùng (drag box-select) + click ra lệnh** kiểu RTS thật (không phải lệnh ngữ cảnh đơn giản); UI = **có panel danh sách/icon riêng** cho nhóm đang chỉ huy (không chỉ hiệu ứng trên map)
 - [ ] HealthComponent dùng chung cho Player/NPC/Building
 - [ ] Enemy AI cơ bản (patrol/chase/attack)
 - [ ] Vũ khí cơ bản (giáo/đá ném)
-- [ ] Cơ chế chỉ huy nhóm: chọn NPC + ra lệnh (thiết kế chi tiết còn thiếu, xem quyết định 2026-09-26 ở Decision Log)
+- [ ] Đơn vị "lính" chuyên biệt (mở khóa qua tech/building mới) — bổ sung thêm vào bên cạnh dân làng làm đối tượng chỉ huy được
+- [ ] Mở rộng `SelectionManager`/`CommandSystem` (đã xây ở Milestone 4.5 cho việc dân làng) để hỗ trợ thêm lệnh tấn công mục tiêu/theo tôi
+- [ ] `UI/CommandedUnitsPanelUI.cs` — mở rộng hoặc dùng chung `VillagerPanelUI` để hiển thị cả lính
 
 ## Milestone 6 — Thiên tai
 - [ ] DisasterManager: hệ thống sự kiện ngẫu nhiên
@@ -108,6 +147,9 @@
 | 2026-09-22 | Refactor `BuildingPlacer` từ 1 field `buildingToPlace` sang registry nhiều `BuildingData` + `SelectBuilding()` | Cần thiết để Tech Tree mở khóa được nhiều loại công trình khác nhau; đã ghi nợ từ Milestone 1 |
 | 2026-09-26 | Thứ tự triển khai tiếp theo: trả nợ kỹ thuật (feedback UX vật nuôi, save/load FarmPlot + Animal, test tay input) **trước** khi bắt đầu Milestone 5 | Đảm bảo M1-4 vững chắc, không cộng dồn nợ kỹ thuật trước khi mở rộng sang hệ thống mới |
 | 2026-09-26 | Milestone 5 (Combat): chế độ **lai** — vừa điều khiển trực tiếp nhân vật chính, vừa chỉ huy được nhóm NPC | User muốn cả hai, khác với 2 lựa chọn thuần trong SPEC.md § 3.5; cần thiết kế chi tiết thêm trước khi code (NPC nào chỉ huy được, cơ chế ra lệnh ra sao) — **chưa chốt chi tiết, chỉ mới chốt hướng chung** |
+| 2026-09-27 | Milestone 5 (Combat) chi tiết: chỉ huy được **cả dân làng rảnh lẫn "lính" chuyên**; ra lệnh bằng **kéo chọn vùng (drag box-select) + click ra lệnh** kiểu RTS thật; **có UI panel danh sách/icon riêng** cho nhóm đang chỉ huy | User chọn qua 3 câu hỏi thiết kế trực tiếp; chọn "cả hai" cho đối tượng chỉ huy để MVP dùng ngay dân làng, mở rộng lính sau; chọn kéo-chọn-vùng thay vì lệnh ngữ cảnh đơn giản dù tốn công hơn — ưu tiên trải nghiệm RTS quen thuộc hơn tối giản input |
+| 2026-09-27 | Chèn thêm **Milestone 4.5 — Dân làng (Villager NPC)** trước Milestone 5, làm **đầy đủ** theo SPEC.md §4 (nhu cầu đói/ngủ/ấm + gán công việc thu thập/xây dựng/canh gác), không làm bản rút gọn | Phát hiện khi lên kế hoạch Combat: game chưa có NPC dân làng nào dù SPEC.md đã mô tả từ đầu — không thể "chỉ huy dân làng" nếu dân làng chưa tồn tại; user được hỏi 3 lựa chọn phạm vi (tối giản/đổi hướng dùng lính/làm đầy đủ) và chọn làm đầy đủ ngay, chấp nhận kéo dài thời gian tới Combat |
+| 2026-09-27 | `SelectionManager`/`CommandSystem` (kéo chọn + ra lệnh) xây 1 lần ở Milestone 4.5, dùng chung cho cả gán việc dân làng lẫn chỉ huy chiến đấu ở Milestone 5 | Cả 2 tính năng đều cần "chọn nhiều đối tượng + ra lệnh theo mục tiêu click", tách thành 2 hệ thống riêng sẽ trùng lặp code không cần thiết |
 
 ## Nhật ký phiên làm việc 2026-09-22 (đang bắt đầu test trong Editor thật)
 - Cài xong Unity Editor 6000.6.2f1, mở project lần đầu → gặp lỗi `CS0246: Button could not be found` ở `TechTreeUI.cs`/`BuildMenuUI.cs`/`CropSelectionUI.cs`. Nguyên nhân: `Packages/manifest.json` thiếu package `com.unity.ugui` (namespace `UnityEngine.UI` tồn tại qua `com.unity.modules.ui` nhưng rỗng, không có `Button`/`Text`/`Image`). **Đã fix**: thêm `com.unity.ugui` vào manifest, Unity tự resolve về bản `2.6.0`. Build lại (`Assembly-CSharp.dll` compile sạch) — hết lỗi.
@@ -139,12 +181,34 @@
 - Thông báo còn lại (thu hoạch sản phẩm) **chưa xác nhận trực tiếp**: phát hiện cửa sổ Unity Editor bị throttle framerate rất thấp khi không có focus (`Time.time` gần như đứng yên dù đã đợi thật), nên không chờ được `productionInterval` trôi qua trong phiên Play mode sống. Thử dùng `TestRunnerApi` chạy PlayMode test ngay trong phiên Editor đang mở (để né việc phải mở process Unity thứ 2, vốn bị khóa vì Editor GUI đang mở project) nhưng callback bị mất qua domain reload khi vào Play mode, không lấy được kết quả.
 - Đã bổ sung assertion cho cả 5 thông báo vào `Assets/Tests/PlayMode/Milestone3AnimalTests.cs` (dùng `StringAssert.Contains` trên `EventBus.OnNotification`) — **chưa chạy lại được bằng batch mode** vì Editor GUI đang mở khóa project (Unity không cho 2 instance mở cùng 1 project). Cần chạy `Assets/Tests/PlayMode` lại (đóng Editor GUI trước, hoặc dùng Test Runner window trong Editor) ở phiên sau để xác nhận nốt nhánh thu hoạch.
 
+## Nhật ký phiên làm việc 2026-09-27 (trả nợ kỹ thuật M1-M4: save/load Farm+Animal, harvest notification, camera)
+- **Save/Load `FarmPlot`**: thêm `FarmPlot.LoadState()` + `FarmManager.GetSaveData()/LoadFromSaveData()` (registry `knownCrops` mirroring pattern `typesById`/`buildingsById` đã có). Định danh plot theo `GameObject.name` (`FarmPlot_1`/`FarmPlot_2` — tên cố định do `GameplaySceneBuilder` đặt), không cần Instantiate/Destroy vì các ô đất là vật thể cố định trong scene (không sinh ra/mất đi khi chơi), khác với building.
+- **Save/Load `AnimalController`/`TamingSystem`**: mirror đúng pattern destroy-toàn-bộ-rồi-respawn của `BuildingPlacer` (vì vật nuôi *có thể* sinh sản ra bản sao mới giữa 2 lần save, không thể định danh cố định theo tên như FarmPlot) — thêm registry `knownAnimalTypes` (id → `AnimalData`), `AnimalController.LoadState()`, `TamingSystem.GetSaveData()/LoadFromSaveData()`. Timer nội bộ (hungerTimer/reproductionTimer/productionTimer) **không** được lưu, reset về 0 khi load — đơn giản hóa có chủ đích, chấp nhận sai lệch nhỏ về thời điểm mốc tiếp theo, tương tự mức độ đơn giản hóa đã chọn ở các hệ thống khác.
+- `GameManager`/`SaveData` gắn thêm 2 field mới (`farmPlots`, `animals`) + gọi `FarmManager`/`TamingSystem` trong `SaveGame()/LoadGame()`. `GameplaySceneBuilder.cs` cập nhật để wire `knownCrops`/`knownAnimalTypes`/`farmManager`/`tamingSystem` khi dựng scene — đã chạy `Tools/Prehistoric/Build All` qua Unity MCP để tái tạo `Gameplay.unity` với wiring mới (bắt buộc, sửa code builder không tự cập nhật file scene đã lưu).
+- **Camera**: đổi `clearFlags` từ Skybox → Solid Color trong `GameplaySceneBuilder.cs` (không cần chờ M7 như dự kiến ban đầu).
+- **Xác nhận sống qua Unity MCP** (Play mode thật, không phải test tự động): plant crop trên `FarmPlot_1` → save → trồng thêm `FarmPlot_2` + cho heo ăn thêm (mutate) → load → xác nhận `FarmPlot_1` giữ đúng crop/stage, `FarmPlot_2` về lại `Empty`, heo về lại đúng `Wild`/`TamingProgress=1` (không phải state đã mutate). Có 1 lần tưởng phát hiện bug (heo sau load vẫn hiện `Tamed`) — điều tra ra là do `GameObject.Find` gọi ngay trong cùng frame với `Destroy()` (destroy bị trì hoãn tới cuối frame), không phải bug thật; xác nhận lại bằng `FindObjectsByType<AnimalController>()` ở lệnh riêng (frame khác) thấy đúng 1 con, đúng state.
+- **Xác nhận nốt thông báo "thu hoạch sản phẩm" của Milestone 3** (5/5, còn nợ từ 2026-09-26): gặp lại đúng hiện tượng đã ghi nhận trước đó — `Time.time` đứng yên dù đợi thật vì cửa sổ Unity Editor không có focus khi điều khiển qua MCP. **Cách khắc phục tìm được**: dùng PowerShell `(New-Object -ComObject WScript.Shell).AppActivate(<editorPid>)` để đưa cửa sổ Unity ra foreground trước khi đợi — sau đó `Time.time` chạy đúng tốc độ (`Time.timeScale` boost thêm để không phải đợi lâu). Ghi nhớ cách này cho các lần sau cần chờ real-time trong Play mode qua Unity MCP mà không muốn dựng lại batch-mode test.
+- **Gotcha nhỏ phát hiện thêm**: `Object.FindObjectsByType<T>(FindObjectsSortMode.None)` bị deprecated (warning, không phải lỗi) ở Unity 6000.6.2f1 — đổi sang overload `FindObjectsByType<T>(FindObjectsInactive.Exclude)` trong `FarmManager`/`TamingSystem`.
+- Chưa chạy lại bộ `Assets/Tests/PlayMode` bằng batch mode (Editor GUI vẫn đang mở, không mở được instance thứ 2) — nhưng đã xác nhận tương đương bằng thao tác sống qua Unity MCP như trên nên coi là đủ cho phiên này. Có thể bổ sung 1 test tự động mới cho `FarmManager.GetSaveData/LoadFromSaveData` và `TamingSystem.GetSaveData/LoadFromSaveData` ở phiên sau nếu muốn có regression test lâu dài (hiện chưa có, chỉ mới xác nhận qua RunCommand thủ công lần này).
+
+## Nhật ký phiên làm việc 2026-09-27 (phần 2 — user playtest thật, fix thiếu feedback khi xây dựng)
+- **User tự tay playtest** (không qua MCP): di chuyển, cho ăn/thuần hóa/thu hoạch vật nuôi (đã xác nhận thấy đủ cả thông báo thu hoạch sau khi đợi đúng `productionInterval`), mở Tech Tree đều ổn.
+- **Báo lỗi**: chọn xây "Kho chứa" nhưng không xây được, không rõ vì sao (không có thông báo gì).
+- **Điều tra qua Unity MCP** (đọc trực tiếp state đang chạy trong Play mode của user): `TechNode_Farming` đã unlock đúng, `BuildingData_Storage` đã unlock đúng (nên nút "Kho chứa" có hiện trong Build Menu) — nhưng `wood=10` trong khi Storage cần **20 Gỗ** (`BuildingData_Storage.asset costs`) → `CanAfford=False`. **Không phải bug**, chỉ là chưa đủ gỗ.
+- **Lỗ hổng UX thật sự phát hiện được**: `BuildingPlacer.TryPlace()/PlaceBuilding()` xử lý đúng nhưng **im lặng hoàn toàn** khi thất bại (thiếu tài nguyên, ô đất đã có công trình, hoặc building chưa unlock) — không có phản hồi gì cho người chơi, giống đúng lớp lỗi UX đã gặp và sửa ở `TamingSystem` (Milestone 3, 2026-09-26). Người chơi bấm chuột mà "không có gì xảy ra" nên tưởng là bug.
+- **Đã sửa**: thêm `EventBus.RaiseNotification(...)` vào `BuildingPlacer.cs` ở 4 nhánh — ô đất đã có công trình, công trình chưa mở khóa, không đủ tài nguyên (kèm tên công trình), và xây thành công (chỉ khi `spendResources=true`, tức không bắn thông báo khi đang `LoadFromSaveData`). Đã build lại sạch qua Unity MCP (`scriptCompilationFailed=False`), chưa test lại sống bằng tay/MCP vì đặt công trình cần input chuột thật kèm raycast lên `Grid` — để user tự xác nhận ở lần playtest tiếp theo (cho đủ 20 gỗ rồi thử xây lại).
+- **Yêu cầu mới từ user**: tài nguyên (node như `Tree`) nên "vô hạn" — thu hoạch hết thì mọc lại sau khoảng 1-2 phút thay vì biến mất vĩnh viễn. **Đã implement**: `ResourceNode.cs` không còn `Destroy(gameObject)` khi hết tài nguyên — thay bằng ẩn `SpriteRenderer`/tắt `Collider2D` (để không hiện, không tương tác được) rồi chạy coroutine `WaitForSeconds(Random.Range(respawnTimeMin, respawnTimeMax))` (mặc định 60-120s, chỉnh được qua Inspector theo từng node), hết giờ thì nạp lại `amountRemaining` về mức ban đầu và hiện/enable lại. Giữ nguyên GameObject (không Instantiate lại) nên không cần thêm gì vào save/load.
+- **Đã xác nhận sống qua Unity MCP**: harvest hết `Tree` (10 gỗ) → xác nhận sprite/collider tắt ngay → set `Time.timeScale=60` + focus cửa sổ Editor (dùng lại thủ thuật `AppActivate`) → đợi thật đến khi `Time.time` vượt mốc respawn → xác nhận sprite/collider bật lại đúng lúc → harvest lại thành công (+1 gỗ), xác nhận vòng lặp "hết → ẩn → chờ → mọc lại → thu hoạch được tiếp" hoạt động đúng như yêu cầu. Console sạch trong suốt quá trình.
+- **Yêu cầu tiếp theo từ user**: thêm thông báo khi thu thập tài nguyên, áp dụng chung cho mọi loại tài nguyên (không chỉ gỗ). **Đã implement**: `ResourceNode.Harvest()` bắn `EventBus.RaiseNotification($"+{amount} {resourceType.displayName}")` — dùng `displayName` của chính `ResourceTypeData` gán cho node nên tự động đúng cho bất kỳ loại tài nguyên nào (gỗ, đá... sau này) mà không cần sửa code. Tiện thể phát hiện `FarmPlot.Harvest()` (thu hoạch nông sản) cũng thiếu thông báo y hệt — đã thêm luôn theo cùng pattern `TamingSystem.CollectProduct()` (liệt kê tất cả loại tài nguyên trong `harvestYield`, vd "Thu hoạch Cây mọng: +3 Thức ăn").
+- **Đã xác nhận sống qua Unity MCP**: harvest `Tree` → notification `"+1 Gỗ"`; harvest `FarmPlot` (Berry, ép thẳng lên `ReadyToHarvest` qua `LoadState` để test nhanh không cần chờ thời gian lớn) → notification `"Thu hoạch Cây mọng: +3 Thức ăn"`. Console sạch.
+- **Yêu cầu tiếp theo từ user**: thêm 1-2 cây gỗ nữa (chỉ có 1 cây `Tree` từ đầu). **Đã làm**: tách logic tạo cây thành helper `CreateTree(name, position, wood)` trong `GameplaySceneBuilder.cs` (mirror `CreateFarmPlot`), gọi 3 lần → `Tree_1` (2,1), `Tree_2` (4,2), `Tree_3` (-1, 2.5) — không chồng lấn với Player/FarmPlot/WildBoar. Build lại scene qua Unity MCP, xác nhận sống có đúng 3 `ResourceNode` trong scene, console sạch. Mỗi cây có respawn timer độc lập (60-120s) như đã implement ở mục trên.
+
 ## Vấn đề đang tồn đọng (Known issues / Open questions)
 - [ ] Chưa quyết định: chế độ combat (trực tiếp hay chỉ huy nhóm)?
 - [ ] Chưa có tên chính thức cho dự án
-- [ ] Milestone 2-4: đã xác nhận logic (test tự động) + Console sạch khi Play thật, nhưng chưa có ai tự tay bấm phím/chuột thật để xác nhận input (`PlayerInteraction`, `BuildingPlacer`) và chưa xác nhận trực quan layout UI (công cụ chụp ảnh hiện tại không thấy được Canvas ScreenSpaceOverlay)
-- [ ] Chưa làm save/load cho trạng thái FarmPlot (đang trồng gì, giai đoạn nào) và trạng thái vật nuôi (đã thuần hóa chưa, độ đói) — nợ kỹ thuật từ M2/M3
+- [x] Milestone 2-4: **user đã tự tay playtest thật (2026-09-27)** — di chuyển, tương tác phím (cho ăn/thuần hóa/thu hoạch), mở Tech Tree/Build Menu qua UI đều hoạt động đúng. Phát hiện thêm 1 lỗ hổng UX qua chính lần test này (xem log bên dưới, đã sửa)
+- [x] Save/load cho trạng thái `FarmPlot` (crop + stage + timer) và `AnimalController`/`TamingSystem` (state/tamingProgress/hunger/productReady) — implement + xác nhận sống qua Unity MCP (2026-09-27), xem nhật ký phiên bên dưới
 - [x] Save/load (F5/F9) của Milestone 1 đã test trong Play mode thật (2026-09-26) — đúng
-- [ ] Camera dùng Skybox clear flags gây nền trời không hợp — đổi Solid Color khi polish (M7)
-- [ ] `com.unity.ai.assistant` đã cài local, chưa quyết định có commit vào repo chung không
-- [x] Feedback tương tác vật nuôi (việc #1 trả nợ kỹ thuật, 2026-09-26) — đã code + xác nhận sống 4/5 thông báo, còn nhánh "thu hoạch sản phẩm" chỉ mới code-review + assertion tự động (chưa chạy lại batch để xác nhận, xem nhật ký phiên phần 3)
+- [x] Camera dùng Skybox clear flags gây nền trời không hợp — đổi sang Solid Color trong `GameplaySceneBuilder.cs` (2026-09-27), không cần chờ M7
+- [x] `com.unity.ai.assistant` — đã quyết định commit vào repo chung (2026-09-26, commit `23cc8c8`) để mọi máy đều có cùng tooling MCP (Play/Stop, đọc Console, RunCommand); đã gỡ `com.unity.ai.inference` (dependency ML/Sentis không cần thiết gây lỗi compile) trước khi commit
+- [x] Feedback tương tác vật nuôi (việc #1 trả nợ kỹ thuật) — đã code + xác nhận sống **5/5** thông báo (2026-09-27: xác nhận nốt nhánh "thu hoạch sản phẩm" qua Unity MCP Play mode thật, xem nhật ký phiên bên dưới)

@@ -92,8 +92,17 @@ namespace PrehistoricTribe
 
         private void TryPlace(Vector3Int cell)
         {
-            if (occupiedCells.Contains(cell)) return;
-            if (TechManager.Instance != null && !TechManager.Instance.IsBuildingUnlocked(selectedBuilding)) return;
+            if (occupiedCells.Contains(cell))
+            {
+                EventBus.RaiseNotification("Ô đất này đã có công trình khác");
+                return;
+            }
+
+            if (TechManager.Instance != null && !TechManager.Instance.IsBuildingUnlocked(selectedBuilding))
+            {
+                EventBus.RaiseNotification($"{selectedBuilding.displayName} chưa được mở khóa");
+                return;
+            }
 
             PlaceBuilding(selectedBuilding, cell, spendResources: true);
         }
@@ -101,7 +110,10 @@ namespace PrehistoricTribe
         private BuildingInstance PlaceBuilding(BuildingData data, Vector3Int cell, bool spendResources)
         {
             if (spendResources && !ResourceManager.Instance.SpendAll(data.costs))
+            {
+                EventBus.RaiseNotification($"Không đủ tài nguyên để xây {data.displayName}");
                 return null;
+            }
 
             Vector3 worldPosition = grid.GetCellCenterWorld(cell);
             GameObject instanceObject = Instantiate(data.prefab, worldPosition, Quaternion.identity);
@@ -111,6 +123,10 @@ namespace PrehistoricTribe
             occupiedCells.Add(cell);
             placedBuildings.Add(instance);
             EventBus.RaiseBuildingPlaced(instance);
+
+            if (spendResources)
+                EventBus.RaiseNotification($"Đã xây {data.displayName}");
+
             return instance;
         }
 

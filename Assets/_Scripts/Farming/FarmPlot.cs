@@ -28,6 +28,8 @@ namespace PrehistoricTribe
 
         public FarmPlotState State { get; private set; } = FarmPlotState.Empty;
         public CropData Crop => crop;
+        public CropStage Stage => stage;
+        public float StageTimer => stageTimer;
 
         private void Update()
         {
@@ -57,6 +59,9 @@ namespace PrehistoricTribe
             foreach (var yield in crop.harvestYield)
                 ResourceManager.Instance.AddResource(yield.type, yield.amount);
 
+            string summary = string.Join(", ", crop.harvestYield.ConvertAll(y => $"+{y.amount} {y.type.displayName}"));
+            EventBus.RaiseNotification($"Thu hoạch {crop.displayName}: {summary}");
+
             Reset();
             return true;
         }
@@ -65,6 +70,15 @@ namespace PrehistoricTribe
         {
             if (State != FarmPlotState.Withered) return;
             Reset();
+        }
+
+        public void LoadState(CropData loadedCrop, CropStage loadedStage, float loadedStageTimer, FarmPlotState loadedState)
+        {
+            crop = loadedCrop;
+            stage = loadedStage;
+            stageTimer = loadedStageTimer;
+            State = loadedState;
+            UpdateVisual();
         }
 
         private void AdvanceStage()

@@ -9,6 +9,8 @@ namespace PrehistoricTribe
         [SerializeField] private PlayerController player;
         [SerializeField] private ResourceManager resourceManager;
         [SerializeField] private BuildingPlacer buildingPlacer;
+        [SerializeField] private FarmManager farmManager;
+        [SerializeField] private TamingSystem tamingSystem;
 
         private void Awake()
         {
@@ -27,7 +29,9 @@ namespace PrehistoricTribe
                 playerX = player.GetPosition().x,
                 playerY = player.GetPosition().y,
                 resources = resourceManager.GetSaveData(),
-                buildings = buildingPlacer.GetSaveData()
+                buildings = buildingPlacer.GetSaveData(),
+                farmPlots = farmManager.GetSaveData(),
+                animals = tamingSystem.GetSaveData()
             };
             SaveSystem.Save(data);
         }
@@ -40,6 +44,8 @@ namespace PrehistoricTribe
             player.SetPosition(new Vector2(data.playerX, data.playerY));
             resourceManager.LoadFromSaveData(data.resources);
             buildingPlacer.LoadFromSaveData(data.buildings);
+            farmManager.LoadFromSaveData(data.farmPlots);
+            tamingSystem.LoadFromSaveData(data.animals);
         }
     }
 }

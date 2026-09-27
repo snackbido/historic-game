@@ -68,6 +68,8 @@ namespace PrehistoricTribe.EditorTools
             var cam = cameraGO.AddComponent<Camera>();
             cam.orthographic = true;
             cam.orthographicSize = 5f;
+            cam.clearFlags = CameraClearFlags.SolidColor;
+            cam.backgroundColor = new Color(0.15f, 0.15f, 0.18f);
             cam.transform.position = new Vector3(0f, 0f, -10f);
             cameraGO.AddComponent<AudioListener>();
             var camFollow = cameraGO.AddComponent<CameraFollow>();
@@ -91,16 +93,9 @@ namespace PrehistoricTribe.EditorTools
 
             SetPrivateField(camFollow, "target", playerGO.transform);
 
-            var treeGO = new GameObject("Tree");
-            treeGO.transform.position = new Vector3(2f, 1f, 0f);
-            var treeSr = treeGO.AddComponent<SpriteRenderer>();
-            treeSr.sprite = CreateSquareSprite(new Color(0.2f, 0.6f, 0.2f), "TreeSprite");
-            var treeCol = treeGO.AddComponent<BoxCollider2D>();
-            treeCol.isTrigger = true;
-            var node = treeGO.AddComponent<ResourceNode>();
-            SetPrivateField(node, "resourceType", wood);
-            SetPrivateField(node, "amountRemaining", 10);
-            SetPrivateField(node, "yieldPerHit", 1);
+            CreateTree("Tree_1", new Vector3(2f, 1f, 0f), wood);
+            CreateTree("Tree_2", new Vector3(4f, 2f, 0f), wood);
+            CreateTree("Tree_3", new Vector3(-1f, 2.5f, 0f), wood);
 
             var gridGO = new GameObject("Grid");
             gridGO.AddComponent<Grid>();
@@ -116,10 +111,12 @@ namespace PrehistoricTribe.EditorTools
             SetPrivateField(placer, "placementPreview", previewGO);
 
             var farmManagerGO = new GameObject("FarmManager");
-            farmManagerGO.AddComponent<FarmManager>();
+            var farmManager = farmManagerGO.AddComponent<FarmManager>();
+            SetPrivateField(farmManager, "knownCrops", new List<CropData> { berry });
 
             var tamingSystemGO = new GameObject("TamingSystem");
-            tamingSystemGO.AddComponent<TamingSystem>();
+            var tamingSystem = tamingSystemGO.AddComponent<TamingSystem>();
+            SetPrivateField(tamingSystem, "knownAnimalTypes", new List<AnimalData> { boarData });
 
             CreateFarmPlot("FarmPlot_1", new Vector3(-2f, -1.5f, 0f));
             CreateFarmPlot("FarmPlot_2", new Vector3(-3.2f, -1.5f, 0f));
@@ -139,6 +136,8 @@ namespace PrehistoricTribe.EditorTools
             SetPrivateField(gameManager, "player", playerGO.GetComponent<PlayerController>());
             SetPrivateField(gameManager, "resourceManager", rm);
             SetPrivateField(gameManager, "buildingPlacer", placer);
+            SetPrivateField(gameManager, "farmManager", farmManager);
+            SetPrivateField(gameManager, "tamingSystem", tamingSystem);
             gameManagerGO.AddComponent<SaveLoadHotkeys>();
 
             var eventSystemGO = new GameObject("EventSystem");
@@ -177,6 +176,20 @@ namespace PrehistoricTribe.EditorTools
             EditorSceneManager.SaveScene(scene, ScenePath);
             AssetDatabase.SaveAssets();
             Debug.Log($"[GameplaySceneBuilder] Da tao scene tai {ScenePath}");
+        }
+
+        private static void CreateTree(string name, Vector3 position, ResourceTypeData wood)
+        {
+            var treeGO = new GameObject(name);
+            treeGO.transform.position = position;
+            var treeSr = treeGO.AddComponent<SpriteRenderer>();
+            treeSr.sprite = CreateSquareSprite(new Color(0.2f, 0.6f, 0.2f), "TreeSprite");
+            var treeCol = treeGO.AddComponent<BoxCollider2D>();
+            treeCol.isTrigger = true;
+            var node = treeGO.AddComponent<ResourceNode>();
+            SetPrivateField(node, "resourceType", wood);
+            SetPrivateField(node, "amountRemaining", 10);
+            SetPrivateField(node, "yieldPerHit", 1);
         }
 
         private static void CreateFarmPlot(string name, Vector3 position)

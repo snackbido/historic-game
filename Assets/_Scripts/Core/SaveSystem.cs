@@ -11,6 +11,8 @@ namespace PrehistoricTribe
         public float playerY;
         public List<ResourceSaveEntry> resources = new List<ResourceSaveEntry>();
         public List<PlacedBuildingData> buildings = new List<PlacedBuildingData>();
+        public List<FarmPlotSaveEntry> farmPlots = new List<FarmPlotSaveEntry>();
+        public List<AnimalSaveEntry> animals = new List<AnimalSaveEntry>();
     }
 
     public static class SaveSystem
