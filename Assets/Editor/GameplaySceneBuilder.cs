@@ -26,6 +26,7 @@ namespace PrehistoricTribe.EditorTools
         private const string BerryDataPath = "Assets/_Data/CropData_Berry.asset";
         private const string TechFarmingPath = "Assets/_Data/TechNode_Farming.asset";
         private const string BoarDataPath = "Assets/_Data/AnimalData_WildBoar.asset";
+        private const string VillagerDataPath = "Assets/_Data/VillagerData_Basic.asset";
         private const string ButtonPrefabPath = "Assets/Prefabs/Button.prefab";
 
         [MenuItem("Tools/Prehistoric/Build All (Content + Scene)")]
@@ -46,18 +47,19 @@ namespace PrehistoricTribe.EditorTools
             var berry = AssetDatabase.LoadAssetAtPath<CropData>(BerryDataPath);
             var techFarming = AssetDatabase.LoadAssetAtPath<TechNode>(TechFarmingPath);
             var boarData = AssetDatabase.LoadAssetAtPath<AnimalData>(BoarDataPath);
+            var villagerData = AssetDatabase.LoadAssetAtPath<VillagerData>(VillagerDataPath);
             var buttonPrefab = AssetDatabase.LoadAssetAtPath<Button>(ButtonPrefabPath);
 
             if (wood == null || food == null || knowledge == null || hut == null || storage == null ||
-                berry == null || techFarming == null || boarData == null || buttonPrefab == null)
+                berry == null || techFarming == null || boarData == null || villagerData == null || buttonPrefab == null)
             {
                 Debug.LogError("[GameplaySceneBuilder] Thieu asset can thiet. Chay 'Tools/Prehistoric/Build Missing Content' truoc (hoac dung 'Build All').");
                 return;
             }
 
-            if (hut.prefab == null || storage.prefab == null || boarData.prefab == null)
+            if (hut.prefab == null || storage.prefab == null || boarData.prefab == null || villagerData.prefab == null)
             {
-                Debug.LogError("[GameplaySceneBuilder] BuildingData/AnimalData chua co prefab. Chay 'Tools/Prehistoric/Build Missing Content' truoc (hoac dung 'Build All').");
+                Debug.LogError("[GameplaySceneBuilder] BuildingData/AnimalData/VillagerData chua co prefab. Chay 'Tools/Prehistoric/Build Missing Content' truoc (hoac dung 'Build All').");
                 return;
             }
 
@@ -71,6 +73,8 @@ namespace PrehistoricTribe.EditorTools
             cam.clearFlags = CameraClearFlags.SolidColor;
             cam.backgroundColor = new Color(0.15f, 0.15f, 0.18f);
             cam.transform.position = new Vector3(0f, 0f, -10f);
+            cam.transparencySortMode = TransparencySortMode.CustomAxis;
+            cam.transparencySortAxis = Vector3.up;
             cameraGO.AddComponent<AudioListener>();
             var camFollow = cameraGO.AddComponent<CameraFollow>();
 
@@ -98,7 +102,9 @@ namespace PrehistoricTribe.EditorTools
             CreateTree("Tree_3", new Vector3(-1f, 2.5f, 0f), wood);
 
             var gridGO = new GameObject("Grid");
-            gridGO.AddComponent<Grid>();
+            var grid = gridGO.AddComponent<Grid>();
+            grid.cellLayout = GridLayout.CellLayout.Isometric;
+            grid.cellSize = new Vector3(IsometricUtility.TileWidth, IsometricUtility.TileHeight, 1f);
 
             var previewGO = new GameObject("PlacementPreview");
             var previewSr = previewGO.AddComponent<SpriteRenderer>();
@@ -126,6 +132,19 @@ namespace PrehistoricTribe.EditorTools
             boarInstance.transform.position = new Vector3(3f, -1.5f, 0f);
             SetPrivateField(boarInstance.GetComponent<AnimalController>(), "data", boarData);
 
+            var villagerManagerGO = new GameObject("VillagerManager");
+            var villagerManager = villagerManagerGO.AddComponent<VillagerManager>();
+            SetPrivateField(villagerManager, "knownVillagerTypes", new List<VillagerData> { villagerData });
+
+            var selectionManagerGO = new GameObject("SelectionManager");
+            selectionManagerGO.AddComponent<SelectionManager>();
+
+            var commandSystemGO = new GameObject("CommandSystem");
+            commandSystemGO.AddComponent<CommandSystem>();
+
+            CreateVillager("Villager_1", new Vector3(-0.8f, 1.2f, 0f), villagerData);
+            CreateVillager("Villager_2", new Vector3(0.8f, 1.2f, 0f), villagerData);
+
             var techManagerGO = new GameObject("TechManager");
             var techManager = techManagerGO.AddComponent<TechManager>();
             SetPrivateField(techManager, "knowledgeResource", knowledge);
@@ -138,6 +157,7 @@ namespace PrehistoricTribe.EditorTools
             SetPrivateField(gameManager, "buildingPlacer", placer);
             SetPrivateField(gameManager, "farmManager", farmManager);
             SetPrivateField(gameManager, "tamingSystem", tamingSystem);
+            SetPrivateField(gameManager, "villagerManager", villagerManager);
             gameManagerGO.AddComponent<SaveLoadHotkeys>();
 
             var eventSystemGO = new GameObject("EventSystem");
@@ -171,6 +191,7 @@ namespace PrehistoricTribe.EditorTools
             CreateBuildMenuPanel(canvasGO.transform, buttonPrefab, hut, storage);
             CreateCropSelectionPanel(canvasGO.transform, buttonPrefab, berry);
             CreateTechTreePanel(canvasGO.transform, buttonPrefab, techFarming);
+            CreateVillagerPanel(canvasGO.transform, buttonPrefab);
             CreateNotificationLabel(canvasGO.transform);
 
             EditorSceneManager.SaveScene(scene, ScenePath);
@@ -190,6 +211,14 @@ namespace PrehistoricTribe.EditorTools
             SetPrivateField(node, "resourceType", wood);
             SetPrivateField(node, "amountRemaining", 10);
             SetPrivateField(node, "yieldPerHit", 1);
+        }
+
+        private static void CreateVillager(string name, Vector3 position, VillagerData villagerData)
+        {
+            var instance = (GameObject)PrefabUtility.InstantiatePrefab(villagerData.prefab);
+            instance.name = name;
+            instance.transform.position = position;
+            SetPrivateField(instance.GetComponent<VillagerController>(), "data", villagerData);
         }
 
         private static void CreateFarmPlot(string name, Vector3 position)
@@ -290,6 +319,14 @@ namespace PrehistoricTribe.EditorTools
             var ui = container.gameObject.AddComponent<TechTreeUI>();
             SetPrivateField(ui, "allTechs", new List<TechNode> { techFarming });
             SetPrivateField(ui, "entryButtonPrefab", buttonPrefab);
+            SetPrivateField(ui, "entryContainer", container);
+        }
+
+        private static void CreateVillagerPanel(Transform canvasTransform, Button buttonPrefab)
+        {
+            var container = CreatePanelContainer(canvasTransform, "VillagerPanel", new Vector2(-20f, -620f));
+            var ui = container.gameObject.AddComponent<VillagerPanelUI>();
+            SetPrivateField(ui, "entryPrefab", buttonPrefab);
             SetPrivateField(ui, "entryContainer", container);
         }
 

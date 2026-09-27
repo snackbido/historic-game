@@ -18,6 +18,7 @@ namespace PrehistoricTribe
         private Collider2D nodeCollider;
 
         public ResourceTypeData ResourceType => resourceType;
+        public bool IsDepleted => amountRemaining <= 0;
 
         private void Awake()
         {

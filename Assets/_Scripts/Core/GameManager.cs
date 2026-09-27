@@ -11,6 +11,7 @@ namespace PrehistoricTribe
         [SerializeField] private BuildingPlacer buildingPlacer;
         [SerializeField] private FarmManager farmManager;
         [SerializeField] private TamingSystem tamingSystem;
+        [SerializeField] private VillagerManager villagerManager;
 
         private void Awake()
         {
@@ -31,7 +32,8 @@ namespace PrehistoricTribe
                 resources = resourceManager.GetSaveData(),
                 buildings = buildingPlacer.GetSaveData(),
                 farmPlots = farmManager.GetSaveData(),
-                animals = tamingSystem.GetSaveData()
+                animals = tamingSystem.GetSaveData(),
+                villagers = villagerManager.GetSaveData()
             };
             SaveSystem.Save(data);
         }
@@ -46,6 +48,7 @@ namespace PrehistoricTribe
             buildingPlacer.LoadFromSaveData(data.buildings);
             farmManager.LoadFromSaveData(data.farmPlots);
             tamingSystem.LoadFromSaveData(data.animals);
+            villagerManager.LoadFromSaveData(data.villagers);
         }
     }
 }

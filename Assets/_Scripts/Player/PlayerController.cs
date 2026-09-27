@@ -23,7 +23,9 @@ namespace PrehistoricTribe
 
         private void FixedUpdate()
         {
-            body.MovePosition(body.position + moveInput.normalized * moveSpeed * Time.fixedDeltaTime);
+            Vector2 isoDirection = IsometricUtility.InputToIsometric(moveInput);
+            if (isoDirection.sqrMagnitude > 0.0001f) isoDirection.Normalize();
+            body.MovePosition(body.position + isoDirection * moveSpeed * Time.fixedDeltaTime);
         }
 
         public Vector2 GetPosition() => body.position;

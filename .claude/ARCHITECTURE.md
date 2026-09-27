@@ -100,5 +100,11 @@ GameManager (điều phối chung)
 - Thiết kế mỗi hệ thống có hàm `GetSaveData()` / `LoadFromSaveData()` riêng, `GameManager` gọi tổng hợp — tránh 1 class khổng lồ ôm hết save logic.
 
 ## 5. Ghi chú kỹ thuật khi mở rộng
-- Nếu sau này chuyển sang isometric/3D: giữ nguyên tầng Logic + Data, chỉ thay tầng Presentation (sprite → model, di chuyển 2D → 3D). Đây là lý do vì sao phải tách 3 tầng rõ ràng ngay từ đầu.
+- **Đã chuyển sang isometric (2026-09-27)**, đúng như dự tính: chỉ đổi tầng Presentation, không đổi Logic/Data. Cách làm cụ thể:
+  - `Grid` (dùng cho `BuildingPlacer`) đổi `cellLayout` sang `GridLayout.CellLayout.Isometric`, `cellSize = (1, 0.5, 1)` (tỉ lệ 2:1 chuẩn) — Unity tự lo việc `WorldToCell`/`GetCellCenterWorld` chiếu đúng ô hình thoi, không cần sửa code `BuildingPlacer`.
+  - `PlayerController` chuyển input WASD từ 2 trục vuông góc sang 2 trục chéo isometric qua `Utils/IsometricUtility.cs` (`InputToIsometric`) — mọi logic khác (va chạm, tương tác, khoảng cách) vẫn hoạt động bình thường vì toàn bộ thế giới vẫn là 1 không gian Unity 2D thống nhất, không có 2 hệ tọa độ song song.
+  - Camera **không xoay** — vẫn nhìn thẳng xuống trục -Z như top-down cũ; hiệu ứng isometric đến từ hình dạng lưới + hướng di chuyển, không phải góc camera. Thêm `transparencySortMode = CustomAxis` + `transparencySortAxis = Vector3.up` để sprite tự xếp lớp đúng theo trục Y (vật ở "phía sau" vẽ trước).
+  - `VillagerController`/`AnimalController` không cần sửa gì: chúng di chuyển bằng vector hướng tới target (`target - currentPos`), tự động đúng hướng bất kể không gian có "hình dạng" gì.
+  - **Giới hạn hiện tại**: sprite vẫn là hình vuông placeholder (chưa có art isometric thật) — khi nhiều vật đặt gần nhau trên lưới hình thoi (cellSize nhỏ hơn 1x1) sprite sẽ chồng lên nhau về mặt hình ảnh dù vị trí logic đúng. Cần thay bằng sprite/art vẽ theo góc isometric thật ở Milestone 7 (Polish).
+- Nếu sau này muốn chuyển tiếp sang 3D: vẫn giữ nguyên tầng Logic + Data, chỉ thay tầng Presentation (sprite → model). Đây là lý do vì sao phải tách 3 tầng rõ ràng ngay từ đầu.
 - Nếu cần AI phức tạp hơn cho combat/thiên tai: cân nhắc Unity NavMesh cho pathfinding khi lên 3D, hoặc A* Pathfinding Project (asset phổ biến) cho 2D.

@@ -13,6 +13,7 @@ namespace PrehistoricTribe
         public List<PlacedBuildingData> buildings = new List<PlacedBuildingData>();
         public List<FarmPlotSaveEntry> farmPlots = new List<FarmPlotSaveEntry>();
         public List<AnimalSaveEntry> animals = new List<AnimalSaveEntry>();
+        public List<VillagerSaveEntry> villagers = new List<VillagerSaveEntry>();
     }
 
     public static class SaveSystem

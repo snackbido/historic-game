@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.IO;
+using System.Reflection;
 using UnityEditor;
 using UnityEngine;
 
@@ -21,6 +22,8 @@ namespace PrehistoricTribe.EditorTools
         private const string BoarDataPath = "Assets/_Data/AnimalData_WildBoar.asset";
         private const string BoarPrefabPath = "Assets/Prefabs/Animals/WildBoar.prefab";
         private const string BerryDataPath = "Assets/_Data/CropData_Berry.asset";
+        private const string VillagerDataPath = "Assets/_Data/VillagerData_Basic.asset";
+        private const string VillagerPrefabPath = "Assets/Prefabs/Villagers/Villager.prefab";
 
         [MenuItem("Tools/Prehistoric/Build Missing Content (Buildings + Animal)")]
         public static void Build()
@@ -36,10 +39,11 @@ namespace PrehistoricTribe.EditorTools
             BuildBuildingPrefab(StorageDataPath, StoragePrefabPath, new Color(0.5f, 0.5f, 0.5f), "StorageSprite");
             BuildWildBoarContent(food);
             BuildCropVisuals();
+            BuildVillagerContent(food);
 
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
-            Debug.Log("[GameContentBuilder] Da tao xong Hut.prefab, Storage.prefab, WildBoar.prefab, AnimalData_WildBoar.asset va sprite giai doan cho CropData_Berry");
+            Debug.Log("[GameContentBuilder] Da tao xong Hut.prefab, Storage.prefab, WildBoar.prefab, AnimalData_WildBoar.asset, sprite giai doan cho CropData_Berry, va Villager.prefab/VillagerData_Basic.asset");
         }
 
         private static void BuildBuildingPrefab(string dataAssetPath, string prefabPath, Color color, string spriteName)
@@ -114,6 +118,60 @@ namespace PrehistoricTribe.EditorTools
             crop.matureSprite = CreateAndSaveSprite(new Color(0.8f, 0.1f, 0.2f), "BerryMatureSprite");
             crop.witheredSprite = CreateAndSaveSprite(new Color(0.4f, 0.35f, 0.3f), "BerryWitheredSprite");
             EditorUtility.SetDirty(crop);
+        }
+
+        private static void BuildVillagerContent(ResourceTypeData food)
+        {
+            var go = new GameObject("Villager");
+            var sr = go.AddComponent<SpriteRenderer>();
+            sr.sprite = CreateAndSaveSprite(new Color(0.9f, 0.8f, 0.6f), "VillagerSprite");
+            var rb = go.AddComponent<Rigidbody2D>();
+            rb.gravityScale = 0f;
+            rb.freezeRotation = true;
+            var col = go.AddComponent<CircleCollider2D>();
+            col.isTrigger = true;
+            col.radius = 0.4f;
+
+            var ringGO = new GameObject("SelectionRing");
+            ringGO.transform.SetParent(go.transform, false);
+            ringGO.transform.localScale = Vector3.one * 1.6f;
+            var ringSr = ringGO.AddComponent<SpriteRenderer>();
+            ringSr.sprite = CreateAndSaveSprite(new Color(1f, 0.95f, 0.3f, 0.6f), "SelectionRingSprite");
+            ringSr.sortingOrder = -1;
+            ringSr.enabled = false;
+
+            var controller = go.AddComponent<VillagerController>();
+            SetPrivateField(controller, "selectionRing", ringSr);
+
+            EnsureFolder(VillagerPrefabPath);
+            GameObject prefab = PrefabUtility.SaveAsPrefabAsset(go, VillagerPrefabPath);
+            Object.DestroyImmediate(go);
+
+            var data = AssetDatabase.LoadAssetAtPath<VillagerData>(VillagerDataPath);
+            bool isNew = data == null;
+            if (isNew) data = ScriptableObject.CreateInstance<VillagerData>();
+
+            data.id = "villager_basic";
+            data.displayName = "Dan lang";
+            data.prefab = prefab;
+            data.moveSpeed = 2.5f;
+            data.hungerDecayInterval = 15f;
+            data.sleepDecayInterval = 25f;
+            data.warmthDecayInterval = 30f;
+            data.lowNeedWarningThreshold = 30f;
+            data.foodResource = food;
+            data.foodPerMeal = 1;
+
+            if (isNew)
+                AssetDatabase.CreateAsset(data, VillagerDataPath);
+            else
+                EditorUtility.SetDirty(data);
+        }
+
+        private static void SetPrivateField(object target, string fieldName, object value)
+        {
+            var field = target.GetType().GetField(fieldName, BindingFlags.NonPublic | BindingFlags.Instance);
+            field.SetValue(target, value);
         }
 
         private static void EnsureFolder(string assetPath)
