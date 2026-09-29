@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Prehistoric Tribe — Web</title>
+  </head>
+  <body>
+    <canvas id="game-canvas"></canvas>
+    <div id="floaters"></div>
+
+    <div id="hud">
+      <div class="hud-top-left">
+        <div class="brand">Prehistoric Tribe <span>web prototype</span></div>
+        <div id="resource-bar" class="panel resource-bar"></div>
+      </div>
+
+      <div id="toasts" class="toasts" aria-live="polite"></div>
+
+      <aside class="hud-right">
+        <section class="panel" id="build-panel">
+          <h2>Xây dựng</h2>
+          <div class="list"></div>
+        </section>
+        <section class="panel" id="crop-panel">
+          <h2>Hạt giống</h2>
+          <div class="list"></div>
+        </section>
+        <section class="panel" id="tech-panel">
+          <h2>Công nghệ</h2>
+          <div class="list"></div>
+        </section>
+      </aside>
+
+      <div id="placement-hint" class="placement-hint hidden"></div>
+      <div id="prompt" class="prompt hidden"></div>
+
+      <div class="panel help">
+        <div class="help__keys">
+          <span><kbd>WASD</kbd> di chuyển</span>
+          <span><kbd>E</kbd> tương tác</span>
+          <span><kbd>Cuộn</kbd> zoom</span>
+          <span><kbd>F5</kbd> lưu · <kbd>F9</kbd> tải</span>
+        </div>
+        <div class="help__actions">
+          <button type="button" id="btn-save">Lưu</button>
+          <button type="button" id="btn-load">Tải</button>
+        </div>
+      </div>
+    </div>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

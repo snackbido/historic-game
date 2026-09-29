@@ -139,6 +139,11 @@
 - Thông báo còn lại (thu hoạch sản phẩm) **chưa xác nhận trực tiếp**: phát hiện cửa sổ Unity Editor bị throttle framerate rất thấp khi không có focus (`Time.time` gần như đứng yên dù đã đợi thật), nên không chờ được `productionInterval` trôi qua trong phiên Play mode sống. Thử dùng `TestRunnerApi` chạy PlayMode test ngay trong phiên Editor đang mở (để né việc phải mở process Unity thứ 2, vốn bị khóa vì Editor GUI đang mở project) nhưng callback bị mất qua domain reload khi vào Play mode, không lấy được kết quả.
 - Đã bổ sung assertion cho cả 5 thông báo vào `Assets/Tests/PlayMode/Milestone3AnimalTests.cs` (dùng `StringAssert.Contains` trên `EventBus.OnNotification`) — **chưa chạy lại được bằng batch mode** vì Editor GUI đang mở khóa project (Unity không cho 2 instance mở cùng 1 project). Cần chạy `Assets/Tests/PlayMode` lại (đóng Editor GUI trước, hoặc dùng Test Runner window trong Editor) ở phiên sau để xác nhận nốt nhánh thu hoạch.
 
+## Nhật ký phiên làm việc 2026-09-29 (bản Web bằng Three.js)
+- Tạo thư mục `web/` (Vite + Three.js, JS thuần): port Milestone 1–4 lên trình duyệt với cùng số liệu data (`web/src/data/gameData.js` ≈ các asset trong `Assets/_Data/`), giữ kiến trúc Data / Logic / Presentation + EventBus. Logic chạy trên mặt phẳng 2D như bản Unity, tầng render là 3D low-poly (camera nghiêng, đổ bóng).
+- Save/load (F5/F9, localStorage) lưu đủ cả FarmPlot, vật nuôi, cây còn lại, tech — tức bản web đã trả nợ kỹ thuật save FarmPlot/Animal mà bản Unity còn thiếu. Thêm các phản hồi UX: vòng sáng dưới đối tượng gần nhất, dòng gợi ý hành động, chữ bay "+1 Gỗ", vòng cổ cho con đã thuần, biểu tượng khi có sản phẩm, thông báo khi vật nuôi sinh con.
+- **Đã xác nhận**: `npm run build` sạch; smoke test logic headless bằng Node 25/25 đạt (di chuyển, chặt cây, đặt lều + va chạm, tri thức + mở khóa, vòng đời cây/héo, thuần hóa/sản phẩm/sinh sản, save/load); chụp màn hình Chrome headless xác nhận scene + HUD hiển thị đúng. **Chưa xác nhận**: người thật chơi bằng bàn phím/chuột trong trình duyệt.
+
 ## Vấn đề đang tồn đọng (Known issues / Open questions)
 - [ ] Chưa quyết định: chế độ combat (trực tiếp hay chỉ huy nhóm)?
 - [ ] Chưa có tên chính thức cho dự án
