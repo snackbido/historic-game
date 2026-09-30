@@ -33,7 +33,8 @@ namespace PrehistoricTribe
                 unlockedTechIds = TechManager.Instance != null ? TechManager.Instance.GetSaveData() : new List<string>(),
                 farmPlots = InteractableRegistry.All<FarmPlot>().ConvertAll(p => p.GetSaveData()),
                 animals = InteractableRegistry.All<AnimalController>().ConvertAll(a => a.GetSaveData()),
-                npcs = NpcManager.Instance != null ? NpcManager.Instance.GetSaveData() : new List<NpcSaveData>()
+                npcs = NpcManager.Instance != null ? NpcManager.Instance.GetSaveData() : new List<NpcSaveData>(),
+                predators = PredatorManager.Instance != null ? PredatorManager.Instance.GetSaveData() : new List<PredatorSaveData>()
             };
             SaveSystem.Save(data);
             EventBus.RaiseNotification("Đã lưu game");
@@ -66,6 +67,10 @@ namespace PrehistoricTribe
             // Save cũ hơn (chưa có dân làng) giữ nguyên NPC đang có trong scene.
             if (data.saveVersion >= 3 && NpcManager.Instance != null)
                 NpcManager.Instance.LoadFromSaveData(data.npcs);
+
+            // Save cũ hơn (chưa có thú dữ) giữ nguyên thú dữ đang có trong scene.
+            if (data.saveVersion >= 4 && PredatorManager.Instance != null)
+                PredatorManager.Instance.LoadFromSaveData(data.predators);
 
             EventBus.RaiseGameLoaded();
             EventBus.RaiseNotification("Đã tải game");

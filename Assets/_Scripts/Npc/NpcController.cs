@@ -96,6 +96,7 @@ namespace PrehistoricTribe
         private float workTimer;
         private float repathTimer;
         private const float RepathInterval = 0.5f;
+        private const float FleeDistance = 6f;
 
         public string NpcName => npcName;
         public Gender Gender => gender;
@@ -117,6 +118,43 @@ namespace PrehistoricTribe
             idleTimer = Random.Range(minIdlePause, maxIdlePause);
             RefreshVisuals();
             SetSelected(false);
+
+            health.OnDamaged += HandleDamaged;
+            health.OnDied += HandleDied;
+        }
+
+        /// <summary>Bị thú dữ tấn công: người biết đánh thì đánh trả, người không biết thì bỏ chạy.</summary>
+        private void HandleDamaged(HealthComponent _, GameObject source)
+        {
+            if (health.IsDead || source == null) return;
+            var predator = source.GetComponent<PredatorAI>();
+            if (predator == null) return;
+
+            if (NpcJobFactory.CanFight(profession))
+            {
+                if (!(job is AttackJob attack && attack.Predator == predator))
+                    AssignJob(new AttackJob(predator, profession));
+            }
+            else
+            {
+                FleeFrom(source.transform.position);
+            }
+        }
+
+        private void FleeFrom(Vector3 danger)
+        {
+            Vector3 away = transform.position - danger;
+            away.y = 0f;
+            if (away.sqrMagnitude < 0.01f) away = Random.insideUnitSphere;
+            away.y = 0f;
+            MoveTo(transform.position + away.normalized * FleeDistance);
+        }
+
+        private void HandleDied(HealthComponent _)
+        {
+            EventBus.RaiseNotification($"{npcName} đã chết!");
+            gameObject.SetActive(false); // rời khỏi danh sách/đang chọn ngay
+            Destroy(gameObject);
         }
 
         private void OnEnable() => all.Add(this);

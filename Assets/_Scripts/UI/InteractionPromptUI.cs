@@ -11,6 +11,7 @@ namespace PrehistoricTribe
     public class InteractionPromptUI : MonoBehaviour
     {
         [SerializeField] private PlayerInteraction interaction;
+        [SerializeField] private PlayerCombat combat;
         [SerializeField] private TMP_Text label;
 
         private void Update()
@@ -18,8 +19,21 @@ namespace PrehistoricTribe
             if (label == null) return;
 
             bool placing = BuildingPlacer.Instance != null && BuildingPlacer.Instance.IsPlacing;
-            string text = placing || interaction == null ? null : Describe(interaction.Nearest);
+            string text = placing ? null : DescribeCombat(combat);
+            if (text == null && !placing && interaction != null) text = Describe(interaction.Nearest);
             label.text = text ?? string.Empty;
+        }
+
+        /// <summary>Có thú dữ trong tầm ném đá thì nhắc phím chiến đấu (ưu tiên hơn gợi ý tương tác).</summary>
+        public static string DescribeCombat(PlayerCombat combat)
+        {
+            if (combat == null) return null;
+            PredatorAI target = combat.FindTarget(combat.StoneRange);
+            if (target == null) return null;
+
+            string name = target.Data.displayName;
+            bool inSpearRange = combat.FindTarget(combat.SpearRange) != null;
+            return inSpearRange ? $"[F] Đâm giáo  ·  [R] Ném đá — {name}" : $"[R] Ném đá vào {name}";
         }
 
         public static string Describe(MonoBehaviour target)

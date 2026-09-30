@@ -29,6 +29,9 @@ namespace PrehistoricTribe
 
             switch (target)
             {
+                case PredatorAI predator when CanFight(profession):
+                    return new AttackJob(predator, profession);
+
                 case ResourceNode node when profession.Can(NpcCapability.Gather):
                     return new GatherJob(node);
 
@@ -44,6 +47,36 @@ namespace PrehistoricTribe
                 default:
                     return null;
             }
+        }
+
+        /// <summary>Biết chiến đấu: có Fight (dân làng, trinh sát) hoặc Hunt (thợ săn).</summary>
+        public static bool CanFight(ProfessionData profession) =>
+            profession != null && (profession.Can(NpcCapability.Fight) || profession.Can(NpcCapability.Hunt));
+    }
+
+    /// <summary>Đánh thú dữ trong tầm đánh của nghề cho đến khi nó chết.</summary>
+    public class AttackJob : NpcJob
+    {
+        private readonly PredatorAI predator;
+        private readonly ProfessionData profession;
+
+        public AttackJob(PredatorAI predator, ProfessionData profession)
+        {
+            this.predator = predator;
+            this.profession = profession;
+        }
+
+        public PredatorAI Predator => predator;
+        public override MonoBehaviour Target => predator;
+        public override string Description => $"đánh {predator.Data.displayName}";
+        public override float WorkRange => Mathf.Max(1f, profession.attackRange);
+        public override float Interval => 1.2f;
+        public override bool IsValid => base.IsValid && !predator.Health.IsDead;
+
+        public override bool DoWork(NpcController npc)
+        {
+            predator.Health.TakeDamage(profession.attackDamage, npc.gameObject);
+            return !predator.Health.IsDead;
         }
     }
 
@@ -123,7 +156,7 @@ namespace PrehistoricTribe
         public override bool DoWork(NpcController npc)
         {
             string animalName = animal.Data.displayName;
-            health.TakeDamage(profession.attackDamage);
+            health.TakeDamage(profession.attackDamage, npc.gameObject);
             if (!health.IsDead) return true;
 
             EventBus.RaiseNotification($"{npc.NpcName} săn được {animalName}!");

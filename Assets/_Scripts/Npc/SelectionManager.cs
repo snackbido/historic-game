@@ -159,6 +159,13 @@ namespace PrehistoricTribe
         {
             if (selected.Count == 0) return;
 
+            PredatorAI predator = FindPredatorNear(groundPoint);
+            if (predator != null)
+            {
+                IssueAttackCommand(predator);
+                return;
+            }
+
             MonoBehaviour target = InteractableRegistry.FindNearest(groundPoint, targetPickRadius);
             if (target == null)
             {
@@ -199,6 +206,45 @@ namespace PrehistoricTribe
             List<Vector3> offsets = FormationOffsets(selected.Count, formationSpacing);
             for (int i = 0; i < selected.Count; i++)
                 selected[i].MoveTo(target + offsets[i]);
+        }
+
+        /// <summary>
+        /// Chuột phải lên thú dữ: người biết đánh xông vào; người không biết đánh ĐỨNG YÊN
+        /// (ngoại lệ của quy tắc "đi theo" — không đưa người không biết đánh vào chỗ nguy hiểm).
+        /// </summary>
+        public void IssueAttackCommand(PredatorAI predator)
+        {
+            int fighters = 0;
+            int stayed = 0;
+            foreach (var npc in selected)
+            {
+                NpcJob job = NpcJobFactory.Create(npc, predator);
+                if (job == null)
+                {
+                    stayed++;
+                    continue;
+                }
+                npc.AssignJob(job);
+                fighters++;
+            }
+
+            string message = fighters > 0 ? $"{fighters} người xông vào đánh {predator.Data.displayName}" : "Không ai trong nhóm biết chiến đấu";
+            if (stayed > 0) message += $" · {stayed} người không biết đánh, đứng lại";
+            EventBus.RaiseNotification(message);
+        }
+
+        private PredatorAI FindPredatorNear(Vector3 groundPoint)
+        {
+            PredatorAI best = null;
+            float bestDistance = targetPickRadius * 1.5f; // thú chạy nhảy → nới vùng click
+            foreach (var predator in PredatorAI.All)
+            {
+                float distance = InteractableRegistry.GroundDistance(groundPoint, predator.transform.position);
+                if (distance > bestDistance) continue;
+                best = predator;
+                bestDistance = distance;
+            }
+            return best;
         }
 
         public void SaveGroup(int number)

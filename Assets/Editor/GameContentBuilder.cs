@@ -56,6 +56,8 @@ namespace PrehistoricTribe.EditorTools
         public const string TreePrefabPath = "Assets/Prefabs/Resources/Tree.prefab";
         private const string CropPrefabFolder = "Assets/Prefabs/Crops";
         public const string VillagerPrefabPath = "Assets/Prefabs/Npcs/Villager.prefab";
+        public const string WolfPrefabPath = "Assets/Prefabs/Enemies/Wolf.prefab";
+        public const string WolfDataPath = "Assets/_Data/PredatorData_Wolf.asset";
 
         // Thứ tự cố định: dân làng, nông dân, thợ săn, trinh sát.
         public static readonly string[] ProfessionIds = { "villager", "farmer", "hunter", "scout" };
@@ -66,7 +68,7 @@ namespace PrehistoricTribe.EditorTools
         {
             if (!ConfirmOverwrite("Tạo lại prefab placeholder?",
                     "Prefab lều/kho/cây/heo rừng đã tồn tại. Tạo lại sẽ ghi đè mọi chỉnh sửa hoặc model thật bạn đã thay vào.",
-                    HutPrefabPath, StoragePrefabPath, BoarPrefabPath, TreePrefabPath, VillagerPrefabPath))
+                    HutPrefabPath, StoragePrefabPath, BoarPrefabPath, TreePrefabPath, VillagerPrefabPath, WolfPrefabPath))
                 return;
 
             var wood = AssetDatabase.LoadAssetAtPath<ResourceTypeData>(WoodAssetPath);
@@ -84,6 +86,7 @@ namespace PrehistoricTribe.EditorTools
             BuildCropModels();
             ProfessionData[] professions = BuildProfessions();
             SavePrefab(BuildVillager(professions), VillagerPrefabPath);
+            BuildWolfContent(food);
 
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
@@ -252,7 +255,7 @@ namespace PrehistoricTribe.EditorTools
 
         // ─── Health bar ──────────────────────────────────────────────────────
         /// <summary>Thanh máu nổi trên đầu: nền tối + phần màu co giãn từ mép trái.</summary>
-        private static void BuildHealthBar(GameObject owner, float height, NpcController npc = null)
+        internal static void BuildHealthBar(GameObject owner, float height, NpcController npc = null)
         {
             var barRoot = new GameObject("HealthBar");
             barRoot.transform.SetParent(owner.transform, false);
@@ -327,7 +330,8 @@ namespace PrehistoricTribe.EditorTools
             agent.angularSpeed = 720f;
             agent.acceleration = 12f;
             agent.stoppingDistance = 0.1f;
-            root.AddComponent<HealthComponent>();
+            var villagerHealth = root.AddComponent<HealthComponent>();
+            SetPrivateField(villagerHealth, "regenPerSecond", 1f); // hồi 1 máu/giây khi không bị đánh 6 giây
             var npc = root.AddComponent<NpcController>();
 
             var visual = new GameObject("Visual").transform;
@@ -414,6 +418,64 @@ namespace PrehistoricTribe.EditorTools
             Part(tool, "Band", PrimitiveType.Cylinder, new Vector3(0f, 0.93f, 0f), new Vector3(0.34f, 0.02f, 0.34f), Palette.Rope);
             Part(tool, "Feather", PrimitiveType.Cube, new Vector3(0.1f, 1.12f, -0.12f), new Vector3(0.03f, 0.28f, 0.07f), Mat("Feather", Palette.Hex(0xe8e0c8)), new Vector3(-20f, 0f, -15f));
             return tool.gameObject;
+        }
+
+        // ─── Wolf (predator) ─────────────────────────────────────────────────
+        private static void BuildWolfContent(ResourceTypeData food)
+        {
+            var data = AssetDatabase.LoadAssetAtPath<PredatorData>(WolfDataPath);
+            bool isNew = data == null;
+            if (isNew) data = ScriptableObject.CreateInstance<PredatorData>();
+
+            data.id = "wolf";
+            data.displayName = "Sói";
+            data.maxHealth = 50f;
+            data.patrolSpeed = 2f;
+            data.chaseSpeed = 3.8f; // nhanh hơn dân làng (3), chậm hơn trinh sát (4.2)
+            data.aggroRange = 4.5f;
+            data.leashRange = 12f;
+            data.patrolRadius = 2f;
+            data.attackDamage = 8f;
+            data.attackRange = 1.2f;
+            data.attackInterval = 1.2f;
+            data.huntYield = new List<ResourceAmount> { new ResourceAmount { type = food, amount = 4 } };
+
+            if (isNew) AssetDatabase.CreateAsset(data, WolfDataPath);
+
+            var root = new GameObject("Wolf");
+            var agent = root.AddComponent<NavMeshAgent>();
+            agent.radius = 0.3f;
+            agent.height = 0.8f;
+            agent.speed = data.patrolSpeed;
+            agent.angularSpeed = 540f;
+            agent.acceleration = 10f;
+            agent.stoppingDistance = 0.2f;
+            SetPrivateField(root.AddComponent<HealthComponent>(), "maxHealth", data.maxHealth);
+            var ai = root.AddComponent<PredatorAI>();
+            SetPrivateField(ai, "data", data);
+
+            var fur = Mat("WolfFur", Palette.Hex(0x6b6d70));
+            var furDark = Mat("WolfFurDark", Palette.Hex(0x45474a));
+            var t = root.transform;
+            Part(t, "Body", PrimitiveType.Sphere, new Vector3(0f, 0.42f, 0f), new Vector3(0.4f, 0.42f, 0.85f), fur);
+            Part(t, "Head", PrimitiveType.Cube, new Vector3(0f, 0.56f, 0.45f), new Vector3(0.26f, 0.24f, 0.3f), fur);
+            Part(t, "Snout", PrimitiveType.Cube, new Vector3(0f, 0.5f, 0.66f), new Vector3(0.14f, 0.12f, 0.18f), furDark);
+            Part(t, "Nose", PrimitiveType.Sphere, new Vector3(0f, 0.53f, 0.76f), Vector3.one * 0.05f, Mat("WolfNose", Palette.Hex(0x111111)));
+            Cone(t, "EarL", 4, new Vector3(-0.08f, 0.66f, 0.42f), new Vector3(0.08f, 0.14f, 0.08f), furDark);
+            Cone(t, "EarR", 4, new Vector3(0.08f, 0.66f, 0.42f), new Vector3(0.08f, 0.14f, 0.08f), furDark);
+            var eyes = Mat("WolfEyes", Palette.Hex(0xf2c230), emission: 0.9f);
+            Part(t, "EyeL", PrimitiveType.Sphere, new Vector3(-0.07f, 0.6f, 0.6f), Vector3.one * 0.04f, eyes);
+            Part(t, "EyeR", PrimitiveType.Sphere, new Vector3(0.07f, 0.6f, 0.6f), Vector3.one * 0.04f, eyes);
+            Part(t, "Tail", PrimitiveType.Cylinder, new Vector3(0f, 0.5f, -0.48f), new Vector3(0.07f, 0.18f, 0.07f), furDark, new Vector3(-55f, 0f, 0f));
+
+            var legs = new[] { new Vector3(-0.12f, 0.2f, 0.25f), new Vector3(0.12f, 0.2f, 0.25f), new Vector3(-0.12f, 0.2f, -0.25f), new Vector3(0.12f, 0.2f, -0.25f) };
+            for (int i = 0; i < legs.Length; i++)
+                Part(t, $"Leg{i}", PrimitiveType.Cylinder, legs[i], new Vector3(0.07f, 0.2f, 0.07f), furDark);
+
+            BuildHealthBar(root, 1.1f);
+
+            data.prefab = SavePrefab(root, WolfPrefabPath);
+            EditorUtility.SetDirty(data);
         }
 
         // ─── Crop stages ─────────────────────────────────────────────────────

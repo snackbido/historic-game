@@ -157,6 +157,8 @@ namespace PrehistoricTribe.EditorTools
             SetPrivateField(npcManager, "npcPrefab", villagerPrefab);
             SetPrivateField(npcManager, "knownProfessions", professions);
 
+            CreateWolfDen();
+
             var techManagerGO = new GameObject("TechManager");
             var techManager = techManagerGO.AddComponent<TechManager>();
             SetPrivateField(techManager, "knowledgeResource", knowledge);
@@ -269,6 +271,44 @@ namespace PrehistoricTribe.EditorTools
             }
         }
 
+        /// <summary>
+        /// Hang sói ở góc tây bắc, cách trại ~14m: sói đi tuần 2m quanh hang, chỉ đuổi ai lại gần 4.5m
+        /// → không tự tràn vào trại, người chơi chủ động quyết định có đi săn hay không.
+        /// </summary>
+        private static void CreateWolfDen()
+        {
+            var wolfData = AssetDatabase.LoadAssetAtPath<PredatorData>(GameContentBuilder.WolfDataPath);
+            if (wolfData == null || wolfData.prefab == null)
+            {
+                Debug.LogError("[GameplaySceneBuilder] Chua co PredatorData_Wolf/prefab. Chay 'Build Missing Content' truoc.");
+                return;
+            }
+
+            var denCenter = new Vector3(-10f, 0f, 9.5f);
+            var den = new GameObject("WolfDen").transform;
+            den.position = denCenter;
+            var rock = Mat("DenRock", Palette.Hex(0x7d7a74));
+            for (int i = 0; i < 5; i++)
+            {
+                float a = i * 72f * Mathf.Deg2Rad + 0.4f;
+                Part(den, $"Rock{i}", PrimitiveType.Sphere, new Vector3(Mathf.Cos(a) * 1.6f, 0.15f, Mathf.Sin(a) * 1.6f),
+                    new Vector3(0.7f, 0.45f, 0.6f), rock, new Vector3(0f, i * 40f, 10f));
+            }
+            Part(den, "Bones", PrimitiveType.Cylinder, new Vector3(0.4f, 0.04f, -0.3f), new Vector3(0.05f, 0.18f, 0.05f),
+                Palette.Ivory, new Vector3(90f, 30f, 0f));
+
+            var positions = new[] { denCenter, denCenter + new Vector3(0.8f, 0f, -0.7f) };
+            for (int i = 0; i < positions.Length; i++)
+            {
+                var wolf = (GameObject)PrefabUtility.InstantiatePrefab(wolfData.prefab);
+                wolf.name = i == 0 ? "Wolf" : $"Wolf_{i}";
+                wolf.transform.SetPositionAndRotation(positions[i], Quaternion.Euler(0f, 150f + i * 40f, 0f));
+            }
+
+            var manager = new GameObject("PredatorManager").AddComponent<PredatorManager>();
+            SetPrivateField(manager, "knownPredators", new List<PredatorData> { wolfData });
+        }
+
         private static GameObject CreatePlayer()
         {
             var playerGO = new GameObject("Player") { tag = "Player" };
@@ -295,7 +335,10 @@ namespace PrehistoricTribe.EditorTools
 
             var controller = playerGO.AddComponent<PlayerController>();
             SetPrivateField(controller, "visual", visual);
-            playerGO.AddComponent<HealthComponent>();
+            var playerHealth = playerGO.AddComponent<HealthComponent>();
+            SetPrivateField(playerHealth, "regenPerSecond", 1f);
+            playerGO.AddComponent<PlayerCombat>();
+            GameContentBuilder.BuildHealthBar(playerGO, 1.4f);
             playerGO.AddComponent<PlayerInteraction>();
             return playerGO;
         }
@@ -469,6 +512,7 @@ namespace PrehistoricTribe.EditorTools
             tmp.text = string.Empty;
             var prompt = labelGO.AddComponent<InteractionPromptUI>();
             SetPrivateField(prompt, "interaction", interaction);
+            SetPrivateField(prompt, "combat", interaction.GetComponent<PlayerCombat>());
             SetPrivateField(prompt, "label", tmp);
         }
 

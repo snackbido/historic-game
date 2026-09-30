@@ -78,8 +78,8 @@
 - [x] Quyết định chế độ chiến đấu (hướng chung, 2026-09-26): **lai** — vừa điều khiển trực tiếp nhân vật chính, vừa chỉ huy được nhóm NPC. Chưa chốt chi tiết: NPC nào chỉ huy được (dân làng đã có công việc? hay cần "lính" riêng?), cơ chế ra lệnh (click chọn + click ra lệnh kiểu RTS, hay đơn giản hơn như "theo tôi"/"tấn công mục tiêu này"), UI hiển thị nhóm đang chỉ huy — cần bàn kỹ trước khi code
 - [x] HealthComponent dùng chung cho Player/NPC/Building — `Combat/HealthComponent.cs` (M5.1, 2026-09-30; thú sẽ gắn khi làm săn bắt/chiến đấu)
 - [x] M5.1 NPC nền tảng: `ProfessionData` (4 nghề), `NpcController` (tên/giới tính/tuổi/nghề, đi bằng NavMesh, tự đi dạo quanh "nhà"), `NpcManager` (tra nghề, lưu/tải dân làng), 4 dân làng ban đầu (Ka ♂ dân làng, Mây ♀ nông dân, Đá ♂ thợ săn, Suối ♀ trinh sát)
-- [ ] Enemy AI cơ bản (patrol/chase/attack)
-- [ ] Vũ khí cơ bản (giáo/đá ném)
+- [x] Enemy AI cơ bản (patrol/chase/attack) — `Combat/PredatorAI.cs` + `PredatorData` (sói), M5.5 2026-09-30
+- [x] Vũ khí cơ bản (giáo/đá ném) — `Combat/PlayerCombat.cs` (F đâm giáo, R ném đá), M5.5 2026-09-30
 - [x] Chốt thiết kế chỉ huy (2026-09-30): **mọi NPC đều nghe lệnh**; **kéo khung chuột** để chọn NPC, mỗi NPC có **nghề nghiệp riêng** (trinh sát, thợ săn, nông dân, dân làng…) quyết định lệnh nó thực hiện được; UI hiển thị nhóm đang chọn **theo nhóm và theo nghề** của từng NPC
 - [x] Chốt chi tiết (2026-09-30):
   - Nhóm lẫn nhiều nghề nhận lệnh mà có con không làm được → con làm được thì làm, con còn lại **đi theo tới chỗ đó**
@@ -209,6 +209,18 @@
 - Yêu cầu của user: NPC đã ra lệnh, khi **không còn được chọn** thì sau 20–30s quay lại hành vi ban đầu. `NpcController`: `holdPosition` giờ hết hạn sau `holdDuration` ngẫu nhiên trong [`minHoldTime` 20s, `maxHoldTime` 30s] — chỉ đếm khi đứng rảnh (Idle) và không được chọn; đang đi/đang làm việc/đang được chọn thì không đếm, lệnh mới hoặc xong việc thì đếm lại. Hết hạn → đi dạo quanh chỗ đang đứng (không quay về chỗ cũ).
 - **Đã xác nhận**: **32/32 test PlayMode pass** (test mới: người bị bỏ chọn quay lại đi dạo sau 20–30s, người vẫn được chọn tiếp tục giữ vị trí).
 - **Sự cố**: Editor mở liên tục ~2h (dựng scene + chạy test nhiều lần) phình lên ~4GB, bộ nhớ ảo còn ~0.5GB → lượt chạy test bị crash (`MimallocPrimErrorHandler`). Tắt/mở lại Editor rồi chạy lại thì được. Kinh nghiệm: mở lại Editor sau vài lượt dựng scene + test; gốc rễ vẫn là pagefile nằm trên ổ C gần đầy.
+
+## Nhật ký phiên làm việc 2026-09-30 (phần 8 — M5.5 thú dữ + chiến đấu)
+- Mới `Data/PredatorData.cs` + asset `PredatorData_Wolf` (Sói: 50 máu, cắn 8/1,2s, đuổi 3,8 m/s — nhanh hơn dân làng, chậm hơn trinh sát; phát hiện 4,5m; không đuổi xa hang quá 12m; rơi 4 thức ăn). Prefab `Assets/Prefabs/Enemies/Wolf.prefab` (xám, tai nhọn, mắt vàng phát sáng, thanh máu).
+- Mới `Combat/PredatorAI.cs`: Patrol (đi tuần 2m quanh hang) → Chase → Attack; chọn mục tiêu (NPC + player) 0,3s/lần; bị đánh thì quay sang kẻ tấn công; mục tiêu ra khỏi phạm vi 12m quanh hang thì bỏ cuộc về hang. `Combat/PredatorManager.cs` lưu/tải thú dữ (`saveVersion` 4, gồm máu).
+- Hang sói ở (-10, 9,5) — cách trại ~14m, đi tuần 2m + phát hiện 4,5m → **sói không tự tràn vào trại**, người chơi chủ động đi săn. Tấn công trại theo đợt để dành cho M6 (thiên tai/đột kích).
+- `HealthComponent`: `TakeDamage(amount, source)` + sự kiện `OnDamaged`; hồi máu `regenPerSecond` sau `regenDelay` (6s) không bị đánh — dân làng và người chơi hồi 1 máu/giây.
+- NPC: bị thú dữ cắn → nghề biết đánh (Fight/Hunt: dân làng, thợ săn, trinh sát) tự đánh trả (`AttackJob`), nông dân bỏ chạy 6m; chết → thông báo "X đã chết!" và biến mất (rời nhóm đang chọn). Chuột phải lên sói: người biết đánh xông vào, **người không biết đánh đứng yên** (ngoại lệ có chủ đích của quy tắc "đi theo" — không đưa họ vào chỗ nguy hiểm).
+- `PlayerCombat`: F đâm giáo (15 sát thương, tầm 1,8m, hồi 0,8s), R ném đá (8, tầm 8m, hồi 1,5s, có viên đá bay), tự nhắm sói gần nhất; bị hạ → về trại đầy máu. Dòng gợi ý dưới màn hình nhắc phím khi có sói trong tầm ném.
+- `TestResultReporter.RunPlayModeTestGroup(tên lớp)` — chạy riêng một lớp test (nhẹ bộ nhớ hơn). Gọi thẳng TestRunnerApi qua MCP bị chặn ("user interactions not supported") → luôn gọi qua `TestResultReporter`.
+- **Đã xác nhận**: **41/41 test PlayMode pass** (9 test mới `Milestone5CombatTests.cs`); ảnh render xác nhận model sói + hang.
+- **Sự cố bộ nhớ lặp lại** (2 crash trong phần này): Unity ~4,6GB + Edge ~4,1GB + VS Code ~1,8GB trên máy 8GB, pagefile vẫn trên ổ C → chỉ chạy test ổn khi đóng Edge. Vẫn khuyến nghị chuyển pagefile sang ổ D.
+- **Chưa xác nhận bằng tay**: cảm giác chiến đấu (phím F/R, sói đuổi), cân bằng số liệu.
 
 ## Vấn đề đang tồn đọng (Known issues / Open questions)
 - [x] Chế độ combat: lai (2026-09-26) + chi tiết chỉ huy NPC theo nghề (2026-09-30)

@@ -22,11 +22,20 @@ namespace PrehistoricTribe.EditorTools
         }
 
         /// <summary>Chạy toàn bộ PlayMode test (dùng được từ Unity MCP RunCommand).</summary>
-        public static void RunPlayModeTests()
+        public static void RunPlayModeTests() => RunPlayModeTestGroup(null);
+
+        /// <summary>
+        /// Chạy một lớp test, vd "PrehistoricTribe.Tests.Milestone5CombatTests" (null = tất cả).
+        /// Chạy từng nhóm nhẹ bộ nhớ hơn — hữu ích trên máy ít RAM.
+        /// </summary>
+        public static void RunPlayModeTestGroup(string groupName)
         {
             if (File.Exists(SummaryPath)) File.Delete(SummaryPath);
+            var filter = new Filter { testMode = TestMode.PlayMode };
+            if (!string.IsNullOrEmpty(groupName)) filter.groupNames = new[] { groupName };
+
             var api = ScriptableObject.CreateInstance<TestRunnerApi>();
-            api.Execute(new ExecutionSettings(new Filter { testMode = TestMode.PlayMode }));
+            api.Execute(new ExecutionSettings(filter));
         }
 
         private class Callbacks : ICallbacks
