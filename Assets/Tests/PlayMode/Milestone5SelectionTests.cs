@@ -79,6 +79,36 @@ namespace PrehistoricTribe.Tests
         }
 
         [UnityTest]
+        public IEnumerator AfterOrder_DeselectedVillagerReturnsToWandering_SelectedOneKeepsHolding()
+        {
+            yield return null;
+            var selection = SelectionManager.Instance;
+            var released = NpcController.All[0];
+            var kept = NpcController.All[1];
+
+            selection.SetSelection(new[] { released, kept });
+            selection.IssueMoveCommand(new Vector3(-4f, 0f, 3.5f));
+            selection.SetSelection(new[] { kept }); // bỏ chọn người thứ nhất, vẫn chọn người thứ hai
+
+            float deadline = Time.time + 25f;
+            while ((released.State == NpcState.Moving || kept.State == NpcState.Moving) && Time.time < deadline)
+                yield return null;
+            Assert.IsTrue(released.IsHoldingPosition && kept.IsHoldingPosition, "Both hold position right after arriving");
+
+            // Hết 20–30s đứng rảnh không được chọn → quay lại hành vi ban đầu (đi dạo).
+            float wait = Time.time + 32f;
+            while (Time.time < wait) yield return null;
+
+            Assert.IsFalse(released.IsHoldingPosition, "Deselected villager stops holding after 20-30s");
+            Assert.IsTrue(kept.IsHoldingPosition, "A still-selected villager keeps holding position");
+
+            deadline = Time.time + 15f;
+            while (released.State == NpcState.Idle && Time.time < deadline)
+                yield return null;
+            Assert.AreEqual(NpcState.Wandering, released.State, "Released villager wanders again like at the start");
+        }
+
+        [UnityTest]
         public IEnumerator ControlGroups_SaveAndRecall()
         {
             yield return null;

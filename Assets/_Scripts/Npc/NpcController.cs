@@ -76,13 +76,21 @@ namespace PrehistoricTribe
         [SerializeField] private float minIdlePause = 2f;
         [SerializeField] private float maxIdlePause = 6f;
 
+        [Header("Giữ vị trí sau lệnh")]
+        [Tooltip("Sau khi xong lệnh và KHÔNG còn được chọn, đứng giữ vị trí trong khoảng thời gian ngẫu nhiên này (giây) rồi quay lại đi dạo")]
+        [SerializeField] private float minHoldTime = 20f;
+        [SerializeField] private float maxHoldTime = 30f;
+
         private NavMeshAgent agent;
         private HealthComponent health;
         private Vector3 home;
         private float idleTimer;
 
-        // Đã nhận lệnh từ người chơi → đứng giữ vị trí đó thay vì đi dạo (kiểu RTS).
+        // Đã nhận lệnh từ người chơi → đứng giữ vị trí đó thay vì đi dạo (kiểu RTS),
+        // hết hạn sau holdDuration giây đứng rảnh mà không được chọn.
         private bool holdPosition;
+        private float holdDuration;
+        private float holdElapsed;
 
         private NpcJob job;
         private float workTimer;
@@ -125,7 +133,11 @@ namespace PrehistoricTribe
             switch (State)
             {
                 case NpcState.Idle:
-                    if (holdPosition) break;
+                    if (holdPosition)
+                    {
+                        UpdateHold();
+                        break;
+                    }
                     idleTimer -= Time.deltaTime;
                     if (idleTimer <= 0f) TryWander();
                     break;
@@ -141,13 +153,37 @@ namespace PrehistoricTribe
             }
         }
 
+        /// <summary>Chỉ đếm giờ khi đứng rảnh và không được chọn; hết giờ thì quay lại đi dạo quanh chỗ đang đứng.</summary>
+        private void UpdateHold()
+        {
+            if (IsSelected)
+            {
+                holdElapsed = 0f;
+                return;
+            }
+
+            holdElapsed += Time.deltaTime;
+            if (holdElapsed < holdDuration) return;
+
+            holdPosition = false;
+            home = transform.position;
+            idleTimer = Random.Range(minIdlePause, maxIdlePause);
+        }
+
+        private void StartHolding()
+        {
+            holdPosition = true;
+            holdElapsed = 0f;
+            holdDuration = Random.Range(minHoldTime, maxHoldTime);
+        }
+
         /// <summary>Giao việc (lệnh của người chơi). Xong việc thì đứng giữ vị trí tại đó.</summary>
         public void AssignJob(NpcJob newJob)
         {
             if (newJob == null || !newJob.IsValid) return;
 
             job = newJob;
-            holdPosition = true;
+            StartHolding();
             workTimer = 0f;
             repathTimer = 0f;
             State = NpcState.Working;
@@ -188,6 +224,7 @@ namespace PrehistoricTribe
         {
             job = null;
             home = transform.position;
+            holdElapsed = 0f; // đếm lại từ lúc xong việc
             BecomeIdle();
         }
 
@@ -208,7 +245,7 @@ namespace PrehistoricTribe
             job = null; // lệnh mới thay thế việc đang làm
             agent.SetDestination(hit.position);
             home = hit.position;
-            holdPosition = true;
+            StartHolding();
             State = NpcState.Moving;
             return true;
         }
@@ -315,7 +352,8 @@ namespace PrehistoricTribe
             ApplyAppearance();
             health.SetCurrent(saved.health);
             home = transform.position;
-            holdPosition = saved.holdPosition;
+            if (saved.holdPosition) StartHolding();
+            else holdPosition = false;
             BecomeIdle();
         }
     }

@@ -205,6 +205,11 @@
 - Phát hiện khi xem UI: tên trong data cũ không dấu ("Go", "Thuc an", "Tri thuc", "Leu trai", "Kho chua", "Cay mong", "Nong nghiep", "Heo rung") dù font hiển thị được tiếng Việt có dấu → nên sửa cho đồng bộ (việc nhỏ, chưa làm).
 - **Đã xác nhận**: **31/31 test PlayMode pass** (4 test mới `Milestone5UiTests.cs`: bảng ẩn/hiện + nhóm theo nghề; bấm ô nghề để lọc; đổi nghề cập nhật tốc độ/máu/bảng; thanh máu hiện khi chọn/bị thương, co theo máu); Console sạch.
 
+## Nhật ký phiên làm việc 2026-09-30 (phần 7 — hết hạn giữ vị trí)
+- Yêu cầu của user: NPC đã ra lệnh, khi **không còn được chọn** thì sau 20–30s quay lại hành vi ban đầu. `NpcController`: `holdPosition` giờ hết hạn sau `holdDuration` ngẫu nhiên trong [`minHoldTime` 20s, `maxHoldTime` 30s] — chỉ đếm khi đứng rảnh (Idle) và không được chọn; đang đi/đang làm việc/đang được chọn thì không đếm, lệnh mới hoặc xong việc thì đếm lại. Hết hạn → đi dạo quanh chỗ đang đứng (không quay về chỗ cũ).
+- **Đã xác nhận**: **32/32 test PlayMode pass** (test mới: người bị bỏ chọn quay lại đi dạo sau 20–30s, người vẫn được chọn tiếp tục giữ vị trí).
+- **Sự cố**: Editor mở liên tục ~2h (dựng scene + chạy test nhiều lần) phình lên ~4GB, bộ nhớ ảo còn ~0.5GB → lượt chạy test bị crash (`MimallocPrimErrorHandler`). Tắt/mở lại Editor rồi chạy lại thì được. Kinh nghiệm: mở lại Editor sau vài lượt dựng scene + test; gốc rễ vẫn là pagefile nằm trên ổ C gần đầy.
+
 ## Vấn đề đang tồn đọng (Known issues / Open questions)
 - [x] Chế độ combat: lai (2026-09-26) + chi tiết chỉ huy NPC theo nghề (2026-09-30)
 - [ ] Chưa có tên chính thức cho dự án
