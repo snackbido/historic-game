@@ -35,6 +35,8 @@ namespace PrehistoricTribe.EditorTools
             {
                 mat.EnableKeyword("_EMISSION");
                 mat.SetColor("_EmissionColor", color * emission);
+                // Mặc định Unity gắn cờ EmissiveIsBlack → lần import sau nó tự xóa _EMISSION (mất phát sáng).
+                mat.globalIlluminationFlags = MaterialGlobalIlluminationFlags.None;
             }
             EditorUtility.SetDirty(mat);
             return mat;
