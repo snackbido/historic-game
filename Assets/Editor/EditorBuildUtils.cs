@@ -105,6 +105,40 @@ namespace PrehistoricTribe.EditorTools
             return mesh;
         }
 
+        /// <summary>Vành khuyên phẳng nằm trên mặt XZ, nhìn từ trên xuống (dùng cho vòng highlight).</summary>
+        public static Mesh RingMesh(float innerRadius, float outerRadius, int segments)
+        {
+            string path = $"{MeshFolder}/Ring{segments}.asset";
+            var existing = AssetDatabase.LoadAssetAtPath<Mesh>(path);
+            if (existing != null) return existing;
+
+            var vertices = new List<Vector3>();
+            var triangles = new List<int>();
+            for (int i = 0; i < segments; i++)
+            {
+                float a0 = Mathf.PI * 2f * i / segments;
+                float a1 = Mathf.PI * 2f * (i + 1) / segments;
+                var i0 = new Vector3(Mathf.Cos(a0) * innerRadius, 0f, Mathf.Sin(a0) * innerRadius);
+                var i1 = new Vector3(Mathf.Cos(a1) * innerRadius, 0f, Mathf.Sin(a1) * innerRadius);
+                var o0 = new Vector3(Mathf.Cos(a0) * outerRadius, 0f, Mathf.Sin(a0) * outerRadius);
+                var o1 = new Vector3(Mathf.Cos(a1) * outerRadius, 0f, Mathf.Sin(a1) * outerRadius);
+
+                // Thứ tự đỉnh để mặt quay lên trên (+Y).
+                AddTriangle(vertices, triangles, i0, o1, o0);
+                AddTriangle(vertices, triangles, i0, i1, o1);
+            }
+
+            var mesh = new Mesh { name = $"Ring{segments}" };
+            mesh.SetVertices(vertices);
+            mesh.SetTriangles(triangles, 0);
+            mesh.RecalculateNormals();
+            mesh.RecalculateBounds();
+
+            EnsureFolder(path);
+            AssetDatabase.CreateAsset(mesh, path);
+            return mesh;
+        }
+
         private static void AddTriangle(List<Vector3> vertices, List<int> triangles, Vector3 a, Vector3 b, Vector3 c)
         {
             int start = vertices.Count;

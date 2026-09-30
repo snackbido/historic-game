@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace PrehistoricTribe
@@ -24,22 +25,79 @@ namespace PrehistoricTribe
         {
             var data = new SaveData
             {
+                saveVersion = SaveData.CurrentVersion,
                 playerX = player.GetPosition().x,
                 playerZ = player.GetPosition().z,
                 resources = resourceManager.GetSaveData(),
-                buildings = buildingPlacer.GetSaveData()
+                buildings = buildingPlacer.GetSaveData(),
+                unlockedTechIds = TechManager.Instance != null ? TechManager.Instance.GetSaveData() : new List<string>(),
+                farmPlots = InteractableRegistry.All<FarmPlot>().ConvertAll(p => p.GetSaveData()),
+                animals = InteractableRegistry.All<AnimalController>().ConvertAll(a => a.GetSaveData())
             };
             SaveSystem.Save(data);
+            EventBus.RaiseNotification("Đã lưu game");
         }
 
         public void LoadGame()
         {
             SaveData data = SaveSystem.Load();
-            if (data == null) return;
+            if (data == null)
+            {
+                EventBus.RaiseNotification("Chưa có bản lưu nào");
+                return;
+            }
+
+            // Tech trước: công trình/cây trồng khôi phục phía sau cần biết đã mở khóa chưa.
+            bool hasWorldState = data.saveVersion >= 2;
+            if (hasWorldState && TechManager.Instance != null)
+                TechManager.Instance.LoadFromSaveData(data.unlockedTechIds);
 
             player.SetPosition(new Vector3(data.playerX, 0f, data.playerZ));
             resourceManager.LoadFromSaveData(data.resources);
             buildingPlacer.LoadFromSaveData(data.buildings);
+
+            if (hasWorldState)
+            {
+                LoadFarmPlots(data.farmPlots);
+                LoadAnimals(data.animals);
+            }
+
+            EventBus.RaiseGameLoaded();
+            EventBus.RaiseNotification("Đã tải game");
+        }
+
+        private static void LoadFarmPlots(List<FarmPlotSaveData> saved)
+        {
+            // Ô đất là object cố định trong scene → khớp theo tên.
+            foreach (var plot in InteractableRegistry.All<FarmPlot>())
+            {
+                FarmPlotSaveData entry = saved?.Find(s => s.plotName == plot.name);
+                CropData crop = entry != null && FarmManager.Instance != null ? FarmManager.Instance.FindCrop(entry.cropId) : null;
+                plot.LoadFromSaveData(entry, crop);
+            }
+        }
+
+        private static void LoadAnimals(List<AnimalSaveData> saved)
+        {
+            // Vật nuôi sinh sản ra thêm lúc chơi → xóa hết rồi tạo lại đúng danh sách đã lưu.
+            foreach (var animal in InteractableRegistry.All<AnimalController>())
+            {
+                animal.gameObject.SetActive(false); // gỡ khỏi registry ngay, Destroy chỉ chạy cuối frame
+                Destroy(animal.gameObject);
+            }
+
+            if (saved == null || TamingSystem.Instance == null) return;
+            foreach (var entry in saved)
+            {
+                AnimalData animalData = TamingSystem.Instance.FindAnimal(entry.animalId);
+                if (animalData == null || animalData.prefab == null) continue;
+
+                var position = new Vector3(entry.x, 0f, entry.z);
+                var rotation = Quaternion.Euler(0f, entry.rotationY, 0f);
+                GameObject go = Instantiate(animalData.prefab, position, rotation);
+                if (!string.IsNullOrEmpty(entry.objectName)) go.name = entry.objectName;
+                go.GetComponent<AnimalController>()?.LoadFromSaveData(entry, animalData);
+            }
         }
     }
 }

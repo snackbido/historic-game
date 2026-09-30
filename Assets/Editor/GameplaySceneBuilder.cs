@@ -116,8 +116,12 @@ namespace PrehistoricTribe.EditorTools
             SetPrivateField(placer, "availableBuildings", new List<BuildingData> { hut, storage });
             SetPrivateField(placer, "placementPreview", previewGO);
 
-            new GameObject("FarmManager").AddComponent<FarmManager>();
-            new GameObject("TamingSystem").AddComponent<TamingSystem>();
+            var farmManager = new GameObject("FarmManager").AddComponent<FarmManager>();
+            SetPrivateField(farmManager, "knownCrops", new List<CropData> { berry });
+            var tamingSystem = new GameObject("TamingSystem").AddComponent<TamingSystem>();
+            SetPrivateField(tamingSystem, "knownAnimals", new List<AnimalData> { boarData });
+
+            CreateInteractionHighlight(player.GetComponent<PlayerInteraction>());
 
             CreateFarmPlot("FarmPlot_1", new Vector3(-2f, 0f, -1.5f));
             CreateFarmPlot("FarmPlot_2", new Vector3(-3.2f, 0f, -1.5f));
@@ -131,6 +135,7 @@ namespace PrehistoricTribe.EditorTools
             var techManager = techManagerGO.AddComponent<TechManager>();
             SetPrivateField(techManager, "knowledgeResource", knowledge);
             SetPrivateField(techManager, "knowledgeGenerationInterval", 3f);
+            SetPrivateField(techManager, "allTechs", new List<TechNode> { techFarming });
 
             var gameManagerGO = new GameObject("GameManager");
             var gameManager = gameManagerGO.AddComponent<GameManager>();
@@ -139,7 +144,7 @@ namespace PrehistoricTribe.EditorTools
             SetPrivateField(gameManager, "buildingPlacer", placer);
             gameManagerGO.AddComponent<SaveLoadHotkeys>();
 
-            CreateUI(buttonPrefab, wood, food, knowledge, hut, storage, berry, techFarming);
+            CreateUI(buttonPrefab, wood, food, knowledge, hut, storage, berry, techFarming, player.GetComponent<PlayerInteraction>());
 
             EditorSceneManager.SaveScene(scene, ScenePath);
             AssetDatabase.SaveAssets();
@@ -247,6 +252,22 @@ namespace PrehistoricTribe.EditorTools
             follow.SnapToTarget();
         }
 
+        private static void CreateInteractionHighlight(PlayerInteraction interaction)
+        {
+            var root = new GameObject("InteractionHighlight");
+            var ring = new GameObject("Ring");
+            ring.transform.SetParent(root.transform, false);
+            ring.AddComponent<MeshFilter>().sharedMesh = RingMesh(0.62f, 0.72f, 40);
+            var renderer = ring.AddComponent<MeshRenderer>();
+            renderer.sharedMaterial = Mat("HighlightRing", Palette.Hex(0xf0b95c), emission: 0.8f);
+            renderer.shadowCastingMode = ShadowCastingMode.Off;
+            ring.SetActive(false);
+
+            var highlight = root.AddComponent<InteractionHighlight>();
+            SetPrivateField(highlight, "interaction", interaction);
+            SetPrivateField(highlight, "ring", ring);
+        }
+
         private static void CreateFarmPlot(string name, Vector3 position)
         {
             var plotGO = new GameObject(name);
@@ -267,7 +288,7 @@ namespace PrehistoricTribe.EditorTools
 
         // ─── UI (Canvas overlay — giữ nguyên như bản 2D) ─────────────────────
         private static void CreateUI(Button buttonPrefab, ResourceTypeData wood, ResourceTypeData food, ResourceTypeData knowledge,
-            BuildingData hut, BuildingData storage, CropData berry, TechNode techFarming)
+            BuildingData hut, BuildingData storage, CropData berry, TechNode techFarming, PlayerInteraction interaction)
         {
             var eventSystemGO = new GameObject("EventSystem");
             eventSystemGO.AddComponent<EventSystem>();
@@ -287,6 +308,28 @@ namespace PrehistoricTribe.EditorTools
             CreateCropSelectionPanel(canvasGO.transform, buttonPrefab, berry);
             CreateTechTreePanel(canvasGO.transform, buttonPrefab, techFarming);
             CreateNotificationLabel(canvasGO.transform);
+            CreateInteractionPrompt(canvasGO.transform, interaction);
+        }
+
+        private static void CreateInteractionPrompt(Transform canvasTransform, PlayerInteraction interaction)
+        {
+            var labelGO = new GameObject("InteractionPrompt");
+            labelGO.transform.SetParent(canvasTransform, false);
+            var rect = labelGO.AddComponent<RectTransform>();
+            rect.anchorMin = new Vector2(0.5f, 0f);
+            rect.anchorMax = new Vector2(0.5f, 0f);
+            rect.pivot = new Vector2(0.5f, 0f);
+            rect.anchoredPosition = new Vector2(0f, 40f);
+            rect.sizeDelta = new Vector2(900f, 40f);
+            var tmp = labelGO.AddComponent<TextMeshProUGUI>();
+            tmp.fontSize = 22f;
+            tmp.alignment = TextAlignmentOptions.Center;
+            tmp.outlineWidth = 0.2f;
+            tmp.outlineColor = new Color32(0, 0, 0, 200);
+            tmp.text = string.Empty;
+            var prompt = labelGO.AddComponent<InteractionPromptUI>();
+            SetPrivateField(prompt, "interaction", interaction);
+            SetPrivateField(prompt, "label", tmp);
         }
 
         private static void CreateResourceLabel(Transform canvasTransform, string name, Vector2 anchoredPosition,

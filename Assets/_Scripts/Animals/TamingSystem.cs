@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace PrehistoricTribe
@@ -5,6 +6,12 @@ namespace PrehistoricTribe
     public class TamingSystem : MonoBehaviour
     {
         public static TamingSystem Instance { get; private set; }
+
+        [Tooltip("Mọi loại vật nuôi trong game — dùng để tra AnimalData theo id khi tải game")]
+        [SerializeField] private List<AnimalData> knownAnimals = new List<AnimalData>();
+
+        public AnimalData FindAnimal(string id) =>
+            string.IsNullOrEmpty(id) ? null : knownAnimals.Find(a => a != null && a.id == id);
 
         private void Awake()
         {

@@ -182,6 +182,8 @@ namespace PrehistoricTribe.EditorTools
             // Vòng cổ + biểu tượng sản phẩm: phân biệt rõ con hoang / đã thuần / có sản phẩm (UX gap ở PROGRESS.md M3).
             var collar = Part(t, "TamedCollar", PrimitiveType.Cylinder, new Vector3(0f, 0.42f, 0.27f), new Vector3(0.44f, 0.03f, 0.44f), Palette.Rope, new Vector3(90f, 0f, 0f));
             var productIcon = Part(t, "ProductIcon", PrimitiveType.Sphere, new Vector3(0f, 1f, 0f), Vector3.one * 0.2f, Palette.ProductGlow);
+            collar.SetActive(false); // heo mới là heo hoang — AnimalController bật lên khi thuần hóa
+            productIcon.SetActive(false);
 
             SetPrivateField(controller, "bodyRenderers", new Renderer[]
             {

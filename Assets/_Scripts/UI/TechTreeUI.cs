@@ -28,9 +28,23 @@ namespace PrehistoricTribe
             }
         }
 
-        private void OnEnable() => EventBus.OnTechUnlocked += HandleTechUnlocked;
+        private void OnEnable()
+        {
+            EventBus.OnTechUnlocked += HandleTechUnlocked;
+            EventBus.OnGameLoaded += RefreshAll;
+        }
 
-        private void OnDisable() => EventBus.OnTechUnlocked -= HandleTechUnlocked;
+        private void OnDisable()
+        {
+            EventBus.OnTechUnlocked -= HandleTechUnlocked;
+            EventBus.OnGameLoaded -= RefreshAll;
+        }
+
+        private void RefreshAll()
+        {
+            foreach (var tech in buttons.Keys)
+                RefreshEntry(tech);
+        }
 
         private void HandleTechUnlocked(TechNode tech)
         {

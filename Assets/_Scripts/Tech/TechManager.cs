@@ -10,6 +10,9 @@ namespace PrehistoricTribe
         [SerializeField] private ResourceTypeData knowledgeResource;
         [SerializeField] private float knowledgeGenerationInterval = 5f;
 
+        [Tooltip("Mọi TechNode trong game — dùng để tra theo id khi tải game")]
+        [SerializeField] private List<TechNode> allTechs = new List<TechNode>();
+
         private float knowledgeTimer;
         private readonly HashSet<string> unlockedTechIds = new HashSet<string>();
         private readonly HashSet<string> unlockedBuildingIds = new HashSet<string>();
@@ -53,12 +56,34 @@ namespace PrehistoricTribe
             if (!CanUnlock(tech)) return false;
             if (!ResourceManager.Instance.SpendAll(tech.cost)) return false;
 
+            ApplyUnlock(tech);
+            EventBus.RaiseTechUnlocked(tech);
+            return true;
+        }
+
+        private void ApplyUnlock(TechNode tech)
+        {
             unlockedTechIds.Add(tech.id);
             foreach (var id in tech.unlockedBuildingIds) unlockedBuildingIds.Add(id);
             foreach (var id in tech.unlockedCropIds) unlockedCropIds.Add(id);
+        }
 
-            EventBus.RaiseTechUnlocked(tech);
-            return true;
+        public List<string> GetSaveData() => new List<string>(unlockedTechIds);
+
+        /// <summary>Không bắn OnTechUnlocked — GameManager bắn OnGameLoaded sau khi tải xong.</summary>
+        public void LoadFromSaveData(List<string> techIds)
+        {
+            unlockedTechIds.Clear();
+            unlockedBuildingIds.Clear();
+            unlockedCropIds.Clear();
+            knowledgeTimer = 0f;
+
+            if (techIds == null) return;
+            foreach (var id in techIds)
+            {
+                TechNode tech = allTechs.Find(t => t != null && t.id == id);
+                if (tech != null) ApplyUnlock(tech);
+            }
         }
 
         public bool IsBuildingUnlocked(BuildingData data) =>

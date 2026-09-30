@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace PrehistoricTribe
@@ -5,6 +6,9 @@ namespace PrehistoricTribe
     public class FarmManager : MonoBehaviour
     {
         public static FarmManager Instance { get; private set; }
+
+        [Tooltip("Mọi loại cây trong game — dùng để tra CropData theo id khi tải game")]
+        [SerializeField] private List<CropData> knownCrops = new List<CropData>();
 
         public CropData SelectedCrop { get; private set; }
 
@@ -19,6 +23,9 @@ namespace PrehistoricTribe
         }
 
         public void SelectCrop(CropData crop) => SelectedCrop = crop;
+
+        public CropData FindCrop(string id) =>
+            string.IsNullOrEmpty(id) ? null : knownCrops.Find(c => c != null && c.id == id);
 
         public bool TryInteract(FarmPlot plot)
         {

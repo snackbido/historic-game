@@ -38,6 +38,15 @@ namespace PrehistoricTribe
             return nearest;
         }
 
+        /// <summary>Tất cả đối tượng loại T đang hoạt động (vd mọi FarmPlot/AnimalController khi lưu game).</summary>
+        public static List<T> All<T>() where T : MonoBehaviour
+        {
+            var result = new List<T>();
+            foreach (var item in items)
+                if (item is T typed && typed != null) result.Add(typed);
+            return result;
+        }
+
         public static float GroundDistance(Vector3 a, Vector3 b)
         {
             a.y = 0f;

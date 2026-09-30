@@ -9,6 +9,7 @@ namespace PrehistoricTribe
         [SerializeField] private int yieldPerHit = 1;
 
         public ResourceTypeData ResourceType => resourceType;
+        public int AmountRemaining => amountRemaining;
 
         private void OnEnable() => InteractableRegistry.Register(this);
         private void OnDisable() => InteractableRegistry.Unregister(this);

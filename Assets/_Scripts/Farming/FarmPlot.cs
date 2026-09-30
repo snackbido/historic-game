@@ -18,6 +18,16 @@ namespace PrehistoricTribe
         Withered
     }
 
+    [System.Serializable]
+    public class FarmPlotSaveData
+    {
+        public string plotName;
+        public string cropId;
+        public CropStage stage;
+        public float stageTimer;
+        public FarmPlotState state;
+    }
+
     public class FarmPlot : MonoBehaviour
     {
         [Tooltip("Điểm gắn model cây trồng (thường là mặt trên của ô đất)")]
@@ -30,6 +40,23 @@ namespace PrehistoricTribe
 
         public FarmPlotState State { get; private set; } = FarmPlotState.Empty;
         public CropData Crop => crop;
+
+        /// <summary>0..1 từ lúc gieo tới lúc chín — dùng cho gợi ý trên UI.</summary>
+        public float GrowthProgress
+        {
+            get
+            {
+                if (crop == null) return 0f;
+                float total = crop.timeToSprout + crop.timeToMature;
+                if (total <= 0f) return 1f;
+                return stage switch
+                {
+                    CropStage.Seed => stageTimer / total,
+                    CropStage.Sprouting => (crop.timeToSprout + stageTimer) / total,
+                    _ => 1f
+                };
+            }
+        }
 
         private void OnEnable() => InteractableRegistry.Register(this);
         private void OnDisable() => InteractableRegistry.Unregister(this);
@@ -112,6 +139,30 @@ namespace PrehistoricTribe
             stage = CropStage.Seed;
             stageTimer = 0f;
             State = FarmPlotState.Empty;
+            UpdateVisual();
+        }
+
+        public FarmPlotSaveData GetSaveData() => new FarmPlotSaveData
+        {
+            plotName = name,
+            cropId = crop != null ? crop.id : null,
+            stage = stage,
+            stageTimer = stageTimer,
+            state = State
+        };
+
+        public void LoadFromSaveData(FarmPlotSaveData data, CropData cropData)
+        {
+            if (data == null || cropData == null)
+            {
+                Reset();
+                return;
+            }
+
+            crop = cropData;
+            stage = data.stage;
+            stageTimer = data.stageTimer;
+            State = data.state;
             UpdateVisual();
         }
 

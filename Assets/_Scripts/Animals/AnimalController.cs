@@ -8,6 +8,23 @@ namespace PrehistoricTribe
         Tamed
     }
 
+    [System.Serializable]
+    public class AnimalSaveData
+    {
+        public string animalId;
+        public string objectName;
+        public float x;
+        public float z;
+        public float rotationY;
+        public AnimalState state;
+        public int tamingProgress;
+        public float hunger;
+        public bool productReady;
+        public float hungerTimer;
+        public float reproductionTimer;
+        public float productionTimer;
+    }
+
     public class AnimalController : MonoBehaviour
     {
         [SerializeField] private AnimalData data;
@@ -99,6 +116,36 @@ namespace PrehistoricTribe
             data = source;
             TamingProgress = data.feedingsToTame;
             Tame();
+        }
+
+        public AnimalSaveData GetSaveData() => new AnimalSaveData
+        {
+            animalId = data != null ? data.id : null,
+            objectName = name,
+            x = transform.position.x,
+            z = transform.position.z,
+            rotationY = transform.eulerAngles.y,
+            state = State,
+            tamingProgress = TamingProgress,
+            hunger = Hunger,
+            productReady = ProductReady,
+            hungerTimer = hungerTimer,
+            reproductionTimer = reproductionTimer,
+            productionTimer = productionTimer
+        };
+
+        /// <summary>Khôi phục trạng thái (vị trí do nơi gọi đặt lúc Instantiate).</summary>
+        public void LoadFromSaveData(AnimalSaveData saved, AnimalData source)
+        {
+            data = source;
+            State = saved.state;
+            TamingProgress = saved.tamingProgress;
+            Hunger = saved.hunger;
+            ProductReady = saved.productReady;
+            hungerTimer = saved.hungerTimer;
+            reproductionTimer = saved.reproductionTimer;
+            productionTimer = saved.productionTimer;
+            UpdateVisual();
         }
 
         private void Tame()

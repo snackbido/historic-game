@@ -50,6 +50,8 @@ namespace PrehistoricTribe
                 previewRenderer = placementPreview.GetComponentInChildren<Renderer>(true);
         }
 
+        public bool IsPlacing => selectedBuilding != null;
+
         public void SelectBuilding(BuildingData data)
         {
             selectedBuilding = data;

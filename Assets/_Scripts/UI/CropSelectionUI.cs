@@ -13,9 +13,17 @@ namespace PrehistoricTribe
 
         private void Start() => Rebuild();
 
-        private void OnEnable() => EventBus.OnTechUnlocked += HandleTechUnlocked;
+        private void OnEnable()
+        {
+            EventBus.OnTechUnlocked += HandleTechUnlocked;
+            EventBus.OnGameLoaded += Rebuild;
+        }
 
-        private void OnDisable() => EventBus.OnTechUnlocked -= HandleTechUnlocked;
+        private void OnDisable()
+        {
+            EventBus.OnTechUnlocked -= HandleTechUnlocked;
+            EventBus.OnGameLoaded -= Rebuild;
+        }
 
         private void HandleTechUnlocked(TechNode tech) => Rebuild();
 

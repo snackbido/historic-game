@@ -79,7 +79,14 @@
 - [ ] HealthComponent dùng chung cho Player/NPC/Building
 - [ ] Enemy AI cơ bản (patrol/chase/attack)
 - [ ] Vũ khí cơ bản (giáo/đá ném)
-- [ ] Cơ chế chỉ huy nhóm: chọn NPC + ra lệnh (thiết kế chi tiết còn thiếu, xem quyết định 2026-09-26 ở Decision Log)
+- [x] Chốt thiết kế chỉ huy (2026-09-30): **mọi NPC đều nghe lệnh**; **kéo khung chuột** để chọn NPC, mỗi NPC có **nghề nghiệp riêng** (trinh sát, thợ săn, nông dân, dân làng…) quyết định lệnh nó thực hiện được; UI hiển thị nhóm đang chọn **theo nhóm và theo nghề** của từng NPC
+- [x] Chốt chi tiết (2026-09-30):
+  - Nhóm lẫn nhiều nghề nhận lệnh mà có con không làm được → con làm được thì làm, con còn lại **đi theo tới chỗ đó**
+  - Dân số: bắt đầu **3–4 NPC có cả nam lẫn nữ**; một cặp nam + nữ trưởng thành **sinh em bé**, em bé **lớn dần theo thời gian** (em bé → trẻ em → người lớn), chỉ người lớn mới làm việc/nhận lệnh. Chi tiết tự đề xuất (chỉnh được): cặp đôi cố định; sinh con khi còn chỗ ở (mỗi lều +2 chỗ) và đủ thức ăn (tốn thức ăn); thời gian lớn lên cấu hình trong data
+  - Người mới trưởng thành là "Dân làng", người chơi **đổi nghề qua UI**
+  - Khi không có lệnh, NPC **tự làm việc theo nghề** ở gần (vd nông dân tự thu hoạch ô đã chín)
+- [ ] Cơ chế chỉ huy nhóm: chọn NPC (kéo khung) + ra lệnh theo nghề + UI nhóm/nghề
+- [ ] Dân số: giới tính, cặp đôi, sinh con, lớn lên theo thời gian, sức chứa theo số lều
 
 ## Milestone 6 — Thiên tai
 - [ ] DisasterManager: hệ thống sự kiện ngẫu nhiên
@@ -107,6 +114,7 @@
 | 2026-09-22 | Tài nguyên "tri thức" (Milestone 4) tự sinh theo thời gian (tốc độ cố định), không gắn vào hành động gameplay | Đơn giản nhất, không phụ thuộc EventBus của các hệ thống khác; dễ cân bằng lại tốc độ sau này |
 | 2026-09-22 | Refactor `BuildingPlacer` từ 1 field `buildingToPlace` sang registry nhiều `BuildingData` + `SelectBuilding()` | Cần thiết để Tech Tree mở khóa được nhiều loại công trình khác nhau; đã ghi nợ từ Milestone 1 |
 | 2026-09-26 | Thứ tự triển khai tiếp theo: trả nợ kỹ thuật (feedback UX vật nuôi, save/load FarmPlot + Animal, test tay input) **trước** khi bắt đầu Milestone 5 | Đảm bảo M1-4 vững chắc, không cộng dồn nợ kỹ thuật trước khi mở rộng sang hệ thống mới |
+| 2026-09-30 | M5 chỉ huy NPC: (1) tất cả NPC đều nghe lệnh (không có "lính" riêng); (2) kéo khung chuột để chọn nhiều NPC, mỗi NPC có nghề (trinh sát, thợ săn, nông dân, dân làng…) quyết định việc nó làm khi nhận lệnh; (3) UI hiển thị các NPC đang chọn theo nhóm và theo nghề | Chốt với user; nghề nghiệp gắn chỉ huy với hệ thống kinh tế (nông dân trồng trọt, thợ săn săn bắt) thay vì tách riêng quân đội |
 | 2026-09-30 | Chuyển bản Unity từ 2D top-down sang **2.5D**: model 3D low-poly + camera phối cảnh nghiêng cố định, gameplay vẫn trên mặt phẳng đất (XZ), vẫn đặt công trình theo grid | Không cần họa sĩ (dùng model miễn phí đồng phong cách), khớp game tham khảo (Banished/Frostpunk), nhẹ cho máy 8GB/mobile; bản web Three.js đã chứng minh hướng này. Loại 3D đầy đủ (camera tự do, địa hình) vì nhân khối lượng việc |
 | 2026-09-26 | Milestone 5 (Combat): chế độ **lai** — vừa điều khiển trực tiếp nhân vật chính, vừa chỉ huy được nhóm NPC | User muốn cả hai, khác với 2 lựa chọn thuần trong SPEC.md § 3.5; cần thiết kế chi tiết thêm trước khi code (NPC nào chỉ huy được, cơ chế ra lệnh ra sao) — **chưa chốt chi tiết, chỉ mới chốt hướng chung** |
 
@@ -157,11 +165,19 @@
 - **Chưa xác nhận**: người thật bấm WASD/E/chuột trong Play mode (cảm giác di chuyển, va chạm với công trình, đặt công trình bằng chuột, zoom).
 - **Sự cố**: 2 lần Unity batch crash do thiếu bộ nhớ ảo (xem Known issues) — chạy lại được sau khi giải phóng bộ nhớ.
 
+## Nhật ký phiên làm việc 2026-09-30 (phần 2 — trả nợ kỹ thuật trước M5)
+- Chốt chi tiết thiết kế M5 với user (xem mục Milestone 5 + Decision Log): mọi NPC nghe lệnh, kéo khung chọn, nghề nghiệp, dân số nam/nữ sinh con lớn dần.
+- **Save/Load mở rộng** (`SaveData.saveVersion = 2`): lưu thêm tech đã mở khóa, trạng thái từng `FarmPlot` (khớp theo tên object) và toàn bộ vật nuôi (xóa hết rồi tạo lại từ `AnimalData.prefab`, gồm cả con sinh sản ra). Save cũ (version 0/1) chỉ nạp player/tài nguyên/công trình, không đụng ô đất/vật nuôi. Thêm registry tra theo id: `FarmManager.knownCrops`, `TamingSystem.knownAnimals`, `TechManager.allTechs`. Mới `EventBus.OnGameLoaded` → `BuildMenuUI`/`CropSelectionUI`/`TechTreeUI` tự làm mới sau khi tải. F5/F9 giờ có thông báo "Đã lưu/Đã tải game".
+- **Gợi ý tương tác**: `InteractionHighlight` (vòng sáng nhấp nháy dưới đối tượng gần nhất) + `InteractionPromptUI` (dòng chữ dưới màn hình, vd "[E] Cho Heo rung hoang ăn (-3 Thuc an) — thuần hóa 1/2"); ẩn khi đang đặt công trình (`BuildingPlacer.IsPlacing`).
+- Test: `SaveSystem.FileNameOverride` để test không ghi đè save thật. Mới `SaveLoadTests.cs` (save → làm lệch trạng thái → load → khôi phục đúng tech/ô đất/heo đã thuần, không nhân đôi vật nuôi; nội dung gợi ý). **12/12 test PlayMode pass**. Ảnh render xác nhận vòng highlight hiển thị đúng; sửa thêm: vòng cổ/biểu tượng của heo tắt sẵn trong prefab.
+- **Chưa xác nhận**: dòng gợi ý trên Canvas (công cụ chụp camera không thấy Canvas overlay) và cảm giác chơi thật — cần user bấm Play.
+
 ## Vấn đề đang tồn đọng (Known issues / Open questions)
-- [ ] Chưa quyết định: chế độ combat (trực tiếp hay chỉ huy nhóm)?
+- [x] Chế độ combat: lai (2026-09-26) + chi tiết chỉ huy NPC theo nghề (2026-09-30)
 - [ ] Chưa có tên chính thức cho dự án
 - [ ] Milestone 2-4: đã xác nhận logic (test tự động) + Console sạch khi Play thật, nhưng chưa có ai tự tay bấm phím/chuột thật để xác nhận input (`PlayerInteraction`, `BuildingPlacer`) và chưa xác nhận trực quan layout UI (công cụ chụp ảnh hiện tại không thấy được Canvas ScreenSpaceOverlay)
-- [ ] Chưa làm save/load cho trạng thái FarmPlot (đang trồng gì, giai đoạn nào) và trạng thái vật nuôi (đã thuần hóa chưa, độ đói) — nợ kỹ thuật từ M2/M3
+- [x] Save/load trạng thái FarmPlot + vật nuôi (+ tech đã mở khóa) — xong 2026-09-30 (`saveVersion` 2)
+- [ ] Save/load chưa lưu cây (ResourceNode) đã bị chặt: tải game sẽ không hồi lại cây đã mất trong phiên, và cây đã chặt dở vẫn đầy gỗ
 - [x] Save/load (F5/F9) của Milestone 1 đã test trong Play mode thật (2026-09-26) — đúng
 - [x] Camera dùng Skybox clear flags gây nền trời không hợp — đã đổi Solid Color khi chuyển 2.5D (2026-09-30)
 - [ ] Máy 8GB + pagefile nằm trên ổ C gần đầy: Unity batch mode crash "paging file is too small"/"Out of memory" khi bộ nhớ ảo trống < ~4GB (gặp lại 2026-09-30). Cách sửa tận gốc: chuyển pagefile sang ổ D (còn ~33GB). Tạm thời: đóng Edge/app nặng trước khi chạy Unity
