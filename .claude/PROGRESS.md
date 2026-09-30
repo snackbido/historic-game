@@ -230,6 +230,10 @@
 - **Đã xác nhận**: **49/49 test PlayMode pass** (8 test mới `Milestone5PopulationTests.cs`: dân làng tự chặt cây không giữ vị trí; nông dân tự gieo + thu hoạch; người đang được chọn không bị kéo đi làm; thợ săn canh gác lao vào sói đang tấn công; ghép cặp nam–nữ; sinh con cần chỗ ở + thức ăn, mỗi lều +2, hết chỗ thì dừng; em bé lớn thành dân làng chọn được; lưu/tải giữ em bé + cặp đôi).
 - **Chưa xác nhận bằng tay**: nhịp độ (có thể dân làng chặt hết 8 cây khá nhanh vì tự làm việc — cần user chơi thử để cân bằng), hiển thị trẻ con.
 
+## Nhật ký phiên làm việc 2026-09-30 (phần 10 — giãn nhịp độ)
+- User chơi thử: "nhịp độ khá nhanh" → giãn các nhịp chính ~2 lần: chặt cây 1 gỗ/3s (trước 1,5s); cây mọng 12/24/40s (trước 5/10/20); tri thức 1 điểm/6s (trước 3s); heo thuần ra sản phẩm 30s, sinh sản 90s (trước 15/45); xét sinh con 40s, mỗi cặp nghỉ 180s (trước 20/90); em bé 120s → trẻ em 180s (trước 60/90). Test M4 chờ tri thức 45s thay vì 20s. **49/49 test pass**.
+- Hướng cân bằng tiếp nếu vẫn thấy nhanh/chậm: sửa trực tiếp số trong asset/Inspector (data-driven), không cần sửa code; cân nhắc thêm cây mọc lại để dân làng tự chặt không làm trụi bản đồ.
+
 ## Vấn đề đang tồn đọng (Known issues / Open questions)
 - [x] Chế độ combat: lai (2026-09-26) + chi tiết chỉ huy NPC theo nghề (2026-09-30)
 - [ ] Chưa có tên chính thức cho dự án

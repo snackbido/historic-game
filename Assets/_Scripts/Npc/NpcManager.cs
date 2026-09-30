@@ -22,14 +22,14 @@ namespace PrehistoricTribe
         [Header("Dân số")]
         [Tooltip("Chỗ ở sẵn có khi chưa xây lều (hang/đống lửa ban đầu)")]
         [SerializeField] private int baseHousing = 4;
-        [SerializeField] private float birthCheckInterval = 20f;
+        [SerializeField] private float birthCheckInterval = 40f;
         [Tooltip("Một cặp phải chờ bao lâu (giây) giữa hai lần sinh")]
-        [SerializeField] private float coupleBirthCooldown = 90f;
+        [SerializeField] private float coupleBirthCooldown = 180f;
         [SerializeField] private List<ResourceAmount> birthCost = new List<ResourceAmount>();
         [Tooltip("Nghề mặc định khi trẻ trưởng thành")]
         [SerializeField] private ProfessionData adultProfession;
-        [SerializeField] private float babyDuration = 60f;
-        [SerializeField] private float childDuration = 90f;
+        [SerializeField] private float babyDuration = 120f;
+        [SerializeField] private float childDuration = 180f;
         [SerializeField] private List<string> maleNames = new List<string>();
         [SerializeField] private List<string> femaleNames = new List<string>();
 

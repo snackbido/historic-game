@@ -243,9 +243,9 @@ namespace PrehistoricTribe.EditorTools
             data.hungerThresholdForNeeds = 50f;
             data.feedCost = new List<ResourceAmount> { new ResourceAmount { type = food, amount = 3 } };
             data.feedingsToTame = 2;
-            data.reproductionInterval = 45f;
+            data.reproductionInterval = 90f;
             data.products = new List<ResourceAmount> { new ResourceAmount { type = food, amount = 2 } };
-            data.productionInterval = 15f;
+            data.productionInterval = 30f;
             data.huntYield = new List<ResourceAmount> { new ResourceAmount { type = food, amount = 6 } };
 
             if (isNew)

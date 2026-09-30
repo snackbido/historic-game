@@ -166,7 +166,7 @@ namespace PrehistoricTribe.EditorTools
             var techManagerGO = new GameObject("TechManager");
             var techManager = techManagerGO.AddComponent<TechManager>();
             SetPrivateField(techManager, "knowledgeResource", knowledge);
-            SetPrivateField(techManager, "knowledgeGenerationInterval", 3f);
+            SetPrivateField(techManager, "knowledgeGenerationInterval", 6f);
             SetPrivateField(techManager, "allTechs", new List<TechNode> { techFarming });
 
             var gameManagerGO = new GameObject("GameManager");

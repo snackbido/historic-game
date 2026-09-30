@@ -22,7 +22,7 @@ namespace PrehistoricTribe.Tests
             Assert.IsFalse(TechManager.Instance.IsBuildingUnlocked(storage), "Storage should be locked before tech_farming");
             Assert.IsFalse(TechManager.Instance.IsCropUnlocked(berry), "Berry should be locked before tech_farming");
 
-            float deadline = Time.time + 20f;
+            float deadline = Time.time + 45f; // 5 tri thức × 6s/điểm (nhịp đã giãn 2026-09-30)
             while (ResourceManager.Instance.GetAmount(knowledge) < techFarming.cost[0].amount && Time.time < deadline)
                 yield return null;
             Assert.IsTrue(TechManager.Instance.CanUnlock(techFarming), "Should afford tech_farming once enough Knowledge accrued");

@@ -162,6 +162,7 @@ namespace PrehistoricTribe
 
         public override MonoBehaviour Target => node;
         public override string Description => "chặt cây";
+        public override float Interval => 3f; // 1 gỗ / 3s → một cây 10 gỗ mất ~30s
 
         public override bool DoWork(NpcController npc)
         {
