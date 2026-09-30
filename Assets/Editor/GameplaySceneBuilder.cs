@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using TMPro;
+using Unity.AI.Navigation;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -29,7 +30,18 @@ namespace PrehistoricTribe.EditorTools
         private const string BoarDataPath = "Assets/_Data/AnimalData_WildBoar.asset";
         private const string ButtonPrefabPath = "Assets/Prefabs/Button.prefab";
 
+        private const string NavMeshAssetPath = "Assets/_Scenes/Gameplay_NavMesh.asset";
+
         private static readonly Color SkyColor = new Color(0.81f, 0.89f, 0.9f);
+
+        // Dân làng ban đầu (quyết định 2026-09-30: 3–4 người, có cả nam lẫn nữ, mỗi người một nghề).
+        private static readonly (string name, Gender gender, string professionId, Vector2 position)[] StartingVillagers =
+        {
+            ("Ka", Gender.Male, "villager", new Vector2(0.2f, -3.2f)),
+            ("Mây", Gender.Female, "farmer", new Vector2(-1f, -3.6f)),
+            ("Đá", Gender.Male, "hunter", new Vector2(1.4f, -3.8f)),
+            ("Suối", Gender.Female, "scout", new Vector2(0.4f, -4.6f)),
+        };
 
         // Cùng bố cục với bản web (web/src/data/gameData.js): (x, z) trên mặt đất.
         private static readonly Vector2[] TreePositions =
@@ -62,6 +74,10 @@ namespace PrehistoricTribe.EditorTools
             var techFarming = AssetDatabase.LoadAssetAtPath<TechNode>(TechFarmingPath);
             var boarData = AssetDatabase.LoadAssetAtPath<AnimalData>(BoarDataPath);
             var treePrefab = AssetDatabase.LoadAssetAtPath<GameObject>(GameContentBuilder.TreePrefabPath);
+            var villagerPrefab = AssetDatabase.LoadAssetAtPath<NpcController>(GameContentBuilder.VillagerPrefabPath);
+            var professions = new List<ProfessionData>();
+            foreach (string id in GameContentBuilder.ProfessionIds)
+                professions.Add(AssetDatabase.LoadAssetAtPath<ProfessionData>(GameContentBuilder.ProfessionAssetPath(id)));
             var buttonPrefab = AssetDatabase.LoadAssetAtPath<Button>(ButtonPrefabPath);
 
             if (wood == null || food == null || knowledge == null || hut == null || storage == null ||
@@ -71,7 +87,8 @@ namespace PrehistoricTribe.EditorTools
                 return;
             }
 
-            if (hut.prefab == null || storage.prefab == null || boarData.prefab == null || treePrefab == null)
+            if (hut.prefab == null || storage.prefab == null || boarData.prefab == null || treePrefab == null ||
+                villagerPrefab == null || professions.Contains(null))
             {
                 Debug.LogError("[GameplaySceneBuilder] Chua co prefab 3D. Chay 'Tools/Prehistoric/Build Missing Content' truoc (hoac dung 'Build All').");
                 return;
@@ -83,6 +100,7 @@ namespace PrehistoricTribe.EditorTools
             var environment = new GameObject("Environment").transform;
             CreateGround(environment);
             CreateDecorForest(environment);
+            BakeNavMesh(environment.gameObject);
 
             var rmGO = new GameObject("ResourceManager");
             var rm = rmGO.AddComponent<ResourceManager>();
@@ -130,6 +148,13 @@ namespace PrehistoricTribe.EditorTools
             boarInstance.name = "WildBoar";
             boarInstance.transform.SetPositionAndRotation(new Vector3(3f, 0f, -1.5f), Quaternion.Euler(0f, 200f, 0f));
             SetPrivateField(boarInstance.GetComponent<AnimalController>(), "data", boarData);
+
+            // Nạp lại: tạo asset NavMesh ở trên có thể làm tham chiếu prefab cũ mất hiệu lực.
+            villagerPrefab = AssetDatabase.LoadAssetAtPath<NpcController>(GameContentBuilder.VillagerPrefabPath);
+            CreateVillagers(villagerPrefab, professions);
+            var npcManager = new GameObject("NpcManager").AddComponent<NpcManager>();
+            SetPrivateField(npcManager, "npcPrefab", villagerPrefab);
+            SetPrivateField(npcManager, "knownProfessions", professions);
 
             var techManagerGO = new GameObject("TechManager");
             var techManager = techManagerGO.AddComponent<TechManager>();
@@ -205,6 +230,44 @@ namespace PrehistoricTribe.EditorTools
             }
         }
 
+        /// <summary>
+        /// Bake NavMesh cho mặt đất + rừng trang trí (con của Environment). Cây thu hoạch được và công trình
+        /// không bake vào mà dùng NavMeshObstacle (carve) vì chúng mất đi/xuất hiện lúc chơi.
+        /// </summary>
+        private static void BakeNavMesh(GameObject environment)
+        {
+            var surface = environment.AddComponent<NavMeshSurface>();
+            surface.collectObjects = CollectObjects.Children;
+            surface.useGeometry = UnityEngine.AI.NavMeshCollectGeometry.RenderMeshes;
+            surface.BuildNavMesh();
+
+            // NavMeshData tạo trong bộ nhớ — phải lưu thành asset thì scene mới giữ được.
+            AssetDatabase.DeleteAsset(NavMeshAssetPath);
+            AssetDatabase.CreateAsset(surface.navMeshData, NavMeshAssetPath);
+        }
+
+        private static void CreateVillagers(NpcController prefab, List<ProfessionData> professions)
+        {
+            var parent = new GameObject("Villagers").transform;
+            foreach (var (npcName, gender, professionId, position) in StartingVillagers)
+            {
+                var instance = (GameObject)PrefabUtility.InstantiatePrefab(prefab.gameObject, parent);
+                var npc = instance.GetComponent<NpcController>();
+                npc.name = $"Npc_{npcName}";
+                npc.transform.SetPositionAndRotation(new Vector3(position.x, 0f, position.y), Quaternion.Euler(0f, 180f, 0f));
+                SetPrivateField(npc, "npcName", npcName);
+                SetPrivateField(npc, "gender", gender);
+                SetPrivateField(npc, "profession", professions.Find(p => p.id == professionId));
+                npc.RefreshVisuals(); // bật đúng tóc/dụng cụ để nhìn trong Editor cũng đúng
+
+                // Ghi lại override của cả component lẫn trạng thái bật/tắt của từng object con (tóc, dụng cụ),
+                // nếu không scene chỉ lưu giá trị gốc của prefab.
+                PrefabUtility.RecordPrefabInstancePropertyModifications(npc);
+                foreach (Transform child in instance.GetComponentsInChildren<Transform>(true))
+                    PrefabUtility.RecordPrefabInstancePropertyModifications(child.gameObject);
+            }
+        }
+
         private static GameObject CreatePlayer()
         {
             var playerGO = new GameObject("Player") { tag = "Player" };
@@ -231,6 +294,7 @@ namespace PrehistoricTribe.EditorTools
 
             var controller = playerGO.AddComponent<PlayerController>();
             SetPrivateField(controller, "visual", visual);
+            playerGO.AddComponent<HealthComponent>();
             playerGO.AddComponent<PlayerInteraction>();
             return playerGO;
         }

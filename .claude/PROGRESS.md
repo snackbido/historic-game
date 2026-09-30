@@ -76,7 +76,8 @@
 
 ## Milestone 5 — Combat
 - [x] Quyết định chế độ chiến đấu (hướng chung, 2026-09-26): **lai** — vừa điều khiển trực tiếp nhân vật chính, vừa chỉ huy được nhóm NPC. Chưa chốt chi tiết: NPC nào chỉ huy được (dân làng đã có công việc? hay cần "lính" riêng?), cơ chế ra lệnh (click chọn + click ra lệnh kiểu RTS, hay đơn giản hơn như "theo tôi"/"tấn công mục tiêu này"), UI hiển thị nhóm đang chỉ huy — cần bàn kỹ trước khi code
-- [ ] HealthComponent dùng chung cho Player/NPC/Building
+- [x] HealthComponent dùng chung cho Player/NPC/Building — `Combat/HealthComponent.cs` (M5.1, 2026-09-30; thú sẽ gắn khi làm săn bắt/chiến đấu)
+- [x] M5.1 NPC nền tảng: `ProfessionData` (4 nghề), `NpcController` (tên/giới tính/tuổi/nghề, đi bằng NavMesh, tự đi dạo quanh "nhà"), `NpcManager` (tra nghề, lưu/tải dân làng), 4 dân làng ban đầu (Ka ♂ dân làng, Mây ♀ nông dân, Đá ♂ thợ săn, Suối ♀ trinh sát)
 - [ ] Enemy AI cơ bản (patrol/chase/attack)
 - [ ] Vũ khí cơ bản (giáo/đá ném)
 - [x] Chốt thiết kế chỉ huy (2026-09-30): **mọi NPC đều nghe lệnh**; **kéo khung chuột** để chọn NPC, mỗi NPC có **nghề nghiệp riêng** (trinh sát, thợ săn, nông dân, dân làng…) quyết định lệnh nó thực hiện được; UI hiển thị nhóm đang chọn **theo nhóm và theo nghề** của từng NPC
@@ -171,6 +172,14 @@
 - **Gợi ý tương tác**: `InteractionHighlight` (vòng sáng nhấp nháy dưới đối tượng gần nhất) + `InteractionPromptUI` (dòng chữ dưới màn hình, vd "[E] Cho Heo rung hoang ăn (-3 Thuc an) — thuần hóa 1/2"); ẩn khi đang đặt công trình (`BuildingPlacer.IsPlacing`).
 - Test: `SaveSystem.FileNameOverride` để test không ghi đè save thật. Mới `SaveLoadTests.cs` (save → làm lệch trạng thái → load → khôi phục đúng tech/ô đất/heo đã thuần, không nhân đôi vật nuôi; nội dung gợi ý). **12/12 test PlayMode pass**. Ảnh render xác nhận vòng highlight hiển thị đúng; sửa thêm: vòng cổ/biểu tượng của heo tắt sẵn trong prefab.
 - **Chưa xác nhận**: dòng gợi ý trên Canvas (công cụ chụp camera không thấy Canvas overlay) và cảm giác chơi thật — cần user bấm Play.
+
+## Nhật ký phiên làm việc 2026-09-30 (phần 3 — M5.1 NPC nền tảng)
+- Cài package `com.unity.ai.navigation` 2.0.14 (đi kèm Editor, không cần mạng). `GameplaySceneBuilder` bake `NavMeshSurface` trên `Environment` (mặt đất + rừng trang trí), lưu `Assets/_Scenes/Gameplay_NavMesh.asset`. Cây thu hoạch được và công trình dùng `NavMeshObstacle` (carve) vì chúng mất đi/xuất hiện lúc chơi.
+- Mới: `Data/ProfessionData.cs` (+ enum cờ `NpcCapability`), 4 asset `Assets/_Data/Profession_*.asset` (Dân làng / Nông dân / Thợ săn / Trinh sát: khác tốc độ, máu, sát thương, tầm đánh, tầm nhìn, việc làm được); `Combat/HealthComponent.cs` (gắn cho Player, NPC, Hut, Storage); `Npc/NpcController.cs` (giới tính, `AgeStage` Baby/Child/Adult — scale nhỏ lại theo tuổi, nghề → màu áo qua `MaterialPropertyBlock` + dụng cụ cầm tay; `MoveTo()`; tự đi dạo khi rảnh); `Npc/NpcManager.cs` (lưu/tải dân làng — `saveVersion` 3); prefab `Assets/Prefabs/Npcs/Villager.prefab` (tóc nam/nữ, rìu/cuốc/giáo/băng lông vũ).
+- Mới: `Assets/Editor/TestTools/TestResultReporter.cs` (asmdef riêng tham chiếu Test Runner) — ghi kết quả lần chạy test gần nhất ra `Logs/LastTestResults.xml/.txt`, đăng ký lại sau mỗi domain reload → **chạy được PlayMode test ngay trong Editor đang mở** (qua Unity MCP) mà vẫn đọc được kết quả, không phải đóng Editor để chạy batch. `EditorBuildUtils.AssumeYes` cho phép lệnh tự động bỏ qua hộp thoại xác nhận ghi đè.
+- Bẫy gặp phải khi dựng scene bằng code: (1) `PrefabUtility.InstantiatePrefab(component)` trả về null — phải truyền GameObject; (2) tạo asset (NavMesh) giữa chừng làm tham chiếu prefab đã nạp trước đó mất hiệu lực — nạp lại ngay trước khi dùng; (3) bật/tắt object con của prefab instance trong Editor phải `RecordPrefabInstancePropertyModifications` cho từng object con, nếu không scene chỉ lưu giá trị gốc của prefab (dân làng hiện đủ 4 dụng cụ trong Scene view).
+- **Đã xác nhận**: **16/16 test PlayMode pass** (4 test mới `Milestone5NpcTests.cs`: 4 dân làng có cả nam/nữ và mỗi người một nghề, đứng trên NavMesh, tốc độ/máu theo nghề; `MoveTo` đi tới đích; `HealthComponent` chết đúng 1 lần; lưu/tải giữ nghề + giới tính, không nhân đôi); ảnh render trong Play mode xác nhận màu áo/dụng cụ/tóc đúng theo nghề và giới tính; Console sạch.
+- Chưa làm (các bước M5 sau): chọn NPC bằng kéo khung + ra lệnh (M5.2), việc theo nghề (M5.3), UI nhóm/nghề + đổi nghề (M5.4), thú dữ + chiến đấu (M5.5), tự làm việc khi rảnh + dân số sinh con (M5.6).
 
 ## Vấn đề đang tồn đọng (Known issues / Open questions)
 - [x] Chế độ combat: lai (2026-09-26) + chi tiết chỉ huy NPC theo nghề (2026-09-30)

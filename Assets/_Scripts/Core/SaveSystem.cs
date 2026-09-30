@@ -7,7 +7,7 @@ namespace PrehistoricTribe
     [System.Serializable]
     public class SaveData
     {
-        public const int CurrentVersion = 2;
+        public const int CurrentVersion = 3;
 
         // Không gán giá trị mặc định: save cũ (chưa có field này) đọc ra 0 → biết là bản cũ,
         // tránh hiểu nhầm danh sách vật nuôi rỗng là "không còn con nào" rồi xóa hết.
@@ -23,6 +23,9 @@ namespace PrehistoricTribe
         public List<string> unlockedTechIds = new List<string>();
         public List<FarmPlotSaveData> farmPlots = new List<FarmPlotSaveData>();
         public List<AnimalSaveData> animals = new List<AnimalSaveData>();
+
+        // Từ saveVersion 3
+        public List<NpcSaveData> npcs = new List<NpcSaveData>();
     }
 
     public static class SaveSystem

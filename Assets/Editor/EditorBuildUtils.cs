@@ -162,9 +162,12 @@ namespace PrehistoricTribe.EditorTools
         /// Hỏi trước khi ghi đè file đã có (tránh mất phần chỉnh tay / model thật đã thay vào).
         /// Batch mode không có người bấm nên luôn cho phép.
         /// </summary>
+        /// <summary>Lệnh tự động (vd qua Unity MCP) đã được người dùng đồng ý ghi đè → bỏ qua hộp thoại.</summary>
+        public static bool AssumeYes { get; set; }
+
         public static bool ConfirmOverwrite(string title, string message, params string[] assetPaths)
         {
-            if (Application.isBatchMode) return true;
+            if (Application.isBatchMode || AssumeYes) return true;
 
             bool anyExists = false;
             foreach (string path in assetPaths)

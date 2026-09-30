@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.AI;
 using static PrehistoricTribe.EditorTools.EditorBuildUtils;
 
 namespace PrehistoricTribe.EditorTools
@@ -54,13 +55,18 @@ namespace PrehistoricTribe.EditorTools
         private const string BoarPrefabPath = "Assets/Prefabs/Animals/WildBoar.prefab";
         public const string TreePrefabPath = "Assets/Prefabs/Resources/Tree.prefab";
         private const string CropPrefabFolder = "Assets/Prefabs/Crops";
+        public const string VillagerPrefabPath = "Assets/Prefabs/Npcs/Villager.prefab";
+
+        // Thứ tự cố định: dân làng, nông dân, thợ săn, trinh sát.
+        public static readonly string[] ProfessionIds = { "villager", "farmer", "hunter", "scout" };
+        public static string ProfessionAssetPath(string id) => $"Assets/_Data/Profession_{id}.asset";
 
         [MenuItem("Tools/Prehistoric/Build Missing Content (Buildings + Animal)")]
         public static void Build()
         {
             if (!ConfirmOverwrite("Tạo lại prefab placeholder?",
                     "Prefab lều/kho/cây/heo rừng đã tồn tại. Tạo lại sẽ ghi đè mọi chỉnh sửa hoặc model thật bạn đã thay vào.",
-                    HutPrefabPath, StoragePrefabPath, BoarPrefabPath, TreePrefabPath))
+                    HutPrefabPath, StoragePrefabPath, BoarPrefabPath, TreePrefabPath, VillagerPrefabPath))
                 return;
 
             var wood = AssetDatabase.LoadAssetAtPath<ResourceTypeData>(WoodAssetPath);
@@ -76,10 +82,12 @@ namespace PrehistoricTribe.EditorTools
             SavePrefab(BuildTree(wood), TreePrefabPath);
             BuildWildBoarContent(food);
             BuildCropModels();
+            ProfessionData[] professions = BuildProfessions();
+            SavePrefab(BuildVillager(professions), VillagerPrefabPath);
 
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
-            Debug.Log("[GameContentBuilder] Da tao xong prefab 3D: Hut, Storage, Tree, WildBoar va model giai doan cho CropData_Berry");
+            Debug.Log("[GameContentBuilder] Da tao xong prefab 3D: Hut, Storage, Tree, WildBoar, Villager, 4 nghe va model giai doan cho CropData_Berry");
         }
 
         private static void AssignBuildingPrefab(string dataAssetPath, GameObject prefab)
@@ -95,13 +103,39 @@ namespace PrehistoricTribe.EditorTools
         }
 
         // ─── Buildings ───────────────────────────────────────────────────────
+        /// <summary>Máu + vật cản NavMesh (NPC đi vòng qua công trình đặt lúc chơi).</summary>
+        private static void AddBuildingComponents(GameObject root, Vector3 center, Vector3 size, float maxHealth)
+        {
+            var col = root.AddComponent<BoxCollider>();
+            col.center = center;
+            col.size = size;
+            root.AddComponent<BuildingInstance>();
+            SetPrivateField(root.AddComponent<HealthComponent>(), "maxHealth", maxHealth);
+            AddObstacle(root, NavMeshObstacleShape.Box, center, size);
+        }
+
+        private static void AddObstacle(GameObject root, NavMeshObstacleShape shape, Vector3 center, Vector3 size)
+        {
+            var obstacle = root.AddComponent<NavMeshObstacle>();
+            obstacle.shape = shape;
+            obstacle.center = center;
+            if (shape == NavMeshObstacleShape.Box)
+            {
+                obstacle.size = size;
+            }
+            else
+            {
+                obstacle.radius = size.x * 0.5f;
+                obstacle.height = size.y;
+            }
+            obstacle.carving = true;
+            obstacle.carveOnlyStationary = true;
+        }
+
         private static GameObject BuildHut()
         {
             var root = new GameObject("Hut");
-            var col = root.AddComponent<BoxCollider>();
-            col.center = new Vector3(0f, 0.55f, 0f);
-            col.size = new Vector3(0.9f, 1.1f, 0.9f);
-            root.AddComponent<BuildingInstance>();
+            AddBuildingComponents(root, new Vector3(0f, 0.55f, 0f), new Vector3(0.9f, 1.1f, 0.9f), 200f);
 
             var t = root.transform;
             Cone(t, "Cover", 9, Vector3.zero, new Vector3(0.92f, 1.1f, 0.92f), Palette.Hide);
@@ -121,10 +155,7 @@ namespace PrehistoricTribe.EditorTools
         private static GameObject BuildStorage()
         {
             var root = new GameObject("Storage");
-            var col = root.AddComponent<BoxCollider>();
-            col.center = new Vector3(0f, 0.5f, 0f);
-            col.size = new Vector3(0.9f, 1f, 0.9f);
-            root.AddComponent<BuildingInstance>();
+            AddBuildingComponents(root, new Vector3(0f, 0.5f, 0f), new Vector3(0.9f, 1f, 0.9f), 300f);
 
             var t = root.transform;
             Part(t, "Base", PrimitiveType.Cube, new Vector3(0f, 0.25f, 0f), new Vector3(0.84f, 0.5f, 0.84f), Palette.Plank);
@@ -145,6 +176,7 @@ namespace PrehistoricTribe.EditorTools
             SetPrivateField(node, "resourceType", wood);
             SetPrivateField(node, "amountRemaining", 10);
             SetPrivateField(node, "yieldPerHit", 1);
+            AddObstacle(root, NavMeshObstacleShape.Capsule, new Vector3(0f, 0.5f, 0f), new Vector3(0.5f, 1f, 0.5f));
 
             BuildTreeVisual(root.transform);
             return root;
@@ -213,6 +245,129 @@ namespace PrehistoricTribe.EditorTools
                 AssetDatabase.CreateAsset(data, BoarDataPath);
             else
                 EditorUtility.SetDirty(data);
+        }
+
+        // ─── Professions + villager ──────────────────────────────────────────
+        private static ProfessionData[] BuildProfessions() => new[]
+        {
+            SaveProfession("villager", "Dân làng", 0x8a5a2b, speed: 3f, health: 100f, damage: 5f, range: 1.2f, vision: 8f,
+                NpcCapability.Gather | NpcCapability.Build | NpcCapability.Fight),
+            SaveProfession("farmer", "Nông dân", 0x7a9a3a, speed: 2.6f, health: 90f, damage: 3f, range: 1.2f, vision: 7f,
+                NpcCapability.Farm | NpcCapability.TendAnimals | NpcCapability.Gather),
+            SaveProfession("hunter", "Thợ săn", 0x5a4030, speed: 3.2f, health: 110f, damage: 14f, range: 5f, vision: 10f,
+                NpcCapability.Hunt | NpcCapability.Fight | NpcCapability.Gather),
+            SaveProfession("scout", "Trinh sát", 0x4a7fa8, speed: 4.2f, health: 70f, damage: 6f, range: 1.2f, vision: 16f,
+                NpcCapability.Scout | NpcCapability.Fight),
+        };
+
+        private static ProfessionData SaveProfession(string id, string displayName, int color, float speed, float health,
+            float damage, float range, float vision, NpcCapability capabilities)
+        {
+            string path = ProfessionAssetPath(id);
+            var data = AssetDatabase.LoadAssetAtPath<ProfessionData>(path);
+            bool isNew = data == null;
+            if (isNew) data = ScriptableObject.CreateInstance<ProfessionData>();
+
+            data.id = id;
+            data.displayName = displayName;
+            data.tunicColor = Palette.Hex(color);
+            data.moveSpeed = speed;
+            data.maxHealth = health;
+            data.attackDamage = damage;
+            data.attackRange = range;
+            data.visionRange = vision;
+            data.capabilities = capabilities;
+
+            if (isNew) AssetDatabase.CreateAsset(data, path);
+            else EditorUtility.SetDirty(data);
+            return data;
+        }
+
+        private static GameObject BuildVillager(ProfessionData[] professions)
+        {
+            var root = new GameObject("Villager");
+            var agent = root.AddComponent<NavMeshAgent>();
+            agent.radius = 0.3f;
+            agent.height = 1.1f;
+            agent.speed = 3f;
+            agent.angularSpeed = 720f;
+            agent.acceleration = 12f;
+            agent.stoppingDistance = 0.1f;
+            root.AddComponent<HealthComponent>();
+            var npc = root.AddComponent<NpcController>();
+
+            var visual = new GameObject("Visual").transform;
+            visual.SetParent(root.transform, false);
+            Part(visual, "LegL", PrimitiveType.Cylinder, new Vector3(-0.09f, 0.16f, 0f), new Vector3(0.12f, 0.16f, 0.12f), Palette.Skin);
+            Part(visual, "LegR", PrimitiveType.Cylinder, new Vector3(0.09f, 0.16f, 0f), new Vector3(0.12f, 0.16f, 0.12f), Palette.Skin);
+            var tunic = Part(visual, "Tunic", PrimitiveType.Cylinder, new Vector3(0f, 0.52f, 0f), new Vector3(0.44f, 0.23f, 0.44f), Palette.Fur);
+            Part(visual, "ArmL", PrimitiveType.Cylinder, new Vector3(-0.24f, 0.55f, 0f), new Vector3(0.1f, 0.16f, 0.1f), Palette.Skin);
+            Part(visual, "ArmR", PrimitiveType.Cylinder, new Vector3(0.24f, 0.55f, 0f), new Vector3(0.1f, 0.16f, 0.1f), Palette.Skin);
+            Part(visual, "Head", PrimitiveType.Sphere, new Vector3(0f, 0.9f, 0f), Vector3.one * 0.32f, Palette.Skin);
+
+            var maleHair = Part(visual, "HairMale", PrimitiveType.Sphere, new Vector3(0f, 0.99f, -0.03f), new Vector3(0.36f, 0.24f, 0.36f), Palette.Hair);
+
+            // Tóc nữ: mái + tóc dài phía sau + búi — nhận ra giới tính từ góc nhìn trên cao.
+            var femaleHair = new GameObject("HairFemale");
+            femaleHair.transform.SetParent(visual, false);
+            Part(femaleHair.transform, "Top", PrimitiveType.Sphere, new Vector3(0f, 0.99f, -0.02f), new Vector3(0.37f, 0.25f, 0.37f), Palette.Hair);
+            Part(femaleHair.transform, "Back", PrimitiveType.Cube, new Vector3(0f, 0.78f, -0.14f), new Vector3(0.26f, 0.36f, 0.08f), Palette.Hair);
+            Part(femaleHair.transform, "Bun", PrimitiveType.Sphere, new Vector3(0f, 1.1f, -0.08f), Vector3.one * 0.13f, Palette.Hair);
+
+            var tools = new List<ProfessionTool>
+            {
+                new ProfessionTool { profession = professions[0], tool = BuildAxe(visual) },
+                new ProfessionTool { profession = professions[1], tool = BuildHoe(visual) },
+                new ProfessionTool { profession = professions[2], tool = BuildSpear(visual) },
+                new ProfessionTool { profession = professions[3], tool = BuildFeatherBand(visual) },
+            };
+
+            // Mặc định trong prefab: dân làng nam — chỉ bật tóc nam + rìu (NpcController tự đổi theo nghề/giới tính).
+            femaleHair.SetActive(false);
+            for (int i = 1; i < tools.Count; i++) tools[i].tool.SetActive(false);
+
+            SetPrivateField(npc, "profession", professions[0]);
+            SetPrivateField(npc, "tunicRenderer", tunic.GetComponent<Renderer>());
+            SetPrivateField(npc, "maleHair", maleHair);
+            SetPrivateField(npc, "femaleHair", femaleHair);
+            SetPrivateField(npc, "tools", tools);
+            return root;
+        }
+
+        private static GameObject BuildAxe(Transform parent)
+        {
+            var tool = new GameObject("Tool_Axe").transform;
+            tool.SetParent(parent, false);
+            Part(tool, "Handle", PrimitiveType.Cylinder, new Vector3(0.3f, 0.55f, 0.08f), new Vector3(0.04f, 0.25f, 0.04f), Palette.Wood, new Vector3(30f, 0f, 0f));
+            Part(tool, "Head", PrimitiveType.Cube, new Vector3(0.3f, 0.76f, 0.2f), new Vector3(0.05f, 0.12f, 0.14f), Palette.Stone, new Vector3(30f, 0f, 0f));
+            return tool.gameObject;
+        }
+
+        private static GameObject BuildHoe(Transform parent)
+        {
+            var tool = new GameObject("Tool_Hoe").transform;
+            tool.SetParent(parent, false);
+            Part(tool, "Handle", PrimitiveType.Cylinder, new Vector3(0.3f, 0.6f, 0.05f), new Vector3(0.04f, 0.35f, 0.04f), Palette.Wood, new Vector3(15f, 0f, 0f));
+            Part(tool, "Blade", PrimitiveType.Cube, new Vector3(0.3f, 0.93f, 0.18f), new Vector3(0.12f, 0.03f, 0.16f), Palette.Stone, new Vector3(15f, 0f, 0f));
+            return tool.gameObject;
+        }
+
+        private static GameObject BuildSpear(Transform parent)
+        {
+            var tool = new GameObject("Tool_Spear").transform;
+            tool.SetParent(parent, false);
+            Part(tool, "Shaft", PrimitiveType.Cylinder, new Vector3(0.3f, 0.62f, 0.05f), new Vector3(0.035f, 0.6f, 0.035f), Palette.Wood, new Vector3(14f, 0f, 0f));
+            Cone(tool, "Tip", 5, new Vector3(0.3f, 1.2f, 0.2f), new Vector3(0.1f, 0.16f, 0.1f), Palette.Stone, new Vector3(14f, 0f, 0f));
+            return tool.gameObject;
+        }
+
+        private static GameObject BuildFeatherBand(Transform parent)
+        {
+            var tool = new GameObject("Tool_FeatherBand").transform;
+            tool.SetParent(parent, false);
+            Part(tool, "Band", PrimitiveType.Cylinder, new Vector3(0f, 0.93f, 0f), new Vector3(0.34f, 0.02f, 0.34f), Palette.Rope);
+            Part(tool, "Feather", PrimitiveType.Cube, new Vector3(0.1f, 1.12f, -0.12f), new Vector3(0.03f, 0.28f, 0.07f), Mat("Feather", Palette.Hex(0xe8e0c8)), new Vector3(-20f, 0f, -15f));
+            return tool.gameObject;
         }
 
         // ─── Crop stages ─────────────────────────────────────────────────────
