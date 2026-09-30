@@ -44,6 +44,8 @@ namespace PrehistoricTribe
         public float rotationY;
         public float health;
         public bool holdPosition;
+        public float ageSeconds;
+        public string partnerName;
     }
 
     /// <summary>
@@ -55,6 +57,9 @@ namespace PrehistoricTribe
     {
         private static readonly List<NpcController> all = new List<NpcController>();
         private static readonly int ColorId = Shader.PropertyToID("_Color");
+
+        /// <summary>Tắt để test cũ không bị NPC tự làm việc chen ngang (vd tự gieo ô đất test đang dùng).</summary>
+        public static bool AutoWorkEnabled { get; set; } = true;
         public static IReadOnlyList<NpcController> All => all;
 
         [SerializeField] private string npcName;
@@ -76,6 +81,11 @@ namespace PrehistoricTribe
         [SerializeField] private float minIdlePause = 2f;
         [SerializeField] private float maxIdlePause = 6f;
 
+        [Header("Tự làm việc khi rảnh")]
+        [Tooltip("Tìm việc theo nghề trong bán kính này (m) quanh chỗ đang đứng")]
+        [SerializeField] private float autoWorkRadius = 6f;
+        [SerializeField] private float autoWorkInterval = 2f;
+
         [Header("Giữ vị trí sau lệnh")]
         [Tooltip("Sau khi xong lệnh và KHÔNG còn được chọn, đứng giữ vị trí trong khoảng thời gian ngẫu nhiên này (giây) rồi quay lại đi dạo")]
         [SerializeField] private float minHoldTime = 20f;
@@ -93,6 +103,10 @@ namespace PrehistoricTribe
         private float holdElapsed;
 
         private NpcJob job;
+        private bool jobFromPlayer;
+        private float autoWorkTimer;
+        private float ageSeconds;
+        private string pendingPartnerName; // nối lại cặp đôi sau khi tải game
         private float workTimer;
         private float repathTimer;
         private const float RepathInterval = 0.5f;
@@ -109,6 +123,11 @@ namespace PrehistoricTribe
         public bool IsHoldingPosition => holdPosition;
         public Vector3 Destination => agent.destination;
         public NpcJob CurrentJob => job;
+        public NpcController Partner { get; private set; }
+        public float AgeSeconds => ageSeconds;
+        /// <summary>Lần sinh con gần nhất (Time.time) — NpcManager dùng để giãn cách giữa các lần sinh.</summary>
+        public float LastBirthTime { get; set; } = float.NegativeInfinity;
+        public string PendingPartnerName => pendingPartnerName;
 
         private void Awake()
         {
@@ -133,7 +152,7 @@ namespace PrehistoricTribe
             if (NpcJobFactory.CanFight(profession))
             {
                 if (!(job is AttackJob attack && attack.Predator == predator))
-                    AssignJob(new AttackJob(predator, profession));
+                    AssignJob(new AttackJob(predator, profession), fromPlayer: false); // tự vệ xong thì sinh hoạt tiếp
             }
             else
             {
@@ -153,6 +172,7 @@ namespace PrehistoricTribe
         private void HandleDied(HealthComponent _)
         {
             EventBus.RaiseNotification($"{npcName} đã chết!");
+            if (Partner != null) Partner.Partner = null; // người còn lại có thể ghép cặp mới
             gameObject.SetActive(false); // rời khỏi danh sách/đang chọn ngay
             Destroy(gameObject);
         }
@@ -166,6 +186,7 @@ namespace PrehistoricTribe
 
         private void Update()
         {
+            UpdateAge();
             if (!agent.isOnNavMesh) return;
 
             switch (State)
@@ -176,11 +197,16 @@ namespace PrehistoricTribe
                         UpdateHold();
                         break;
                     }
+                    if (TryAutoWork()) break;
                     idleTimer -= Time.deltaTime;
                     if (idleTimer <= 0f) TryWander();
                     break;
 
                 case NpcState.Wandering:
+                    if (TryAutoWork()) break; // đang đi dạo mà có việc thì làm luôn
+                    if (HasArrived()) BecomeIdle();
+                    break;
+
                 case NpcState.Moving:
                     if (HasArrived()) BecomeIdle();
                     break;
@@ -215,13 +241,32 @@ namespace PrehistoricTribe
             holdDuration = Random.Range(minHoldTime, maxHoldTime);
         }
 
-        /// <summary>Giao việc (lệnh của người chơi). Xong việc thì đứng giữ vị trí tại đó.</summary>
-        public void AssignJob(NpcJob newJob)
+        /// <summary>Rảnh (không lệnh, không bị chọn, là người lớn) thì vài giây tìm việc theo nghề một lần.</summary>
+        private bool TryAutoWork()
+        {
+            if (!AutoWorkEnabled || !IsAdult || IsSelected || holdPosition) return false;
+
+            autoWorkTimer -= Time.deltaTime;
+            if (autoWorkTimer > 0f) return false;
+            autoWorkTimer = autoWorkInterval;
+
+            NpcJob found = NpcJobFactory.FindAutoJob(this, autoWorkRadius);
+            if (found == null) return false;
+            AssignJob(found, fromPlayer: false);
+            return true;
+        }
+
+        /// <summary>
+        /// Giao việc. Lệnh của người chơi: xong việc thì đứng giữ vị trí. Tự làm khi rảnh: xong thì đi dạo tiếp.
+        /// </summary>
+        public void AssignJob(NpcJob newJob, bool fromPlayer = true)
         {
             if (newJob == null || !newJob.IsValid) return;
 
             job = newJob;
-            StartHolding();
+            jobFromPlayer = fromPlayer;
+            if (fromPlayer) StartHolding();
+            else holdPosition = false;
             workTimer = 0f;
             repathTimer = 0f;
             State = NpcState.Working;
@@ -263,7 +308,53 @@ namespace PrehistoricTribe
             job = null;
             home = transform.position;
             holdElapsed = 0f; // đếm lại từ lúc xong việc
+            if (!jobFromPlayer) autoWorkTimer = 0f; // tự làm: tìm ngay việc kế tiếp
             BecomeIdle();
+        }
+
+        // ─── Tuổi & gia đình ─────────────────────────────────────────────────
+        /// <summary>Khởi tạo em bé mới sinh (gọi ngay sau Instantiate).</summary>
+        public void InitializeAsBaby(string babyName, Gender babyGender)
+        {
+            npcName = babyName;
+            name = $"Npc_{babyName}";
+            gender = babyGender;
+            age = AgeStage.Baby;
+            ageSeconds = 0f;
+            profession = null;
+            holdPosition = false;
+            job = null;
+            home = transform.position;
+            RefreshVisuals();
+            health.SetCurrent(health.Max);
+            BecomeIdle();
+        }
+
+        public void SetPartner(NpcController other)
+        {
+            Partner = other;
+            if (other != null) other.Partner = this;
+            pendingPartnerName = null;
+        }
+
+        /// <summary>Em bé → trẻ em → người lớn theo thời gian cấu hình ở NpcManager; trưởng thành thì thành Dân làng.</summary>
+        private void UpdateAge()
+        {
+            NpcManager manager = NpcManager.Instance;
+            if (age == AgeStage.Adult || manager == null) return;
+
+            ageSeconds += Time.deltaTime;
+            float duration = age == AgeStage.Baby ? manager.BabyDuration : manager.ChildDuration;
+            if (ageSeconds < duration) return;
+
+            ageSeconds = 0f;
+            age = age == AgeStage.Baby ? AgeStage.Child : AgeStage.Adult;
+            if (age == AgeStage.Adult)
+            {
+                SetProfession(manager.AdultProfession);
+                EventBus.RaiseNotification($"{npcName} đã trưởng thành — có thể giao nghề!");
+            }
+            RefreshVisuals();
         }
 
         private void FaceTowards(Vector3 target)
@@ -302,7 +393,9 @@ namespace PrehistoricTribe
 
         private void TryWander()
         {
-            Vector2 offset = Random.insideUnitCircle * wanderRadius;
+            // Trẻ con chơi quanh quẩn gần nhà.
+            float radius = IsAdult ? wanderRadius : wanderRadius * 0.5f;
+            Vector2 offset = Random.insideUnitCircle * radius;
             Vector3 target = home + new Vector3(offset.x, 0f, offset.y);
             if (NavMesh.SamplePosition(target, out NavMeshHit hit, 1.5f, NavMesh.AllAreas))
             {
@@ -333,7 +426,14 @@ namespace PrehistoricTribe
 
         private void ApplyProfession()
         {
-            if (profession == null) return;
+            if (profession == null)
+            {
+                // Trẻ con: chưa có nghề, không cầm dụng cụ, đi chậm.
+                foreach (var entry in tools)
+                    if (entry.tool != null) entry.tool.SetActive(false);
+                if (agent != null) agent.speed = age == AgeStage.Baby ? 1.2f : 1.8f;
+                return;
+            }
 
             if (agent != null) agent.speed = profession.moveSpeed;
             if (health != null) health.SetMax(profession.maxHealth, refill: false);
@@ -375,7 +475,9 @@ namespace PrehistoricTribe
             z = transform.position.z,
             rotationY = transform.eulerAngles.y,
             health = health.Current,
-            holdPosition = holdPosition
+            holdPosition = holdPosition,
+            ageSeconds = ageSeconds,
+            partnerName = Partner != null ? Partner.NpcName : null
         };
 
         /// <summary>Khôi phục thông tin (vị trí do nơi gọi đặt lúc Instantiate).</summary>
@@ -384,6 +486,8 @@ namespace PrehistoricTribe
             npcName = saved.npcName;
             gender = saved.gender;
             age = saved.age;
+            ageSeconds = saved.ageSeconds;
+            pendingPartnerName = saved.partnerName; // NpcManager nối lại sau khi tạo đủ mọi người
             name = $"Npc_{npcName}";
             profession = savedProfession;
             ApplyProfession();

@@ -35,6 +35,9 @@ namespace PrehistoricTribe
 
         public NpcCapability capabilities;
 
+        [Tooltip("Việc TỰ làm khi rảnh (không có lệnh) quanh chỗ đang đứng. None = chỉ đi dạo")]
+        public NpcCapability autoWork;
+
         public bool Can(NpcCapability capability) => (capabilities & capability) == capability;
     }
 }

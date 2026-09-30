@@ -156,6 +156,10 @@ namespace PrehistoricTribe.EditorTools
             var npcManager = new GameObject("NpcManager").AddComponent<NpcManager>();
             SetPrivateField(npcManager, "npcPrefab", villagerPrefab);
             SetPrivateField(npcManager, "knownProfessions", professions);
+            SetPrivateField(npcManager, "birthCost", new List<ResourceAmount> { new ResourceAmount { type = food, amount = 5 } });
+            SetPrivateField(npcManager, "adultProfession", professions.Find(p => p.id == "villager"));
+            SetPrivateField(npcManager, "maleNames", new List<string> { "Bờm", "Tùng", "Sấm", "Lửa", "Núi", "Gió", "Cọ", "Hổ" });
+            SetPrivateField(npcManager, "femaleNames", new List<string> { "Hoa", "Sương", "Trăng", "Mưa", "Lá", "Nắng", "Mơ", "Sao" });
 
             CreateWolfDen();
 
@@ -411,6 +415,7 @@ namespace PrehistoricTribe.EditorTools
             CreateResourceLabel(canvasGO.transform, "WoodLabel", new Vector2(20f, -20f), wood, "Wood: 0", 28f);
             CreateResourceLabel(canvasGO.transform, "FoodLabel", new Vector2(20f, -55f), food, "Food: 0", 20f);
             CreateResourceLabel(canvasGO.transform, "KnowledgeLabel", new Vector2(20f, -85f), knowledge, "Knowledge: 0", 20f);
+            CreatePopulationLabel(canvasGO.transform, new Vector2(20f, -115f));
 
             CreateBuildMenuPanel(canvasGO.transform, buttonPrefab, hut, storage);
             CreateCropSelectionPanel(canvasGO.transform, buttonPrefab, berry);
@@ -533,6 +538,20 @@ namespace PrehistoricTribe.EditorTools
             var barUI = labelGO.AddComponent<ResourceBarUI>();
             SetPrivateField(barUI, "displayedResource", resource);
             SetPrivateField(barUI, "label", tmp);
+        }
+
+        private static void CreatePopulationLabel(Transform canvasTransform, Vector2 anchoredPosition)
+        {
+            var labelGO = new GameObject("PopulationLabel");
+            labelGO.transform.SetParent(canvasTransform, false);
+            var rect = labelGO.AddComponent<RectTransform>();
+            rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(0f, 1f);
+            rect.anchoredPosition = anchoredPosition;
+            rect.sizeDelta = new Vector2(400f, 30f);
+            var tmp = labelGO.AddComponent<TextMeshProUGUI>();
+            tmp.fontSize = 20f;
+            tmp.text = string.Empty;
+            SetPrivateField(labelGO.AddComponent<PopulationUI>(), "label", tmp);
         }
 
         private static void CreateNotificationLabel(Transform canvasTransform)

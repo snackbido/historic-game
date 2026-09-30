@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace PrehistoricTribe
@@ -49,6 +50,78 @@ namespace PrehistoricTribe
             }
         }
 
+        private const float GuardRadius = 10f;
+
+        /// <summary>
+        /// Việc tự tìm khi rảnh, theo <see cref="ProfessionData.autoWork"/>, trong bán kính quanh NPC.
+        /// Không tranh việc người khác đang làm. Trả về null nếu không có gì để làm.
+        /// </summary>
+        public static NpcJob FindAutoJob(NpcController npc, float radius)
+        {
+            ProfessionData profession = npc.Profession;
+            if (profession == null || profession.autoWork == NpcCapability.None) return null;
+            Vector3 position = npc.transform.position;
+
+            // Canh gác: sói đang đuổi/cắn ai đó gần đây thì lao vào.
+            if ((profession.autoWork & NpcCapability.Hunt) != 0)
+            {
+                foreach (var predator in PredatorAI.All)
+                {
+                    if (predator.State == PredatorState.Patrol || predator.Health.IsDead) continue;
+                    if (InteractableRegistry.GroundDistance(position, predator.transform.position) <= GuardRadius)
+                        return new AttackJob(predator, profession);
+                }
+            }
+
+            if ((profession.autoWork & NpcCapability.Farm) != 0)
+            {
+                bool hasSeed = FarmManager.Instance != null && FarmManager.Instance.SelectedCrop != null;
+                FarmPlot plot = Nearest(InteractableRegistry.All<FarmPlot>(), position, radius, p =>
+                    p.State == FarmPlotState.ReadyToHarvest || p.State == FarmPlotState.Withered ||
+                    (p.State == FarmPlotState.Empty && hasSeed));
+                if (plot != null) return new FarmJob(plot, continuous: false);
+            }
+
+            if ((profession.autoWork & NpcCapability.TendAnimals) != 0)
+            {
+                AnimalController animal = Nearest(InteractableRegistry.All<AnimalController>(), position, radius,
+                    a => a.State == AnimalState.Tamed && a.ProductReady);
+                if (animal != null) return new TendAnimalJob(animal);
+            }
+
+            if ((profession.autoWork & NpcCapability.Gather) != 0)
+            {
+                ResourceNode node = Nearest(InteractableRegistry.All<ResourceNode>(), position, radius, _ => true);
+                if (node != null) return new GatherJob(node);
+            }
+
+            return null;
+        }
+
+        private static T Nearest<T>(IEnumerable<T> candidates, Vector3 position, float radius, System.Func<T, bool> wanted)
+            where T : MonoBehaviour
+        {
+            T best = null;
+            float bestDistance = radius;
+            foreach (var candidate in candidates)
+            {
+                if (!wanted(candidate) || IsClaimed(candidate)) continue;
+                float distance = InteractableRegistry.GroundDistance(position, candidate.transform.position);
+                if (distance > bestDistance) continue;
+                best = candidate;
+                bestDistance = distance;
+            }
+            return best;
+        }
+
+        /// <summary>Đã có NPC khác nhận việc tại đối tượng này chưa.</summary>
+        private static bool IsClaimed(MonoBehaviour target)
+        {
+            foreach (var npc in NpcController.All)
+                if (npc.CurrentJob != null && npc.CurrentJob.Target == target) return true;
+            return false;
+        }
+
         /// <summary>Biết chiến đấu: có Fight (dân làng, trinh sát) hoặc Hunt (thợ săn).</summary>
         public static bool CanFight(ProfessionData profession) =>
             profession != null && (profession.Can(NpcCapability.Fight) || profession.Can(NpcCapability.Hunt));
@@ -97,12 +170,20 @@ namespace PrehistoricTribe
         }
     }
 
-    /// <summary>Làm ruộng liên tục: gieo hạt đang chọn → chờ lớn → thu hoạch → gieo lại; dọn cây héo.</summary>
+    /// <summary>
+    /// Làm ruộng: gieo hạt đang chọn → chờ lớn → thu hoạch → gieo lại; dọn cây héo.
+    /// Lệnh của người chơi làm liên tục; tự làm khi rảnh (continuous = false) chỉ làm 1 thao tác rồi thôi.
+    /// </summary>
     public class FarmJob : NpcJob
     {
         private readonly FarmPlot plot;
+        private readonly bool continuous;
 
-        public FarmJob(FarmPlot plot) => this.plot = plot;
+        public FarmJob(FarmPlot plot, bool continuous = true)
+        {
+            this.plot = plot;
+            this.continuous = continuous;
+        }
 
         public override MonoBehaviour Target => plot;
         public override string Description => "làm ruộng";
@@ -114,20 +195,20 @@ namespace PrehistoricTribe
             switch (plot.State)
             {
                 case FarmPlotState.Growing:
-                    return true; // đứng chờ cây lớn
+                    return continuous; // lệnh: đứng chờ cây lớn; tự làm: đi tìm việc khác
 
                 case FarmPlotState.ReadyToHarvest:
                     FarmManager.Instance.TryInteract(plot);
                     EventBus.RaiseNotification($"{npc.NpcName} thu hoạch ruộng");
-                    return true;
+                    return continuous;
 
                 case FarmPlotState.Withered:
                     plot.ClearWithered();
-                    return true;
+                    return continuous;
 
                 default: // Empty
-                    if (FarmManager.Instance.TryInteract(plot)) return true;
-                    EventBus.RaiseNotification($"{npc.NpcName}: chưa chọn hạt giống để gieo");
+                    if (FarmManager.Instance.TryInteract(plot)) return continuous;
+                    if (continuous) EventBus.RaiseNotification($"{npc.NpcName}: chưa chọn hạt giống để gieo");
                     return false;
             }
         }

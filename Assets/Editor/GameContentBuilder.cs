@@ -79,8 +79,8 @@ namespace PrehistoricTribe.EditorTools
                 return;
             }
 
-            AssignBuildingPrefab(HutDataPath, SavePrefab(BuildHut(), HutPrefabPath));
-            AssignBuildingPrefab(StorageDataPath, SavePrefab(BuildStorage(), StoragePrefabPath));
+            AssignBuildingPrefab(HutDataPath, SavePrefab(BuildHut(), HutPrefabPath), housing: 2);
+            AssignBuildingPrefab(StorageDataPath, SavePrefab(BuildStorage(), StoragePrefabPath), housing: 0);
             SavePrefab(BuildTree(wood), TreePrefabPath);
             BuildWildBoarContent(food);
             BuildCropModels();
@@ -93,7 +93,7 @@ namespace PrehistoricTribe.EditorTools
             Debug.Log("[GameContentBuilder] Da tao xong prefab 3D: Hut, Storage, Tree, WildBoar, Villager, 4 nghe va model giai doan cho CropData_Berry");
         }
 
-        private static void AssignBuildingPrefab(string dataAssetPath, GameObject prefab)
+        private static void AssignBuildingPrefab(string dataAssetPath, GameObject prefab, int housing)
         {
             var data = AssetDatabase.LoadAssetAtPath<BuildingData>(dataAssetPath);
             if (data == null)
@@ -102,6 +102,7 @@ namespace PrehistoricTribe.EditorTools
                 return;
             }
             data.prefab = prefab;
+            data.housing = housing;
             EditorUtility.SetDirty(data);
         }
 
@@ -285,20 +286,22 @@ namespace PrehistoricTribe.EditorTools
         }
 
         // ─── Professions + villager ──────────────────────────────────────────
+        // autoWork = việc tự làm khi rảnh (M5.6): dân làng chặt cây, nông dân làm ruộng + chăm thú,
+        // thợ săn canh gác (đánh sói đang tấn công gần đó), trinh sát chỉ đi dạo.
         private static ProfessionData[] BuildProfessions() => new[]
         {
             SaveProfession("villager", "Dân làng", 0x8a5a2b, speed: 3f, health: 100f, damage: 5f, range: 1.2f, vision: 8f,
-                NpcCapability.Gather | NpcCapability.Build | NpcCapability.Fight),
+                NpcCapability.Gather | NpcCapability.Build | NpcCapability.Fight, NpcCapability.Gather),
             SaveProfession("farmer", "Nông dân", 0x7a9a3a, speed: 2.6f, health: 90f, damage: 3f, range: 1.2f, vision: 7f,
-                NpcCapability.Farm | NpcCapability.TendAnimals | NpcCapability.Gather),
+                NpcCapability.Farm | NpcCapability.TendAnimals | NpcCapability.Gather, NpcCapability.Farm | NpcCapability.TendAnimals),
             SaveProfession("hunter", "Thợ săn", 0x5a4030, speed: 3.2f, health: 110f, damage: 14f, range: 5f, vision: 10f,
-                NpcCapability.Hunt | NpcCapability.Fight | NpcCapability.Gather),
+                NpcCapability.Hunt | NpcCapability.Fight | NpcCapability.Gather, NpcCapability.Hunt),
             SaveProfession("scout", "Trinh sát", 0x4a7fa8, speed: 4.2f, health: 70f, damage: 6f, range: 1.2f, vision: 16f,
-                NpcCapability.Scout | NpcCapability.Fight),
+                NpcCapability.Scout | NpcCapability.Fight, NpcCapability.None),
         };
 
         private static ProfessionData SaveProfession(string id, string displayName, int color, float speed, float health,
-            float damage, float range, float vision, NpcCapability capabilities)
+            float damage, float range, float vision, NpcCapability capabilities, NpcCapability autoWork)
         {
             string path = ProfessionAssetPath(id);
             var data = AssetDatabase.LoadAssetAtPath<ProfessionData>(path);
@@ -314,6 +317,7 @@ namespace PrehistoricTribe.EditorTools
             data.attackRange = range;
             data.visionRange = vision;
             data.capabilities = capabilities;
+            data.autoWork = autoWork;
 
             if (isNew) AssetDatabase.CreateAsset(data, path);
             else EditorUtility.SetDirty(data);

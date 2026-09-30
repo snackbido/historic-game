@@ -17,6 +17,9 @@ namespace PrehistoricTribe.Tests
         public IEnumerator BaseSetUp()
         {
             originalTimeScale = Time.timeScale;
+            // Mặc định tắt hành vi tự phát (tự làm việc, sinh con) để test cũ dễ đoán; test M5.6 tự bật lại.
+            NpcController.AutoWorkEnabled = false;
+            NpcManager.BirthsEnabled = false;
 #if UNITY_EDITOR
             yield return EditorSceneManager.LoadSceneInPlayMode(ScenePath, new LoadSceneParameters(LoadSceneMode.Single));
 #endif
@@ -28,6 +31,8 @@ namespace PrehistoricTribe.Tests
         public IEnumerator BaseTearDown()
         {
             Time.timeScale = originalTimeScale;
+            NpcController.AutoWorkEnabled = true;
+            NpcManager.BirthsEnabled = true;
             yield return null;
         }
     }

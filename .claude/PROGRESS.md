@@ -89,7 +89,8 @@
 - [x] M5.2 Chọn + ra lệnh di chuyển (2026-09-30): `Npc/SelectionManager.cs` — kéo khung/click chọn (Shift thêm/bỏ), chuột phải đi tới (dàn lưới, không chồng nhau), Ctrl+1..9 lưu nhóm / 1..9 gọi nhóm, vòng chọn dưới chân; NPC đã nhận lệnh đứng giữ vị trí (lưu trong save)
 - [x] M5.3 Ra lệnh theo nghề (2026-09-30): chuột phải lên cây → chặt (dân làng/nông dân/thợ săn); ô đất → làm ruộng liên tục (nông dân); thú hoang → săn (thợ săn) hoặc thuần hóa (nông dân); thú thuần → chăm (nông dân); ai không làm được thì đi theo
 - [x] M5.4 UI nhóm/nghề + đổi nghề (2026-09-30): bảng "Đang chọn" (tên + giới tính, ô theo nghề bấm để lọc, nút đổi nghề cho cả nhóm), thanh máu trên đầu NPC/thú
-- [ ] Dân số: giới tính, cặp đôi, sinh con, lớn lên theo thời gian, sức chứa theo số lều
+- [x] M5.6 Dân số (2026-09-30): cặp đôi nam–nữ cố định, sinh con khi còn chỗ ở (4 ban đầu + 2/lều) và có 5 thức ăn, em bé (60s) → trẻ em (90s) → người lớn thành Dân làng; nhãn "Dân số: x/y"
+- [x] M5.6 Tự làm việc khi rảnh (2026-09-30): theo `ProfessionData.autoWork` — dân làng chặt cây, nông dân làm ruộng/chăm thú, thợ săn canh gác, trinh sát đi dạo
 
 ## Milestone 6 — Thiên tai
 - [ ] DisasterManager: hệ thống sự kiện ngẫu nhiên
@@ -221,6 +222,13 @@
 - **Đã xác nhận**: **41/41 test PlayMode pass** (9 test mới `Milestone5CombatTests.cs`); ảnh render xác nhận model sói + hang.
 - **Sự cố bộ nhớ lặp lại** (2 crash trong phần này): Unity ~4,6GB + Edge ~4,1GB + VS Code ~1,8GB trên máy 8GB, pagefile vẫn trên ổ C → chỉ chạy test ổn khi đóng Edge. Vẫn khuyến nghị chuyển pagefile sang ổ D.
 - **Chưa xác nhận bằng tay**: cảm giác chiến đấu (phím F/R, sói đuổi), cân bằng số liệu.
+
+## Nhật ký phiên làm việc 2026-09-30 (phần 9 — M5.6 tự làm việc + dân số) — **Milestone 5 hoàn tất**
+- **Tự làm việc khi rảnh**: `ProfessionData.autoWork` (cờ `NpcCapability`, data-driven): dân làng = Gather, nông dân = Farm + TendAnimals, thợ săn = Hunt (canh gác: sói đang đuổi/cắn ai trong 10m thì lao vào), trinh sát = None. `NpcJobFactory.FindAutoJob` tìm việc trong 6m quanh NPC, 2s/lần, chỉ khi người lớn, không bị chọn, không giữ vị trí; không tranh việc NPC khác đang làm. `FarmJob(continuous: false)` khi tự làm: 1 thao tác (gieo/thu/dọn) rồi tìm việc khác → nông dân chia đều nhiều ô. Việc tự làm/tự vệ xong thì đi dạo tiếp (không giữ vị trí như lệnh người chơi).
+- **Dân số** (`NpcManager`): ghép cặp nam–nữ người lớn chưa có cặp (Ka–Mây, Đá–Suối), cặp cố định (một người chết thì người kia ghép cặp mới). 20s/lần: nếu dân số < sức chứa (4 + `BuildingData.housing` của mọi công trình — lều = 2) và đủ 5 thức ăn → một cặp (nghỉ 90s giữa hai lần) sinh em bé, tên lấy từ danh sách không trùng. Em bé 60s → trẻ em 90s → người lớn = Dân làng (thông báo "đã trưởng thành — có thể giao nghề"). Trẻ con nhỏ hơn, chậm hơn, không cầm dụng cụ, không chọn/ra lệnh được, không tự làm việc. Lưu/tải: tuổi, thời gian lớn, cặp đôi (nối lại theo tên). `BuildingInstance.All` để đếm công trình. Mới `UI/PopulationUI.cs` ("Dân số: 5/6 (1 trẻ em)").
+- Test: `PlayModeTestBase` tắt `NpcController.AutoWorkEnabled` + `NpcManager.BirthsEnabled` mặc định (test cũ không bị NPC tự làm việc chen ngang), test M5.6 tự bật lại.
+- **Đã xác nhận**: **49/49 test PlayMode pass** (8 test mới `Milestone5PopulationTests.cs`: dân làng tự chặt cây không giữ vị trí; nông dân tự gieo + thu hoạch; người đang được chọn không bị kéo đi làm; thợ săn canh gác lao vào sói đang tấn công; ghép cặp nam–nữ; sinh con cần chỗ ở + thức ăn, mỗi lều +2, hết chỗ thì dừng; em bé lớn thành dân làng chọn được; lưu/tải giữ em bé + cặp đôi).
+- **Chưa xác nhận bằng tay**: nhịp độ (có thể dân làng chặt hết 8 cây khá nhanh vì tự làm việc — cần user chơi thử để cân bằng), hiển thị trẻ con.
 
 ## Vấn đề đang tồn đọng (Known issues / Open questions)
 - [x] Chế độ combat: lai (2026-09-26) + chi tiết chỉ huy NPC theo nghề (2026-09-30)

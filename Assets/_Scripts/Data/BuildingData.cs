@@ -14,5 +14,8 @@ namespace PrehistoricTribe
 
         [Tooltip("Mở khóa sẵn ngay từ đầu game, không cần tech")]
         public bool unlockedByDefault;
+
+        [Tooltip("Số chỗ ở công trình này thêm vào sức chứa dân số (lều = 2)")]
+        public int housing;
     }
 }
