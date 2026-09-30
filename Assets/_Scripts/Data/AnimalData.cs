@@ -30,5 +30,8 @@ namespace PrehistoricTribe
 
         [Tooltip("Thời gian (giây) giữa các lần sản phẩm sẵn sàng để thu")]
         public float productionInterval = 30f;
+
+        [Tooltip("Tài nguyên nhận được khi săn hạ con thú này")]
+        public List<ResourceAmount> huntYield = new List<ResourceAmount>();
     }
 }

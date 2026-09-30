@@ -22,6 +22,8 @@ namespace PrehistoricTribe
         [SerializeField] private float clickPickRadius = 40f;
         [Tooltip("Khoảng cách giữa các NPC khi cả nhóm đi tới một điểm")]
         [SerializeField] private float formationSpacing = 0.9f;
+        [Tooltip("Chuột phải cách một đối tượng (cây, ô đất, thú) trong bán kính này (mét) thì giao việc tại đối tượng đó")]
+        [SerializeField] private float targetPickRadius = 0.8f;
         [SerializeField] private Color boxFill = new Color(0.95f, 0.8f, 0.4f, 0.15f);
         [SerializeField] private Color boxBorder = new Color(0.95f, 0.8f, 0.4f, 0.9f);
 
@@ -92,7 +94,7 @@ namespace PrehistoricTribe
         {
             if (selected.Count == 0 || !Input.GetMouseButtonDown(1) || IsPointerOverUI()) return;
             if (TryGetGroundPoint(Input.mousePosition, out Vector3 point))
-                IssueMoveCommand(point);
+                IssueCommandAt(point);
         }
 
         private void HandleGroupHotkeys()
@@ -138,6 +140,57 @@ namespace PrehistoricTribe
         {
             ClearInternal();
             NotifyChanged();
+        }
+
+        /// <summary>Thay toàn bộ lựa chọn (vd lọc theo nghề trên UI).</summary>
+        public void SetSelection(IEnumerable<NpcController> npcs)
+        {
+            ClearInternal();
+            foreach (var npc in npcs)
+                if (npc != null && npc.IsAdult) AddInternal(npc);
+            NotifyChanged();
+        }
+
+        /// <summary>
+        /// Lệnh chuột phải: trúng cây/ô đất/thú thì mỗi người nhận việc hợp với nghề, ai không làm được
+        /// thì đi theo tới đó; trúng chỗ trống thì cả nhóm đi tới.
+        /// </summary>
+        public void IssueCommandAt(Vector3 groundPoint)
+        {
+            if (selected.Count == 0) return;
+
+            MonoBehaviour target = InteractableRegistry.FindNearest(groundPoint, targetPickRadius);
+            if (target == null)
+            {
+                IssueMoveCommand(groundPoint);
+                return;
+            }
+
+            var working = new Dictionary<string, int>();
+            var followers = new List<NpcController>();
+            foreach (var npc in selected)
+            {
+                NpcJob job = NpcJobFactory.Create(npc, target);
+                if (job == null)
+                {
+                    followers.Add(npc);
+                    continue;
+                }
+                npc.AssignJob(job);
+                working.TryGetValue(job.Description, out int count);
+                working[job.Description] = count + 1;
+            }
+
+            // Người không làm được việc này thì đi theo, đứng quanh đối tượng.
+            List<Vector3> offsets = FormationOffsets(followers.Count, formationSpacing);
+            Vector3 followPoint = target.transform.position + Vector3.back * 1.2f;
+            for (int i = 0; i < followers.Count; i++)
+                followers[i].MoveTo(followPoint + offsets[i]);
+
+            var parts = new List<string>();
+            foreach (var entry in working) parts.Add($"{entry.Value} người đi {entry.Key}");
+            if (followers.Count > 0) parts.Add($"{followers.Count} người đi theo");
+            EventBus.RaiseNotification(string.Join(" · ", parts));
         }
 
         /// <summary>Cả nhóm đi tới điểm đích, dàn thành lưới quanh điểm đó để không đứng chồng lên nhau.</summary>

@@ -21,7 +21,8 @@ namespace PrehistoricTribe
     {
         Idle,
         Wandering,
-        Moving
+        Moving,
+        Working
     }
 
     [System.Serializable]
@@ -83,6 +84,11 @@ namespace PrehistoricTribe
         // Đã nhận lệnh từ người chơi → đứng giữ vị trí đó thay vì đi dạo (kiểu RTS).
         private bool holdPosition;
 
+        private NpcJob job;
+        private float workTimer;
+        private float repathTimer;
+        private const float RepathInterval = 0.5f;
+
         public string NpcName => npcName;
         public Gender Gender => gender;
         public AgeStage Age => age;
@@ -93,6 +99,7 @@ namespace PrehistoricTribe
         public bool IsSelected { get; private set; }
         public bool IsHoldingPosition => holdPosition;
         public Vector3 Destination => agent.destination;
+        public NpcJob CurrentJob => job;
 
         private void Awake()
         {
@@ -127,7 +134,69 @@ namespace PrehistoricTribe
                 case NpcState.Moving:
                     if (HasArrived()) BecomeIdle();
                     break;
+
+                case NpcState.Working:
+                    UpdateWork();
+                    break;
             }
+        }
+
+        /// <summary>Giao việc (lệnh của người chơi). Xong việc thì đứng giữ vị trí tại đó.</summary>
+        public void AssignJob(NpcJob newJob)
+        {
+            if (newJob == null || !newJob.IsValid) return;
+
+            job = newJob;
+            holdPosition = true;
+            workTimer = 0f;
+            repathTimer = 0f;
+            State = NpcState.Working;
+        }
+
+        private void UpdateWork()
+        {
+            if (job == null || !job.IsValid)
+            {
+                EndJob();
+                return;
+            }
+
+            Vector3 targetPosition = job.Target.transform.position;
+            if (InteractableRegistry.GroundDistance(transform.position, targetPosition) > job.WorkRange)
+            {
+                // Mục tiêu có thể di chuyển (thú) → cập nhật đường đi định kỳ.
+                repathTimer -= Time.deltaTime;
+                if (repathTimer <= 0f)
+                {
+                    agent.SetDestination(targetPosition);
+                    repathTimer = RepathInterval;
+                }
+                return;
+            }
+
+            if (agent.hasPath) agent.ResetPath();
+            FaceTowards(targetPosition);
+
+            workTimer -= Time.deltaTime;
+            if (workTimer > 0f) return;
+
+            workTimer = job.Interval;
+            if (!job.DoWork(this)) EndJob();
+        }
+
+        private void EndJob()
+        {
+            job = null;
+            home = transform.position;
+            BecomeIdle();
+        }
+
+        private void FaceTowards(Vector3 target)
+        {
+            Vector3 direction = target - transform.position;
+            direction.y = 0f;
+            if (direction.sqrMagnitude < 0.0001f) return;
+            transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(direction), 10f * Time.deltaTime);
         }
 
         /// <summary>Lệnh di chuyển của người chơi: đi tới đó rồi đứng giữ vị trí.</summary>
@@ -136,6 +205,7 @@ namespace PrehistoricTribe
             if (!agent.isOnNavMesh || !NavMesh.SamplePosition(destination, out NavMeshHit hit, 2f, NavMesh.AllAreas))
                 return false;
 
+            job = null; // lệnh mới thay thế việc đang làm
             agent.SetDestination(hit.position);
             home = hit.position;
             holdPosition = true;

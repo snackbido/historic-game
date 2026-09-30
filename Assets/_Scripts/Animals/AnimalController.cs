@@ -64,6 +64,20 @@ namespace PrehistoricTribe
                 wildColors[i] = bodyRenderers[i].material.color;
 
             UpdateVisual();
+
+            var health = GetComponent<HealthComponent>();
+            if (health != null) health.OnDied += HandleDied;
+        }
+
+        /// <summary>Bị săn hạ: rơi tài nguyên (thịt/da…) rồi biến mất.</summary>
+        private void HandleDied(HealthComponent _)
+        {
+            if (data != null)
+                foreach (var drop in data.huntYield)
+                    ResourceManager.Instance.AddResource(drop.type, drop.amount);
+
+            gameObject.SetActive(false); // gỡ khỏi registry ngay
+            Destroy(gameObject);
         }
 
         private bool IsIndicator(Transform t) =>

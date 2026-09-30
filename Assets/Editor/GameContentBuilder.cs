@@ -196,6 +196,7 @@ namespace PrehistoricTribe.EditorTools
         {
             var root = new GameObject("WildBoar");
             var controller = root.AddComponent<AnimalController>();
+            SetPrivateField(root.AddComponent<HealthComponent>(), "maxHealth", 60f); // thợ săn (14 dmg) hạ trong 5 phát
             var t = root.transform;
 
             var body = Part(t, "Body", PrimitiveType.Sphere, new Vector3(0f, 0.38f, 0f), new Vector3(0.51f, 0.47f, 0.78f), Palette.Boar);
@@ -240,6 +241,7 @@ namespace PrehistoricTribe.EditorTools
             data.reproductionInterval = 45f;
             data.products = new List<ResourceAmount> { new ResourceAmount { type = food, amount = 2 } };
             data.productionInterval = 15f;
+            data.huntYield = new List<ResourceAmount> { new ResourceAmount { type = food, amount = 6 } };
 
             if (isNew)
                 AssetDatabase.CreateAsset(data, BoarDataPath);

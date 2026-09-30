@@ -87,7 +87,8 @@
   - Người mới trưởng thành là "Dân làng", người chơi **đổi nghề qua UI**
   - Khi không có lệnh, NPC **tự làm việc theo nghề** ở gần (vd nông dân tự thu hoạch ô đã chín)
 - [x] M5.2 Chọn + ra lệnh di chuyển (2026-09-30): `Npc/SelectionManager.cs` — kéo khung/click chọn (Shift thêm/bỏ), chuột phải đi tới (dàn lưới, không chồng nhau), Ctrl+1..9 lưu nhóm / 1..9 gọi nhóm, vòng chọn dưới chân; NPC đã nhận lệnh đứng giữ vị trí (lưu trong save)
-- [ ] Cơ chế chỉ huy nhóm: ra lệnh theo nghề (M5.3) + UI nhóm/nghề (M5.4)
+- [x] M5.3 Ra lệnh theo nghề (2026-09-30): chuột phải lên cây → chặt (dân làng/nông dân/thợ săn); ô đất → làm ruộng liên tục (nông dân); thú hoang → săn (thợ săn) hoặc thuần hóa (nông dân); thú thuần → chăm (nông dân); ai không làm được thì đi theo
+- [ ] Cơ chế chỉ huy nhóm: UI nhóm/nghề + đổi nghề (M5.4)
 - [ ] Dân số: giới tính, cặp đôi, sinh con, lớn lên theo thời gian, sức chứa theo số lều
 
 ## Milestone 6 — Thiên tai
@@ -188,6 +189,14 @@
 - `NpcController`: `SetSelected` (vòng xanh `SelectionRing` trong prefab), `holdPosition` — sau lệnh của người chơi thì đứng giữ vị trí, không đi dạo (lưu trong `NpcSaveData`). Mới `EventBus.OnSelectionChanged` (chuẩn bị cho UI nhóm/nghề M5.4).
 - **Đã xác nhận**: **21/21 test PlayMode pass** (5 test mới `Milestone5SelectionTests.cs`: kéo khung chọn đủ người lớn + hiện vòng; click/Shift-click/click trống; lệnh đi tới dàn đội hình không chồng nhau rồi giữ vị trí; lưu/gọi nhóm + NPC bị xóa rời nhóm; đội hình cân giữa); ảnh render Play mode xác nhận vòng chọn; Console sạch. Toàn bộ chạy trong Editor đang mở qua Unity MCP (`TestResultReporter`).
 - **Chưa xác nhận**: kéo khung/click bằng chuột thật (cảm giác, khung vẽ `OnGUI`), phím Ctrl+số khi Game view có focus.
+
+## Nhật ký phiên làm việc 2026-09-30 (phần 5 — M5.3 việc theo nghề)
+- Mới `Npc/NpcJobs.cs`: lớp trừu tượng `NpcJob` (Target, WorkRange, Interval, `DoWork` trả false khi xong) + `NpcJobFactory.Create(npc, target)` chọn việc theo `NpcCapability` của nghề (null = đi theo). 4 việc: `GatherJob` (1 gỗ / 1,5s tới khi cây hết), `FarmJob` (vòng lặp gieo hạt đang chọn → chờ → thu hoạch → gieo lại, dọn cây héo; chưa chọn hạt thì báo và dừng), `HuntJob` (đánh trong tầm `attackRange` của nghề — thợ săn 5m, 14 sát thương), `TendAnimalJob` (qua `TamingSystem`: thú hoang cho ăn tới khi thuần, thú thuần làm 1 lần).
+- `NpcController`: trạng thái `Working` — đi tới mục tiêu (cập nhật đường 0,5s/lần vì thú có thể di chuyển), vào tầm thì quay mặt về mục tiêu và làm theo nhịp; xong việc đứng giữ vị trí; `MoveTo` hủy việc đang làm. Việc đang làm **chưa được lưu** trong save (tải lại thì NPC đứng yên).
+- `SelectionManager.IssueCommandAt`: chuột phải trúng đối tượng trong 0,8m → giao việc từng người, người không làm được đi theo đứng quanh đối tượng; thông báo tóm tắt ("3 người đi chặt cây · 1 người đi theo"). Mới `SetSelection()` (dùng cho lọc theo nghề ở M5.4).
+- Săn bắt: `AnimalData.huntYield` (heo rừng: +6 thức ăn), heo có `HealthComponent` 60 máu; `AnimalController` chết thì rơi tài nguyên rồi biến mất. Máu thú chưa lưu trong save.
+- **Đã xác nhận**: **27/27 test PlayMode pass** (6 test mới `Milestone5JobTests.cs`: nhóm lẫn nghề chặt cây/trinh sát đi theo + đủ 10 gỗ; nông dân gieo → thu hoạch → gieo lại; không chọn hạt thì dừng; thợ săn hạ heo +6 thức ăn; nông dân thuần hóa heo hoang; lệnh di chuyển hủy việc). Chạy thử trong Play mode qua MCP xác nhận phân việc đúng (Ka/Mây/Đá chặt cây, Suối đi theo).
+- **Chưa xác nhận bằng mắt**: NPC đi tới và làm việc — Editor không focus thì gần như không chạy frame (đã ghi 2026-09-26), nên ảnh chụp không thấy NPC di chuyển; cần user chơi thử.
 
 ## Vấn đề đang tồn đọng (Known issues / Open questions)
 - [x] Chế độ combat: lai (2026-09-26) + chi tiết chỉ huy NPC theo nghề (2026-09-30)
