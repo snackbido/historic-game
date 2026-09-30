@@ -28,6 +28,8 @@ namespace PrehistoricTribe
         [SerializeField] private Color boxBorder = new Color(0.95f, 0.8f, 0.4f, 0.9f);
 
         private readonly List<NpcController> selected = new List<NpcController>();
+        private BuildingInstance selectedBuilding;
+        private bool hadBuilding;
         private readonly Dictionary<int, List<NpcController>> groups = new Dictionary<int, List<NpcController>>();
 
         private bool pressStartedOnWorld;
@@ -35,6 +37,8 @@ namespace PrehistoricTribe
         private Vector2 dragStart;
 
         public IReadOnlyList<NpcController> Selected => selected;
+        /// <summary>Công trình đang được chọn (click vào lều/kho) — chọn NPC thì bỏ chọn công trình và ngược lại.</summary>
+        public BuildingInstance SelectedBuilding => selectedBuilding;
 
         private void Awake()
         {
@@ -126,6 +130,18 @@ namespace PrehistoricTribe
         public void SelectAt(Vector2 screenPosition, bool additive)
         {
             NpcController npc = FindNpcAt(screenPosition);
+
+            // Không trúng người nào → thử công trình dưới con trỏ (lều, kho…).
+            if (npc == null && !additive)
+            {
+                BuildingInstance building = FindBuildingAt(screenPosition);
+                if (building != null)
+                {
+                    SelectBuilding(building);
+                    return;
+                }
+            }
+
             if (!additive) ClearInternal();
 
             if (npc != null)
@@ -134,12 +150,40 @@ namespace PrehistoricTribe
                 else AddInternal(npc);
             }
             NotifyChanged();
+            if (npc == null && !additive) SelectBuilding(null); // click chỗ trống → bỏ chọn cả công trình
         }
 
         public void ClearSelection()
         {
             ClearInternal();
             NotifyChanged();
+            SelectBuilding(null);
+        }
+
+        /// <summary>Chọn một công trình (null = bỏ chọn). Bỏ chọn mọi NPC đang chọn.</summary>
+        public void SelectBuilding(BuildingInstance building)
+        {
+            if (building != null && selected.Count > 0)
+            {
+                ClearInternal();
+                NotifyChanged();
+            }
+            if (building == selectedBuilding && hadBuilding == (building != null)) return;
+
+            if (selectedBuilding != null) selectedBuilding.SetSelected(false);
+            selectedBuilding = building;
+            hadBuilding = building != null;
+            if (building != null) building.SetSelected(true);
+            EventBus.RaiseBuildingSelected(building);
+        }
+
+        private static BuildingInstance FindBuildingAt(Vector2 screenPosition)
+        {
+            Camera cam = Camera.main;
+            if (cam == null) return null;
+            // Công trình có BoxCollider (dùng để chặn người chơi) → raycast vật lý trúng thẳng vào nó.
+            if (!Physics.Raycast(cam.ScreenPointToRay(screenPosition), out RaycastHit hit, 200f)) return null;
+            return hit.collider.GetComponentInParent<BuildingInstance>();
         }
 
         /// <summary>Thay toàn bộ lựa chọn (vd lọc theo nghề trên UI).</summary>
@@ -350,9 +394,21 @@ namespace PrehistoricTribe
         {
             if (selected.RemoveAll(n => n == null || !n.isActiveAndEnabled) > 0)
                 NotifyChanged();
+
+            // Công trình đang chọn bị xóa (vd tải game) → bỏ chọn.
+            if (hadBuilding && (selectedBuilding == null || !selectedBuilding.isActiveAndEnabled))
+            {
+                selectedBuilding = null;
+                hadBuilding = false;
+                EventBus.RaiseBuildingSelected(null);
+            }
         }
 
-        private void NotifyChanged() => EventBus.RaiseSelectionChanged(selected);
+        private void NotifyChanged()
+        {
+            EventBus.RaiseSelectionChanged(selected);
+            if (selected.Count > 0 && hadBuilding) SelectBuilding(null); // chọn người thì bỏ chọn công trình
+        }
 
         // ─── Khung kéo chọn ──────────────────────────────────────────────────
         private void OnGUI()

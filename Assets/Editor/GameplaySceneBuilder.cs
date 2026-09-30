@@ -176,6 +176,8 @@ namespace PrehistoricTribe.EditorTools
             SetPrivateField(gameManager, "buildingPlacer", placer);
             gameManagerGO.AddComponent<SaveLoadHotkeys>();
 
+            // Nạp lại: tạo asset NavMesh phía trên làm tham chiếu prefab (component) đã nạp trước đó mất hiệu lực.
+            buttonPrefab = AssetDatabase.LoadAssetAtPath<Button>(ButtonPrefabPath);
             CreateUI(buttonPrefab, wood, food, knowledge, hut, storage, berry, techFarming, player.GetComponent<PlayerInteraction>());
 
             EditorSceneManager.SaveScene(scene, ScenePath);
@@ -423,6 +425,49 @@ namespace PrehistoricTribe.EditorTools
             CreateNotificationLabel(canvasGO.transform);
             CreateInteractionPrompt(canvasGO.transform, interaction);
             CreateSelectionPanel(canvasGO.transform, buttonPrefab);
+            CreateBuildingInfoPanel(canvasGO.transform, buttonPrefab);
+        }
+
+        /// <summary>Bảng thông tin công trình (cùng chỗ với bảng "Đang chọn" — hai bảng không bao giờ hiện cùng lúc).</summary>
+        private static void CreateBuildingInfoPanel(Transform canvasTransform, Button buttonPrefab)
+        {
+            var rootGO = new GameObject("BuildingInfoPanel");
+            rootGO.transform.SetParent(canvasTransform, false);
+            var rootRect = rootGO.AddComponent<RectTransform>();
+            rootRect.anchorMin = rootRect.anchorMax = rootRect.pivot = Vector2.zero;
+            rootRect.anchoredPosition = new Vector2(20f, 90f);
+            rootRect.sizeDelta = new Vector2(620f, 0f);
+
+            var content = new GameObject("Content");
+            content.transform.SetParent(rootGO.transform, false);
+            var contentRect = content.AddComponent<RectTransform>();
+            contentRect.anchorMin = contentRect.anchorMax = contentRect.pivot = Vector2.zero;
+            contentRect.sizeDelta = new Vector2(620f, 0f);
+            content.AddComponent<Image>().color = new Color(0.12f, 0.09f, 0.06f, 0.82f);
+            var layout = content.AddComponent<VerticalLayoutGroup>();
+            layout.padding = new RectOffset(12, 12, 10, 10);
+            layout.spacing = 6f;
+            layout.childControlWidth = true;
+            layout.childControlHeight = true;
+            layout.childForceExpandWidth = true;
+            layout.childForceExpandHeight = false;
+            content.AddComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+
+            TMP_Text title = CreateLayoutLabel(content.transform, "Title", 22f, FontStyles.Bold);
+            TMP_Text function = CreateLayoutLabel(content.transform, "Function", 18f, FontStyles.Normal);
+            TMP_Text next = CreateLayoutLabel(content.transform, "NextLevel", 16f, FontStyles.Italic);
+            next.GetComponent<LayoutElement>().preferredHeight = 44f; // có thể 2 dòng (kèm lý do chưa nâng được)
+            Transform row = CreateButtonRow(content.transform, "Actions");
+            Button upgrade = Object.Instantiate(buttonPrefab, row);
+            upgrade.name = "UpgradeButton";
+            content.SetActive(false);
+
+            var panel = rootGO.AddComponent<BuildingInfoPanelUI>();
+            SetPrivateField(panel, "panelRoot", content);
+            SetPrivateField(panel, "titleLabel", title);
+            SetPrivateField(panel, "functionLabel", function);
+            SetPrivateField(panel, "nextLevelLabel", next);
+            SetPrivateField(panel, "upgradeButton", upgrade);
         }
 
         /// <summary>Bảng "Đang chọn" góc dưới trái (trên dòng gợi ý tương tác): tên, ô theo nghề, nút đổi nghề.</summary>

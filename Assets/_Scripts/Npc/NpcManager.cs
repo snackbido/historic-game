@@ -41,14 +41,13 @@ namespace PrehistoricTribe
         public float ChildDuration => childDuration;
         public int Population => NpcController.All.Count;
 
-        /// <summary>Sức chứa = chỗ ở ban đầu + chỗ ở của mọi công trình (mỗi lều +2).</summary>
+        /// <summary>Sức chứa = chỗ ở ban đầu + chỗ ở của mọi công trình theo cấp (lều cấp 1 = +2 … cấp 5 = +6).</summary>
         public int Capacity
         {
             get
             {
                 int capacity = baseHousing;
-                foreach (var building in BuildingInstance.All)
-                    if (building.Data != null) capacity += building.Data.housing;
+                foreach (var building in BuildingInstance.All) capacity += building.Housing;
                 return capacity;
             }
         }

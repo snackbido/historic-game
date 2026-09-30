@@ -47,6 +47,7 @@ namespace PrehistoricTribe.EditorTools
         private const string StorageDataPath = "Assets/_Data/BuildingData_Storage.asset";
         private const string WoodAssetPath = "Assets/_Data/ResourceType_Wood.asset";
         private const string FoodAssetPath = "Assets/_Data/ResourceType_Food.asset";
+        private const string KnowledgeAssetPath = "Assets/_Data/ResourceType_Knowledge.asset";
         private const string BoarDataPath = "Assets/_Data/AnimalData_WildBoar.asset";
         private const string BerryDataPath = "Assets/_Data/CropData_Berry.asset";
 
@@ -73,14 +74,17 @@ namespace PrehistoricTribe.EditorTools
 
             var wood = AssetDatabase.LoadAssetAtPath<ResourceTypeData>(WoodAssetPath);
             var food = AssetDatabase.LoadAssetAtPath<ResourceTypeData>(FoodAssetPath);
-            if (wood == null || food == null)
+            var knowledge = AssetDatabase.LoadAssetAtPath<ResourceTypeData>(KnowledgeAssetPath);
+            if (wood == null || food == null || knowledge == null)
             {
-                Debug.LogError($"[GameContentBuilder] Khong tim thay {WoodAssetPath} hoac {FoodAssetPath}. Dung lai.");
+                Debug.LogError($"[GameContentBuilder] Khong tim thay asset tai nguyen (go/thuc an/tri thuc). Dung lai.");
                 return;
             }
 
-            AssignBuildingPrefab(HutDataPath, SavePrefab(BuildHut(), HutPrefabPath), housing: 2);
-            AssignBuildingPrefab(StorageDataPath, SavePrefab(BuildStorage(), StoragePrefabPath), housing: 0);
+            AssignBuildingPrefab(HutDataPath, SavePrefab(BuildHut(), HutPrefabPath),
+                "Nhà ở của dân làng", HutLevels(wood, knowledge));
+            AssignBuildingPrefab(StorageDataPath, SavePrefab(BuildStorage(), StoragePrefabPath),
+                "Cất giữ lương thực", StorageLevels(wood, knowledge));
             SavePrefab(BuildTree(wood), TreePrefabPath);
             BuildWildBoarContent(food);
             BuildCropModels();
@@ -93,7 +97,7 @@ namespace PrehistoricTribe.EditorTools
             Debug.Log("[GameContentBuilder] Da tao xong prefab 3D: Hut, Storage, Tree, WildBoar, Villager, 4 nghe va model giai doan cho CropData_Berry");
         }
 
-        private static void AssignBuildingPrefab(string dataAssetPath, GameObject prefab, int housing)
+        private static void AssignBuildingPrefab(string dataAssetPath, GameObject prefab, string function, List<BuildingLevel> levels)
         {
             var data = AssetDatabase.LoadAssetAtPath<BuildingData>(dataAssetPath);
             if (data == null)
@@ -102,9 +106,34 @@ namespace PrehistoricTribe.EditorTools
                 return;
             }
             data.prefab = prefab;
-            data.housing = housing;
+            data.functionDescription = function;
+            data.levels = levels;
             EditorUtility.SetDirty(data);
         }
+
+        // ─── Cấp công trình (quyết định 2026-09-30: 5 cấp) ───────────────────
+        private static BuildingLevel Level(string name, int housing, int storage, params ResourceAmount[] cost) =>
+            new BuildingLevel { displayName = name, housing = housing, storageCapacity = storage, upgradeCost = new List<ResourceAmount>(cost) };
+
+        private static ResourceAmount Cost(ResourceTypeData type, int amount) => new ResourceAmount { type = type, amount = amount };
+
+        private static List<BuildingLevel> HutLevels(ResourceTypeData wood, ResourceTypeData knowledge) => new List<BuildingLevel>
+        {
+            Level("Lều da", 2, 0),
+            Level("Lều da lớn", 3, 0, Cost(wood, 15)),
+            Level("Nhà lá", 4, 0, Cost(wood, 25), Cost(knowledge, 5)),
+            Level("Nhà sàn", 5, 0, Cost(wood, 40), Cost(knowledge, 10)),
+            Level("Nhà dài", 6, 0, Cost(wood, 60), Cost(knowledge, 20)),
+        };
+
+        private static List<BuildingLevel> StorageLevels(ResourceTypeData wood, ResourceTypeData knowledge) => new List<BuildingLevel>
+        {
+            Level("Kho chứa", 0, 30),
+            Level("Kho lớn", 0, 60, Cost(wood, 25)),
+            Level("Lẫm lúa", 0, 100, Cost(wood, 40), Cost(knowledge, 5)),
+            Level("Hầm chứa", 0, 150, Cost(wood, 60), Cost(knowledge, 10)),
+            Level("Kho lương", 0, 220, Cost(wood, 90), Cost(knowledge, 20)),
+        };
 
         // ─── Buildings ───────────────────────────────────────────────────────
         /// <summary>Máu + vật cản NavMesh (NPC đi vòng qua công trình đặt lúc chơi).</summary>
@@ -136,40 +165,146 @@ namespace PrehistoricTribe.EditorTools
             obstacle.carveOnlyStationary = true;
         }
 
+        /// <summary>Gắn model từng cấp (Level1..5) + vòng chọn vào BuildingInstance.</summary>
+        private static void AttachLevelModels(GameObject root, params System.Action<Transform>[] builders)
+        {
+            var models = new List<GameObject>();
+            for (int i = 0; i < builders.Length; i++)
+            {
+                var model = new GameObject($"Level{i + 1}");
+                model.transform.SetParent(root.transform, false);
+                builders[i](model.transform);
+                model.SetActive(i == 0);
+                models.Add(model);
+            }
+
+            var ring = new GameObject("SelectionRing");
+            ring.transform.SetParent(root.transform, false);
+            ring.transform.localPosition = new Vector3(0f, 0.03f, 0f);
+            ring.transform.localScale = Vector3.one * 0.9f;
+            ring.AddComponent<MeshFilter>().sharedMesh = RingMesh(0.62f, 0.72f, 40);
+            var ringRenderer = ring.AddComponent<MeshRenderer>();
+            ringRenderer.sharedMaterial = Mat("SelectionRing", Palette.Hex(0xb8f07a), emission: 0.8f);
+            ringRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            ring.SetActive(false);
+
+            var instance = root.GetComponent<BuildingInstance>();
+            SetPrivateField(instance, "levelModels", models);
+            SetPrivateField(instance, "selectionRing", ring);
+        }
+
         private static GameObject BuildHut()
         {
             var root = new GameObject("Hut");
             AddBuildingComponents(root, new Vector3(0f, 0.55f, 0f), new Vector3(0.9f, 1.1f, 0.9f), 200f);
+            AttachLevelModels(root, HutTeepee(1f), HutTeepee(1.12f, extraPelt: true), HutThatched, HutStilt, HutLonghouse);
+            return root;
+        }
 
-            var t = root.transform;
-            Cone(t, "Cover", 9, Vector3.zero, new Vector3(0.92f, 1.1f, 0.92f), Palette.Hide);
-            Part(t, "Band", PrimitiveType.Cylinder, new Vector3(0f, 0.55f, 0f), new Vector3(0.58f, 0.04f, 0.58f), Palette.Plank);
-            Part(t, "Door", PrimitiveType.Cube, new Vector3(0f, 0.18f, -0.37f), new Vector3(0.22f, 0.36f, 0.05f), Palette.DarkWood, new Vector3(23f, 0f, 0f));
-
+        // Cấp 1–2: lều da hình nón (cấp 2 to hơn, thêm tấm da phơi).
+        private static System.Action<Transform> HutTeepee(float scale, bool extraPelt = false) => t =>
+        {
+            t.localScale = Vector3.one * scale;
+            Cone(t, "Cover", 9, Vector3.zero, new Vector3(0.82f, 1.05f, 0.82f), Palette.Hide);
+            Part(t, "Band", PrimitiveType.Cylinder, new Vector3(0f, 0.5f, 0f), new Vector3(0.52f, 0.04f, 0.52f), Palette.Plank);
+            Part(t, "Door", PrimitiveType.Cube, new Vector3(0f, 0.17f, -0.33f), new Vector3(0.2f, 0.34f, 0.05f), Palette.DarkWood, new Vector3(23f, 0f, 0f));
             for (int i = 0; i < 4; i++)
             {
                 float a = i * 90f + 20f;
                 Vector3 dir = Quaternion.Euler(0f, a, 0f) * Vector3.forward;
-                Part(t, $"Pole{i}", PrimitiveType.Cylinder, new Vector3(0f, 1.15f, 0f) + dir * 0.05f,
+                Part(t, $"Pole{i}", PrimitiveType.Cylinder, new Vector3(0f, 1.1f, 0f) + dir * 0.05f,
                     new Vector3(0.035f, 0.22f, 0.035f), Palette.Wood, new Vector3(20f, a, 0f));
             }
-            return root;
+            if (extraPelt)
+            {
+                Part(t, "Band2", PrimitiveType.Cylinder, new Vector3(0f, 0.28f, 0f), new Vector3(0.66f, 0.04f, 0.66f), Palette.Fur);
+                Part(t, "Pelt", PrimitiveType.Cube, new Vector3(0.36f, 0.3f, 0.1f), new Vector3(0.03f, 0.3f, 0.24f), Palette.Fur, new Vector3(0f, 0f, -15f));
+            }
+        };
+
+        // Cấp 3: nhà tròn tường đất, mái lá.
+        private static void HutThatched(Transform t)
+        {
+            Part(t, "Wall", PrimitiveType.Cylinder, new Vector3(0f, 0.24f, 0f), new Vector3(0.78f, 0.24f, 0.78f), Mat("MudWall", Palette.Hex(0x9a7652)));
+            Cone(t, "Roof", 9, new Vector3(0f, 0.46f, 0f), new Vector3(1.02f, 0.6f, 1.02f), Palette.Thatch);
+            Part(t, "Door", PrimitiveType.Cube, new Vector3(0f, 0.17f, -0.38f), new Vector3(0.22f, 0.34f, 0.04f), Palette.DarkWood);
+        }
+
+        // Cấp 4: nhà sàn gỗ — sàn trên cột, tường ván, mái lá 4 mái, thang.
+        private static void HutStilt(Transform t)
+        {
+            foreach (var p in new[] { new Vector3(-0.35f, 0f, -0.35f), new Vector3(0.35f, 0f, -0.35f), new Vector3(-0.35f, 0f, 0.35f), new Vector3(0.35f, 0f, 0.35f) })
+                Part(t, "Stilt", PrimitiveType.Cylinder, p + new Vector3(0f, 0.15f, 0f), new Vector3(0.07f, 0.15f, 0.07f), Palette.Wood);
+            Part(t, "Floor", PrimitiveType.Cube, new Vector3(0f, 0.31f, 0f), new Vector3(0.9f, 0.05f, 0.9f), Palette.Plank);
+            Part(t, "Wall", PrimitiveType.Cube, new Vector3(0f, 0.53f, 0f), new Vector3(0.74f, 0.4f, 0.74f), Palette.Plank);
+            Cone(t, "Roof", 4, new Vector3(0f, 0.73f, 0f), new Vector3(1.25f, 0.45f, 1.25f), Palette.Thatch, new Vector3(0f, 45f, 0f));
+            Part(t, "Door", PrimitiveType.Cube, new Vector3(0f, 0.48f, -0.38f), new Vector3(0.2f, 0.3f, 0.03f), Palette.DarkWood);
+            Part(t, "Ladder", PrimitiveType.Cube, new Vector3(0f, 0.15f, -0.5f), new Vector3(0.16f, 0.34f, 0.03f), Palette.Wood, new Vector3(-25f, 0f, 0f));
+        }
+
+        // Cấp 5: nhà dài — thân dài, mái hai dốc, khói bếp.
+        private static void HutLonghouse(Transform t)
+        {
+            Part(t, "Wall", PrimitiveType.Cube, new Vector3(0f, 0.25f, 0f), new Vector3(0.62f, 0.5f, 0.92f), Palette.Plank);
+            Part(t, "RoofL", PrimitiveType.Cube, new Vector3(-0.2f, 0.62f, 0f), new Vector3(0.48f, 0.05f, 0.98f), Palette.Thatch, new Vector3(0f, 0f, 38f));
+            Part(t, "RoofR", PrimitiveType.Cube, new Vector3(0.2f, 0.62f, 0f), new Vector3(0.48f, 0.05f, 0.98f), Palette.Thatch, new Vector3(0f, 0f, -38f));
+            Part(t, "Ridge", PrimitiveType.Cylinder, new Vector3(0f, 0.77f, 0f), new Vector3(0.06f, 0.5f, 0.06f), Palette.Wood, new Vector3(90f, 0f, 0f));
+            Part(t, "Door", PrimitiveType.Cube, new Vector3(0f, 0.18f, -0.47f), new Vector3(0.22f, 0.36f, 0.03f), Palette.DarkWood);
+            Part(t, "Chimney", PrimitiveType.Cylinder, new Vector3(0.12f, 0.78f, 0.25f), new Vector3(0.1f, 0.12f, 0.1f), Palette.Stone);
         }
 
         private static GameObject BuildStorage()
         {
             var root = new GameObject("Storage");
             AddBuildingComponents(root, new Vector3(0f, 0.5f, 0f), new Vector3(0.9f, 1f, 0.9f), 300f);
-
-            var t = root.transform;
-            Part(t, "Base", PrimitiveType.Cube, new Vector3(0f, 0.25f, 0f), new Vector3(0.84f, 0.5f, 0.84f), Palette.Plank);
-            Cone(t, "Roof", 4, new Vector3(0f, 0.5f, 0f), new Vector3(1.44f, 0.45f, 1.44f), Palette.Thatch, new Vector3(0f, 45f, 0f));
-            Part(t, "Door", PrimitiveType.Cube, new Vector3(0f, 0.17f, -0.43f), new Vector3(0.26f, 0.34f, 0.03f), Palette.DarkWood);
-
-            var logs = new[] { new Vector3(0.52f, 0.05f, -0.07f), new Vector3(0.52f, 0.05f, 0.07f), new Vector3(0.52f, 0.14f, 0f) };
-            for (int i = 0; i < logs.Length; i++)
-                Part(t, $"Log{i}", PrimitiveType.Cylinder, logs[i], new Vector3(0.1f, 0.25f, 0.1f), Palette.Wood, new Vector3(90f, 0f, 0f));
+            AttachLevelModels(root, StorageShed(1f, 1), StorageShed(1.08f, 2), StorageGranary, StorageCellar, StorageBigGranary);
             return root;
+        }
+
+        // Cấp 1–2: kho gỗ mái lá + đống củi (cấp 2 to hơn, thêm đống củi).
+        private static System.Action<Transform> StorageShed(float scale, int logPiles) => t =>
+        {
+            t.localScale = Vector3.one * scale;
+            Part(t, "Base", PrimitiveType.Cube, new Vector3(0f, 0.25f, 0f), new Vector3(0.78f, 0.5f, 0.78f), Palette.Plank);
+            Cone(t, "Roof", 4, new Vector3(0f, 0.5f, 0f), new Vector3(1.34f, 0.45f, 1.34f), Palette.Thatch, new Vector3(0f, 45f, 0f));
+            Part(t, "Door", PrimitiveType.Cube, new Vector3(0f, 0.17f, -0.4f), new Vector3(0.26f, 0.34f, 0.03f), Palette.DarkWood);
+            for (int pile = 0; pile < logPiles; pile++)
+            {
+                float x = pile == 0 ? 0.48f : -0.48f;
+                foreach (var p in new[] { new Vector3(x, 0.05f, -0.07f), new Vector3(x, 0.05f, 0.07f), new Vector3(x, 0.14f, 0f) })
+                    Part(t, "Log", PrimitiveType.Cylinder, p, new Vector3(0.09f, 0.22f, 0.09f), Palette.Wood, new Vector3(90f, 0f, 0f));
+            }
+        };
+
+        // Cấp 3: lẫm lúa trên cột (tránh chuột, ẩm).
+        private static void StorageGranary(Transform t)
+        {
+            foreach (var p in new[] { new Vector3(-0.25f, 0f, -0.25f), new Vector3(0.25f, 0f, -0.25f), new Vector3(-0.25f, 0f, 0.25f), new Vector3(0.25f, 0f, 0.25f) })
+                Part(t, "Stilt", PrimitiveType.Cylinder, p + new Vector3(0f, 0.15f, 0f), new Vector3(0.07f, 0.15f, 0.07f), Palette.Wood);
+            Part(t, "Body", PrimitiveType.Cylinder, new Vector3(0f, 0.55f, 0f), new Vector3(0.72f, 0.25f, 0.72f), Mat("MudWall", Palette.Hex(0x9a7652)));
+            Cone(t, "Roof", 9, new Vector3(0f, 0.8f, 0f), new Vector3(0.95f, 0.45f, 0.95f), Palette.Thatch);
+            Part(t, "Ladder", PrimitiveType.Cube, new Vector3(0f, 0.25f, -0.42f), new Vector3(0.14f, 0.5f, 0.03f), Palette.Wood, new Vector3(-20f, 0f, 0f));
+        }
+
+        // Cấp 4: hầm chứa đắp đất, cửa đá.
+        private static void StorageCellar(Transform t)
+        {
+            Part(t, "Mound", PrimitiveType.Sphere, new Vector3(0f, 0.12f, 0.05f), new Vector3(0.95f, 0.5f, 0.9f), Mat("EarthMound", Palette.Hex(0x6d7a45)));
+            Part(t, "Frame", PrimitiveType.Cube, new Vector3(0f, 0.2f, -0.36f), new Vector3(0.38f, 0.34f, 0.1f), Palette.Stone);
+            Part(t, "Door", PrimitiveType.Cube, new Vector3(0f, 0.18f, -0.42f), new Vector3(0.24f, 0.28f, 0.03f), Palette.DarkWood);
+            Part(t, "Vent", PrimitiveType.Cylinder, new Vector3(0.18f, 0.42f, 0.15f), new Vector3(0.08f, 0.08f, 0.08f), Palette.Stone);
+        }
+
+        // Cấp 5: kho lương lớn — nhà kho + lẫm phụ + bao/giỏ lương thực.
+        private static void StorageBigGranary(Transform t)
+        {
+            Part(t, "Base", PrimitiveType.Cube, new Vector3(-0.1f, 0.25f, 0.05f), new Vector3(0.66f, 0.5f, 0.78f), Palette.Plank);
+            Cone(t, "Roof", 4, new Vector3(-0.1f, 0.5f, 0.05f), new Vector3(1.15f, 0.45f, 1.25f), Palette.Thatch, new Vector3(0f, 45f, 0f));
+            Part(t, "Silo", PrimitiveType.Cylinder, new Vector3(0.33f, 0.3f, -0.25f), new Vector3(0.28f, 0.3f, 0.28f), Mat("MudWall", Palette.Hex(0x9a7652)));
+            Cone(t, "SiloRoof", 7, new Vector3(0.33f, 0.6f, -0.25f), new Vector3(0.38f, 0.25f, 0.38f), Palette.Thatch);
+            Part(t, "Door", PrimitiveType.Cube, new Vector3(-0.1f, 0.17f, -0.35f), new Vector3(0.24f, 0.34f, 0.03f), Palette.DarkWood);
+            foreach (var p in new[] { new Vector3(-0.42f, 0.08f, -0.4f), new Vector3(-0.3f, 0.08f, -0.45f) })
+                Part(t, "Sack", PrimitiveType.Sphere, p, new Vector3(0.14f, 0.16f, 0.14f), Mat("Sack", Palette.Hex(0xc8b27a)));
         }
 
         // ─── Tree (ResourceNode) ─────────────────────────────────────────────

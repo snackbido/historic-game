@@ -92,6 +92,14 @@
 - [x] M5.6 Dân số (2026-09-30): cặp đôi nam–nữ cố định, sinh con khi còn chỗ ở (4 ban đầu + 2/lều) và có 5 thức ăn, em bé (60s) → trẻ em (90s) → người lớn thành Dân làng; nhãn "Dân số: x/y"
 - [x] M5.6 Tự làm việc khi rảnh (2026-09-30): theo `ProfessionData.autoWork` — dân làng chặt cây, nông dân làm ruộng/chăm thú, thợ săn canh gác, trinh sát đi dạo
 
+## Milestone 5b — Công trình nâng cấp + kinh tế lương thực (thêm 2026-09-30, trước Thiên tai)
+Quyết định user: công trình nâng cấp **5 cấp** (click công trình → bảng thông tin + nút Nâng cấp); **lều là nhà riêng của từng cặp đôi**, chỉ sinh con tại lều; lương thực tách **nhiều loại** (Thịt, Lúa gạo, Quả mọng, Sữa, Cá, Rau…); kho có **giới hạn lưu trữ**, **thịt để ngoài kho bị hỏng**, **dân làng ăn hằng ngày**.
+- [x] E1 Hệ thống nâng cấp 5 cấp cho Lều + Kho (chi phí, model đổi theo cấp, bảng thông tin khi click công trình, lưu/tải cấp) — 2026-09-30
+- [ ] E2 Lều là nhà: gán cặp đôi vào lều, cặp đôi về lều để sinh con, cấp lều → thêm chỗ cho con + sinh nhanh hơn
+- [ ] E3 Nhiều loại lương thực + nguồn mới (lúa, rau = cây trồng mới; cá = đánh cá; sữa = vật nuôi mới; thịt = săn/vật nuôi); chi phí "thức ăn" nhận loại nào cũng được
+- [ ] E4 Kho: giới hạn lưu trữ theo loại (không kho ~20/loại, kho + cấp kho tăng), thịt ngoài kho hỏng dần
+- [ ] E5 Dân làng ăn hằng ngày: thiếu ăn → đói, yếu, không sinh con
+
 ## Milestone 6 — Thiên tai
 - [ ] DisasterManager: hệ thống sự kiện ngẫu nhiên
 - [ ] Base class DisasterEvent, tạo 1-2 loại thiên tai đầu tiên (VD: cháy rừng, lũ lụt)
@@ -118,6 +126,7 @@
 | 2026-09-22 | Tài nguyên "tri thức" (Milestone 4) tự sinh theo thời gian (tốc độ cố định), không gắn vào hành động gameplay | Đơn giản nhất, không phụ thuộc EventBus của các hệ thống khác; dễ cân bằng lại tốc độ sau này |
 | 2026-09-22 | Refactor `BuildingPlacer` từ 1 field `buildingToPlace` sang registry nhiều `BuildingData` + `SelectBuilding()` | Cần thiết để Tech Tree mở khóa được nhiều loại công trình khác nhau; đã ghi nợ từ Milestone 1 |
 | 2026-09-26 | Thứ tự triển khai tiếp theo: trả nợ kỹ thuật (feedback UX vật nuôi, save/load FarmPlot + Animal, test tay input) **trước** khi bắt đầu Milestone 5 | Đảm bảo M1-4 vững chắc, không cộng dồn nợ kỹ thuật trước khi mở rộng sang hệ thống mới |
+| 2026-09-30 | Thêm Milestone 5b: công trình nâng cấp 5 cấp; lều = nhà của cặp đôi (chỉ sinh con tại lều); lương thực nhiều loại (thịt, lúa gạo, quả mọng, sữa, cá, rau…); kho giới hạn lưu trữ, thịt ngoài kho hỏng, dân làng ăn hằng ngày | User muốn công trình có chức năng riêng và nâng cấp được; làm kho/lương thực có ý nghĩa thật trong kinh tế. Chia 5 bước E1–E5 vì khối lượng lớn |
 | 2026-09-30 | M5 chỉ huy NPC: (1) tất cả NPC đều nghe lệnh (không có "lính" riêng); (2) kéo khung chuột để chọn nhiều NPC, mỗi NPC có nghề (trinh sát, thợ săn, nông dân, dân làng…) quyết định việc nó làm khi nhận lệnh; (3) UI hiển thị các NPC đang chọn theo nhóm và theo nghề | Chốt với user; nghề nghiệp gắn chỉ huy với hệ thống kinh tế (nông dân trồng trọt, thợ săn săn bắt) thay vì tách riêng quân đội |
 | 2026-09-30 | Chuyển bản Unity từ 2D top-down sang **2.5D**: model 3D low-poly + camera phối cảnh nghiêng cố định, gameplay vẫn trên mặt phẳng đất (XZ), vẫn đặt công trình theo grid | Không cần họa sĩ (dùng model miễn phí đồng phong cách), khớp game tham khảo (Banished/Frostpunk), nhẹ cho máy 8GB/mobile; bản web Three.js đã chứng minh hướng này. Loại 3D đầy đủ (camera tự do, địa hình) vì nhân khối lượng việc |
 | 2026-09-26 | Milestone 5 (Combat): chế độ **lai** — vừa điều khiển trực tiếp nhân vật chính, vừa chỉ huy được nhóm NPC | User muốn cả hai, khác với 2 lựa chọn thuần trong SPEC.md § 3.5; cần thiết kế chi tiết thêm trước khi code (NPC nào chỉ huy được, cơ chế ra lệnh ra sao) — **chưa chốt chi tiết, chỉ mới chốt hướng chung** |
@@ -233,6 +242,13 @@
 ## Nhật ký phiên làm việc 2026-09-30 (phần 10 — giãn nhịp độ)
 - User chơi thử: "nhịp độ khá nhanh" → giãn các nhịp chính ~2 lần: chặt cây 1 gỗ/3s (trước 1,5s); cây mọng 12/24/40s (trước 5/10/20); tri thức 1 điểm/6s (trước 3s); heo thuần ra sản phẩm 30s, sinh sản 90s (trước 15/45); xét sinh con 40s, mỗi cặp nghỉ 180s (trước 20/90); em bé 120s → trẻ em 180s (trước 60/90). Test M4 chờ tri thức 45s thay vì 20s. **49/49 test pass**.
 - Hướng cân bằng tiếp nếu vẫn thấy nhanh/chậm: sửa trực tiếp số trong asset/Inspector (data-driven), không cần sửa code; cân nhắc thêm cây mọc lại để dân làng tự chặt không làm trụi bản đồ.
+
+## Nhật ký phiên làm việc 2026-09-30 (phần 11 — M5b/E1 nâng cấp công trình)
+- `BuildingData.levels` (lớp mới `BuildingLevel`: tên, chi phí nâng lên, chỗ ở, sức chứa lương thực, công nghệ cần — hiện chưa gắn tech nào) + `functionDescription`; bỏ field `housing` cũ. Lều: Lều da (2 chỗ) → Lều da lớn (3, 15 gỗ) → Nhà lá (4, 25 gỗ + 5 tri thức) → Nhà sàn (5, 40 + 10) → Nhà dài (6, 60 + 20). Kho: Kho chứa (30/loại) → Kho lớn (60, 25 gỗ) → Lẫm lúa (100, 40 + 5) → Hầm chứa (150, 60 + 10) → Kho lương (220, 90 + 20).
+- `BuildingInstance`: `Level`, `TryUpgrade()`/`UpgradeBlocker()`, model con `Level1..5` bật theo cấp, `SelectionRing`, danh sách `All`; sức chứa dân số tính theo cấp lều. `PlacedBuildingData.level` (save cũ = cấp 1). `BuildingPlacer.PlaceBuilding` thành public.
+- Chọn công trình: `SelectionManager.SelectAt` không trúng người → raycast vật lý (BoxCollider của công trình) → `SelectBuilding`; chọn người thì bỏ chọn công trình và ngược lại; click chỗ trống bỏ chọn cả hai. Mới `UI/BuildingInfoPanelUI.cs` (tên + cấp, chức năng, lợi ích/chi phí cấp kế, lý do chưa nâng được, nút Nâng cấp — tự bật/tắt theo tài nguyên), cùng chỗ với bảng "Đang chọn". `EventBus.OnBuildingSelected/OnBuildingUpgraded`.
+- Bẫy lặp lại: sau khi bake NavMesh (tạo asset), **mọi** tham chiếu component-prefab nạp trước đó mất hiệu lực (lần này là `Button.prefab`) → nạp lại ngay trước khi dùng.
+- **Đã xác nhận**: **53/53 test PlayMode pass** (4 test mới `Milestone5bBuildingTests.cs`); ảnh render 5 cấp lều + 5 cấp kho phân biệt rõ.
 
 ## Vấn đề đang tồn đọng (Known issues / Open questions)
 - [x] Chế độ combat: lai (2026-09-26) + chi tiết chỉ huy NPC theo nghề (2026-09-30)

@@ -11,6 +11,8 @@ namespace PrehistoricTribe
         public int cellX;
         public int cellY;
         public int cellZ;
+        // Save cũ chưa có field này → đọc ra 0 → coi như cấp 1.
+        public int level;
     }
 
     public class BuildingPlacer : MonoBehaviour
@@ -140,7 +142,8 @@ namespace PrehistoricTribe
             PlaceBuilding(selectedBuilding, cell, spendResources: true);
         }
 
-        private BuildingInstance PlaceBuilding(BuildingData data, Vector3Int cell, bool spendResources)
+        /// <summary>Đặt công trình tại ô (dùng cho đặt bằng chuột, tải game, test). Trả về null nếu không đủ tài nguyên.</summary>
+        public BuildingInstance PlaceBuilding(BuildingData data, Vector3Int cell, bool spendResources)
         {
             if (spendResources && !ResourceManager.Instance.SpendAll(data.costs))
                 return null;
@@ -166,7 +169,8 @@ namespace PrehistoricTribe
                     buildingId = building.Data.id,
                     cellX = building.GridPosition.x,
                     cellY = building.GridPosition.y,
-                    cellZ = building.GridPosition.z
+                    cellZ = building.GridPosition.z,
+                    level = building.Level
                 });
             }
             return data;
@@ -186,7 +190,8 @@ namespace PrehistoricTribe
                 if (!buildingsById.TryGetValue(entry.buildingId, out var buildingData)) continue;
 
                 Vector3Int cell = new Vector3Int(entry.cellX, entry.cellY, entry.cellZ);
-                PlaceBuilding(buildingData, cell, spendResources: false);
+                BuildingInstance placed = PlaceBuilding(buildingData, cell, spendResources: false);
+                if (placed != null) placed.SetLevel(Mathf.Max(1, entry.level));
             }
         }
     }
