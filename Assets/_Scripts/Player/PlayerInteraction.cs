@@ -4,38 +4,26 @@ namespace PrehistoricTribe
 {
     public class PlayerInteraction : MonoBehaviour
     {
+        // Bản 2D dùng OverlapCircle nên chạm được mép collider (~nửa ô) — cộng bù phần đó vào bán kính.
+        private const float TargetExtent = 0.5f;
+
         [SerializeField] private KeyCode interactKey = KeyCode.E;
         [SerializeField] private float interactRadius = 1.2f;
-        [SerializeField] private LayerMask resourceLayer = ~0;
+
+        /// <summary>Đối tượng tương tác được gần nhất (null nếu không có) — dùng cho highlight/gợi ý UI.</summary>
+        public MonoBehaviour Nearest { get; private set; }
 
         private void Update()
         {
+            Nearest = InteractableRegistry.FindNearest(transform.position, interactRadius + TargetExtent);
+
             if (Input.GetKeyDown(interactKey))
-                TryInteractNearest();
+                Interact(Nearest);
         }
 
-        private void TryInteractNearest()
+        private static void Interact(MonoBehaviour target)
         {
-            Collider2D[] hits = Physics2D.OverlapCircleAll(transform.position, interactRadius, resourceLayer);
-            Component nearest = null;
-            float nearestDistance = float.MaxValue;
-
-            foreach (var hit in hits)
-            {
-                Component interactable = hit.GetComponent<ResourceNode>();
-                if (interactable == null) interactable = hit.GetComponent<FarmPlot>();
-                if (interactable == null) interactable = hit.GetComponent<AnimalController>();
-                if (interactable == null) continue;
-
-                float distance = Vector2.Distance(transform.position, hit.transform.position);
-                if (distance < nearestDistance)
-                {
-                    nearest = interactable;
-                    nearestDistance = distance;
-                }
-            }
-
-            switch (nearest)
+            switch (target)
             {
                 case ResourceNode node:
                     node.Harvest();

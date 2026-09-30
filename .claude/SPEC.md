@@ -4,7 +4,7 @@
 - **Tên dự án (tạm)**: Prehistoric Tribe (đặt tên chính thức sau)
 - **Thể loại**: Survival + City-Builder + Base Management, bối cảnh thời tiền sử
 - **Nền tảng**: Desktop (Windows/Mac/Linux), có thể phát hành Steam sau này; định hướng phát hành thêm trên **Mobile (Android qua Google Play, iOS qua App Store)** ở giai đoạn sau. Kéo theo yêu cầu thiết kế thêm: UI/input hỗ trợ cảm ứng (touch) song song với chuột/bàn phím, tối ưu hiệu năng/kích thước build cho thiết bị di động, và build iOS bắt buộc cần máy Mac + Xcode.
-- **Góc nhìn**: 2D top-down (giai đoạn đầu). Có thể nâng lên isometric hoặc 3D ở phiên bản sau.
+- **Góc nhìn**: 2.5D — thế giới và model 3D (low-poly), camera phối cảnh nhìn nghiêng từ trên xuống, bám theo nhân vật, zoom được; nhân vật chỉ di chuyển trên mặt đất (mặt phẳng XZ). Chuyển từ 2D top-down ngày 2026-09-30 (xem Decision Log trong PROGRESS.md).
 - **Engine**: Unity (C#), IDE: VS Code
 - **Người phát triển**: 1 người (solo dev), nền tảng web dev, chưa có kinh nghiệm Unity
 - **Tham khảo (reference game)**: Banished, Frostpunk (xây dựng/quản lý), Rimworld/Ark (thuần hóa, sinh tồn), Stardew Valley (trồng trọt)
@@ -55,7 +55,7 @@ Người chơi dẫn dắt một bộ lạc thời tiền sử, từ vài ngư�
 
 ## 4. Nhân vật & Bối cảnh
 - **NPC dân làng**: có nhu cầu cơ bản (đói, ngủ, ấm), có thể gán công việc (thu thập, xây dựng, canh gác).
-- **Phong cách hình ảnh**: pixel art hoặc 2D vector đơn giản, tông màu đất/tự nhiên (nâu, xanh lá, xám đá).
+- **Phong cách hình ảnh**: 3D low-poly flat-shading (asset miễn phí kiểu Kenney/Quaternius), tông màu đất/tự nhiên (nâu, xanh lá, xám đá).
 - **Bối cảnh thế giới**: vùng đất hoang sơ, rừng, sông, núi đá, thay đổi theo mùa (season system — có thể để phiên bản sau).
 
 ## 5. Phạm vi cho bản demo/prototype đầu tiên (MVP)

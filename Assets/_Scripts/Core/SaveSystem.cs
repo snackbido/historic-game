@@ -7,8 +7,9 @@ namespace PrehistoricTribe
     [System.Serializable]
     public class SaveData
     {
+        // Vị trí trên mặt đất (x, z). Save cũ của bản 2D dùng playerY nên sẽ nạp về z = 0.
         public float playerX;
-        public float playerY;
+        public float playerZ;
         public List<ResourceSaveEntry> resources = new List<ResourceSaveEntry>();
         public List<PlacedBuildingData> buildings = new List<PlacedBuildingData>();
     }

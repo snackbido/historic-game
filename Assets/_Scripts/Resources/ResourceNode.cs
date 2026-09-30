@@ -10,6 +10,9 @@ namespace PrehistoricTribe
 
         public ResourceTypeData ResourceType => resourceType;
 
+        private void OnEnable() => InteractableRegistry.Register(this);
+        private void OnDisable() => InteractableRegistry.Unregister(this);
+
         public void Harvest()
         {
             int amount = Mathf.Min(yieldPerHit, amountRemaining);

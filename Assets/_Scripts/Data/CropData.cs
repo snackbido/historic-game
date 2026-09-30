@@ -23,9 +23,10 @@ namespace PrehistoricTribe
 
         public List<ResourceAmount> harvestYield = new List<ResourceAmount>();
 
-        public Sprite seedSprite;
-        public Sprite sproutSprite;
-        public Sprite matureSprite;
-        public Sprite witheredSprite;
+        [Header("Model hiển thị theo giai đoạn (prefab, sinh ra trên ô đất)")]
+        public GameObject seedModel;
+        public GameObject sproutModel;
+        public GameObject matureModel;
+        public GameObject witheredModel;
     }
 }

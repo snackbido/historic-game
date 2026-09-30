@@ -25,7 +25,7 @@ namespace PrehistoricTribe
             var data = new SaveData
             {
                 playerX = player.GetPosition().x,
-                playerY = player.GetPosition().y,
+                playerZ = player.GetPosition().z,
                 resources = resourceManager.GetSaveData(),
                 buildings = buildingPlacer.GetSaveData()
             };
@@ -37,7 +37,7 @@ namespace PrehistoricTribe
             SaveData data = SaveSystem.Load();
             if (data == null) return;
 
-            player.SetPosition(new Vector2(data.playerX, data.playerY));
+            player.SetPosition(new Vector3(data.playerX, 0f, data.playerZ));
             resourceManager.LoadFromSaveData(data.resources);
             buildingPlacer.LoadFromSaveData(data.buildings);
         }

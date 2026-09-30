@@ -3,8 +3,8 @@
 > Cập nhật file này sau mỗi buổi làm việc: đánh dấu việc đã xong, ghi chú vấn đề gặp phải, quyết định đã chốt.
 
 ## Trạng thái hiện tại
-- **Giai đoạn**: Milestone 1 đã xác nhận chạy đúng (kể cả Save/Load F5/F9); Milestone 2-4 đã xác nhận đúng logic qua test PlayMode tự động (8/8 pass) + xác nhận thêm qua Unity MCP (Play mode thật không lỗi Console). Còn thiếu xác nhận input/UI trực quan bằng người thật (Milestone 5 chưa bắt đầu)
-- **Cập nhật lần cuối**: 2026-09-26
+- **Giai đoạn**: Bản Unity đã chuyển sang **2.5D** (2026-09-30, nhánh `feat/unity-2.5d`): logic M1-4 giữ nguyên, 10/10 test PlayMode pass trên scene 3D mới. Còn thiếu xác nhận input/UI trực quan bằng người thật (Milestone 5 chưa bắt đầu). Có thêm bản web Three.js ở `web/` (nhánh `feat/web-threejs`)
+- **Cập nhật lần cuối**: 2026-09-30
 
 ## Milestone 0 — Setup môi trường
 - [x] Cài Unity Hub
@@ -107,6 +107,7 @@
 | 2026-09-22 | Tài nguyên "tri thức" (Milestone 4) tự sinh theo thời gian (tốc độ cố định), không gắn vào hành động gameplay | Đơn giản nhất, không phụ thuộc EventBus của các hệ thống khác; dễ cân bằng lại tốc độ sau này |
 | 2026-09-22 | Refactor `BuildingPlacer` từ 1 field `buildingToPlace` sang registry nhiều `BuildingData` + `SelectBuilding()` | Cần thiết để Tech Tree mở khóa được nhiều loại công trình khác nhau; đã ghi nợ từ Milestone 1 |
 | 2026-09-26 | Thứ tự triển khai tiếp theo: trả nợ kỹ thuật (feedback UX vật nuôi, save/load FarmPlot + Animal, test tay input) **trước** khi bắt đầu Milestone 5 | Đảm bảo M1-4 vững chắc, không cộng dồn nợ kỹ thuật trước khi mở rộng sang hệ thống mới |
+| 2026-09-30 | Chuyển bản Unity từ 2D top-down sang **2.5D**: model 3D low-poly + camera phối cảnh nghiêng cố định, gameplay vẫn trên mặt phẳng đất (XZ), vẫn đặt công trình theo grid | Không cần họa sĩ (dùng model miễn phí đồng phong cách), khớp game tham khảo (Banished/Frostpunk), nhẹ cho máy 8GB/mobile; bản web Three.js đã chứng minh hướng này. Loại 3D đầy đủ (camera tự do, địa hình) vì nhân khối lượng việc |
 | 2026-09-26 | Milestone 5 (Combat): chế độ **lai** — vừa điều khiển trực tiếp nhân vật chính, vừa chỉ huy được nhóm NPC | User muốn cả hai, khác với 2 lựa chọn thuần trong SPEC.md § 3.5; cần thiết kế chi tiết thêm trước khi code (NPC nào chỉ huy được, cơ chế ra lệnh ra sao) — **chưa chốt chi tiết, chỉ mới chốt hướng chung** |
 
 ## Nhật ký phiên làm việc 2026-09-22 (đang bắt đầu test trong Editor thật)
@@ -144,12 +145,26 @@
 - Save/load (F5/F9, localStorage) lưu đủ cả FarmPlot, vật nuôi, cây còn lại, tech — tức bản web đã trả nợ kỹ thuật save FarmPlot/Animal mà bản Unity còn thiếu. Thêm các phản hồi UX: vòng sáng dưới đối tượng gần nhất, dòng gợi ý hành động, chữ bay "+1 Gỗ", vòng cổ cho con đã thuần, biểu tượng khi có sản phẩm, thông báo khi vật nuôi sinh con.
 - **Đã xác nhận**: `npm run build` sạch; smoke test logic headless bằng Node 25/25 đạt (di chuyển, chặt cây, đặt lều + va chạm, tri thức + mở khóa, vòng đời cây/héo, thuần hóa/sản phẩm/sinh sản, save/load); chụp màn hình Chrome headless xác nhận scene + HUD hiển thị đúng. **Chưa xác nhận**: người thật chơi bằng bàn phím/chuột trong trình duyệt.
 
+## Nhật ký phiên làm việc 2026-09-30 (chuyển bản Unity sang 2.5D)
+- Chốt hướng 2.5D (xem Decision Log). Chuyển toàn bộ tầng vật lý/hiển thị sang 3D, logic gameplay (ResourceManager, TechManager, TamingSystem, FarmManager, EventBus, UI, ScriptableObject) không đổi:
+  - `PlayerController`: `Rigidbody` (khóa xoay + khóa trục Y), đi trên mặt XZ, model con `visual` xoay theo hướng đi. `CameraFollow`: camera phối cảnh nghiêng 52°, bám theo, zoom bằng con lăn.
+  - Mới: `Core/InteractableRegistry.cs` — `ResourceNode`/`FarmPlot`/`AnimalController` tự đăng ký; `PlayerInteraction` tìm đối tượng gần nhất bằng khoảng cách trên mặt đất thay vì `Physics2D.OverlapCircleAll` → tương tác không phụ thuộc vật lý 2D/3D (đúng tinh thần ARCHITECTURE § 5). Cây/ô đất/heo không cần collider nữa.
+  - `BuildingPlacer`: raycast chuột xuống mặt phẳng đất, `Grid` dùng `cellSwizzle = XZY`, preview đổi xanh/đỏ theo việc đặt được hay không.
+  - `CropData`: 4 field `Sprite` → 4 prefab model (`seedModel`…); `FarmPlot` sinh model dưới `cropAnchor`. `AnimalController`: tô màu qua material + `tamedIndicator` (vòng cổ) và `productIndicator` (biểu tượng vàng) — xử lý luôn lỗ hổng UX "con thuần/con hoang giống nhau" ở M3.
+  - Save: `playerY` → `playerZ` (save cũ của bản 2D nạp về z = 0, chấp nhận vì chưa phát hành).
+  - Editor: mới `EditorBuildUtils.cs` (primitive, material/mesh nón lưu thành asset ở `Assets/Materials/Generated`, `Assets/Models/Generated`). `GameContentBuilder`/`GameplaySceneBuilder` viết lại để dựng model low-poly (lều, kho, cây, heo, 4 giai đoạn cây mọng, rừng trang trí) và **hỏi trước khi ghi đè** prefab/scene đã có (trước đây ghi đè im lặng → mất phần chỉnh tay).
+- **Đã xác nhận**: compile sạch; batch `BuildAll` dựng được content + scene; **10/10 test PlayMode pass** (8 test cũ + 2 test mới `Milestone1InteractionTests.cs` cho registry trên mặt XZ); render camera ra ảnh xác nhận scene 3D hiển thị đúng (nhân vật, cây, lều, kho, 2 giai đoạn cây, heo có vòng cổ + biểu tượng sản phẩm).
+- **Chưa xác nhận**: người thật bấm WASD/E/chuột trong Play mode (cảm giác di chuyển, va chạm với công trình, đặt công trình bằng chuột, zoom).
+- **Sự cố**: 2 lần Unity batch crash do thiếu bộ nhớ ảo (xem Known issues) — chạy lại được sau khi giải phóng bộ nhớ.
+
 ## Vấn đề đang tồn đọng (Known issues / Open questions)
 - [ ] Chưa quyết định: chế độ combat (trực tiếp hay chỉ huy nhóm)?
 - [ ] Chưa có tên chính thức cho dự án
 - [ ] Milestone 2-4: đã xác nhận logic (test tự động) + Console sạch khi Play thật, nhưng chưa có ai tự tay bấm phím/chuột thật để xác nhận input (`PlayerInteraction`, `BuildingPlacer`) và chưa xác nhận trực quan layout UI (công cụ chụp ảnh hiện tại không thấy được Canvas ScreenSpaceOverlay)
 - [ ] Chưa làm save/load cho trạng thái FarmPlot (đang trồng gì, giai đoạn nào) và trạng thái vật nuôi (đã thuần hóa chưa, độ đói) — nợ kỹ thuật từ M2/M3
 - [x] Save/load (F5/F9) của Milestone 1 đã test trong Play mode thật (2026-09-26) — đúng
-- [ ] Camera dùng Skybox clear flags gây nền trời không hợp — đổi Solid Color khi polish (M7)
+- [x] Camera dùng Skybox clear flags gây nền trời không hợp — đã đổi Solid Color khi chuyển 2.5D (2026-09-30)
+- [ ] Máy 8GB + pagefile nằm trên ổ C gần đầy: Unity batch mode crash "paging file is too small"/"Out of memory" khi bộ nhớ ảo trống < ~4GB (gặp lại 2026-09-30). Cách sửa tận gốc: chuyển pagefile sang ổ D (còn ~33GB). Tạm thời: đóng Edge/app nặng trước khi chạy Unity
+- [ ] `Assets/Sprites/Generated/` (sprite khối màu của bản 2D) không còn được dùng — có thể xóa khi chắc chắn không quay lại 2D
 - [ ] `com.unity.ai.assistant` đã cài local, chưa quyết định có commit vào repo chung không
 - [x] Feedback tương tác vật nuôi (việc #1 trả nợ kỹ thuật, 2026-09-26) — đã code + xác nhận sống 4/5 thông báo, còn nhánh "thu hoạch sản phẩm" chỉ mới code-review + assertion tự động (chưa chạy lại batch để xác nhận, xem nhật ký phiên phần 3)

@@ -17,10 +17,16 @@ namespace PrehistoricTribe
     {
         public static BuildingPlacer Instance { get; private set; }
 
+        private static readonly Plane GroundPlane = new Plane(Vector3.up, Vector3.zero);
+        private static readonly Color ValidPreviewColor = new Color(0.6f, 0.85f, 0.4f);
+        private static readonly Color InvalidPreviewColor = new Color(0.9f, 0.45f, 0.35f);
+
+        [Tooltip("Grid nằm trên mặt đất: Cell Swizzle = XZY để ô (x, y) ứng với tọa độ thế giới (x, z)")]
         [SerializeField] private Grid grid;
         [SerializeField] private List<BuildingData> availableBuildings = new List<BuildingData>();
         [SerializeField] private GameObject placementPreview;
 
+        private Renderer previewRenderer;
         private readonly Dictionary<string, BuildingData> buildingsById = new Dictionary<string, BuildingData>();
         private readonly HashSet<Vector3Int> occupiedCells = new HashSet<Vector3Int>();
         private readonly List<BuildingInstance> placedBuildings = new List<BuildingInstance>();
@@ -39,6 +45,9 @@ namespace PrehistoricTribe
 
             foreach (var building in availableBuildings)
                 if (building != null) buildingsById[building.id] = building;
+
+            if (placementPreview != null)
+                previewRenderer = placementPreview.GetComponentInChildren<Renderer>(true);
         }
 
         public void SelectBuilding(BuildingData data)
@@ -64,9 +73,12 @@ namespace PrehistoricTribe
                 return;
             }
 
-            if (placementPreview != null) placementPreview.SetActive(true);
+            if (!TryGetCellUnderMouse(out Vector3Int cell))
+            {
+                if (placementPreview != null) placementPreview.SetActive(false);
+                return;
+            }
 
-            Vector3Int cell = GetCellUnderMouse();
             UpdatePreview(cell);
 
             bool justSelected = Time.frameCount == selectionFrame;
@@ -77,24 +89,44 @@ namespace PrehistoricTribe
         private static bool IsPointerOverUI() =>
             EventSystem.current != null && EventSystem.current.IsPointerOverGameObject();
 
-        private Vector3Int GetCellUnderMouse()
+        private bool TryGetCellUnderMouse(out Vector3Int cell)
         {
-            Vector3 worldPoint = Camera.main.ScreenToWorldPoint(Input.mousePosition);
-            worldPoint.z = 0f;
-            return grid.WorldToCell(worldPoint);
+            cell = default;
+            Camera cam = Camera.main;
+            if (cam == null) return false;
+
+            Ray ray = cam.ScreenPointToRay(Input.mousePosition);
+            if (!GroundPlane.Raycast(ray, out float enter)) return false;
+
+            cell = grid.WorldToCell(ray.GetPoint(enter));
+            return true;
         }
+
+        /// <summary>Tâm ô trên mặt đất (y = 0), không phụ thuộc cellSize trục đứng của Grid.</summary>
+        private Vector3 CellToGround(Vector3Int cell)
+        {
+            Vector3 center = grid.GetCellCenterWorld(cell);
+            center.y = 0f;
+            return center;
+        }
+
+        private bool CanPlace(Vector3Int cell) =>
+            !occupiedCells.Contains(cell) &&
+            (TechManager.Instance == null || TechManager.Instance.IsBuildingUnlocked(selectedBuilding)) &&
+            ResourceManager.Instance.CanAfford(selectedBuilding.costs);
 
         private void UpdatePreview(Vector3Int cell)
         {
             if (placementPreview == null) return;
-            placementPreview.transform.position = grid.GetCellCenterWorld(cell);
+            placementPreview.SetActive(true);
+            placementPreview.transform.position = CellToGround(cell);
+            if (previewRenderer != null)
+                previewRenderer.material.color = CanPlace(cell) ? ValidPreviewColor : InvalidPreviewColor;
         }
 
         private void TryPlace(Vector3Int cell)
         {
-            if (occupiedCells.Contains(cell)) return;
-            if (TechManager.Instance != null && !TechManager.Instance.IsBuildingUnlocked(selectedBuilding)) return;
-
+            if (!CanPlace(cell)) return;
             PlaceBuilding(selectedBuilding, cell, spendResources: true);
         }
 
@@ -103,7 +135,7 @@ namespace PrehistoricTribe
             if (spendResources && !ResourceManager.Instance.SpendAll(data.costs))
                 return null;
 
-            Vector3 worldPosition = grid.GetCellCenterWorld(cell);
+            Vector3 worldPosition = CellToGround(cell);
             GameObject instanceObject = Instantiate(data.prefab, worldPosition, Quaternion.identity);
             BuildingInstance instance = instanceObject.GetComponent<BuildingInstance>();
             instance.Initialize(data, cell);

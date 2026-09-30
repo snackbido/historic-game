@@ -31,11 +31,9 @@ Assets/
     Enemies/
     UI/
 
-  Sprites/
-    Characters/
-    Buildings/
-    Environment/
-    UI/
+  Models/                  → mesh/model 3D (Generated/ = placeholder do Editor script sinh ra)
+  Materials/               → material (Generated/ = bảng màu low-poly placeholder)
+  Sprites/                 → chỉ còn dùng cho UI (bản 2D cũ nằm ở Sprites/Generated, không còn dùng)
 
   Animations/
   Audio/
@@ -100,5 +98,6 @@ GameManager (điều phối chung)
 - Thiết kế mỗi hệ thống có hàm `GetSaveData()` / `LoadFromSaveData()` riêng, `GameManager` gọi tổng hợp — tránh 1 class khổng lồ ôm hết save logic.
 
 ## 5. Ghi chú kỹ thuật khi mở rộng
-- Nếu sau này chuyển sang isometric/3D: giữ nguyên tầng Logic + Data, chỉ thay tầng Presentation (sprite → model, di chuyển 2D → 3D). Đây là lý do vì sao phải tách 3 tầng rõ ràng ngay từ đầu.
+- **Đã chuyển sang 2.5D (2026-09-30)**: thế giới nằm trên mặt phẳng XZ (Y hướng lên), Grid dùng `cellSwizzle = XZY`. Tầng Logic + Data giữ nguyên; chỉ thay Presentation (sprite → model) và vật lý di chuyển (Rigidbody2D → Rigidbody). Tìm đối tượng tương tác qua `InteractableRegistry` (khoảng cách trên mặt đất), không qua collider, để logic không phụ thuộc vật lý.
+- Thay model placeholder bằng model thật (Kenney/Quaternius): sửa trực tiếp prefab trong `Assets/Prefabs/`, **không chạy lại** menu Build Missing Content (sẽ hỏi trước khi ghi đè). File `.fbx` kéo vào dùng ngay; `.glb/.gltf` cần package glTFast.
 - Nếu cần AI phức tạp hơn cho combat/thiên tai: cân nhắc Unity NavMesh cho pathfinding khi lên 3D, hoặc A* Pathfinding Project (asset phổ biến) cho 2D.

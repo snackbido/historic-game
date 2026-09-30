@@ -1,19 +1,20 @@
 using System.Collections.Generic;
-using System.Reflection;
 using TMPro;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.Rendering;
 using UnityEngine.UI;
+using static PrehistoricTribe.EditorTools.EditorBuildUtils;
 
 namespace PrehistoricTribe.EditorTools
 {
     /// <summary>
-    /// Dựng scene placeholder Gameplay.unity bằng code để test vòng lặp
-    /// di chuyển + thu thập tài nguyên (Milestone 1) mà không cần kéo-thả tay.
+    /// Dựng scene 2.5D Gameplay.unity bằng code (camera phối cảnh nhìn nghiêng, thế giới trên mặt phẳng XZ).
     /// Chạy qua menu Tools/Prehistoric/Build Gameplay Scene, hoặc batch mode
-    /// (-executeMethod PrehistoricTribe.EditorTools.GameplaySceneBuilder.Build).
+    /// (-executeMethod PrehistoricTribe.EditorTools.GameplaySceneBuilder.BuildAll).
+    /// Scene đã có sẵn thì Editor sẽ hỏi trước khi ghi đè (tránh mất phần chỉnh tay).
     /// </summary>
     public static class GameplaySceneBuilder
     {
@@ -28,6 +29,15 @@ namespace PrehistoricTribe.EditorTools
         private const string BoarDataPath = "Assets/_Data/AnimalData_WildBoar.asset";
         private const string ButtonPrefabPath = "Assets/Prefabs/Button.prefab";
 
+        private static readonly Color SkyColor = new Color(0.81f, 0.89f, 0.9f);
+
+        // Cùng bố cục với bản web (web/src/data/gameData.js): (x, z) trên mặt đất.
+        private static readonly Vector2[] TreePositions =
+        {
+            new Vector2(2f, 1f), new Vector2(4.5f, 2.5f), new Vector2(-1.5f, 3f), new Vector2(6f, -0.5f),
+            new Vector2(-5f, 2f), new Vector2(1f, 4.5f), new Vector2(7f, 3.5f), new Vector2(-6.5f, -3.5f),
+        };
+
         [MenuItem("Tools/Prehistoric/Build All (Content + Scene)")]
         public static void BuildAll()
         {
@@ -35,9 +45,14 @@ namespace PrehistoricTribe.EditorTools
             Build();
         }
 
-        [MenuItem("Tools/Prehistoric/Build Gameplay Scene (Milestone 1)")]
+        [MenuItem("Tools/Prehistoric/Build Gameplay Scene")]
         public static void Build()
         {
+            if (!ConfirmOverwrite("Dựng lại scene Gameplay?",
+                    $"{ScenePath} đã tồn tại. Dựng lại sẽ xóa mọi thứ bạn đã chỉnh tay trong scene này.",
+                    ScenePath))
+                return;
+
             var wood = AssetDatabase.LoadAssetAtPath<ResourceTypeData>(WoodAssetPath);
             var food = AssetDatabase.LoadAssetAtPath<ResourceTypeData>(FoodAssetPath);
             var knowledge = AssetDatabase.LoadAssetAtPath<ResourceTypeData>(KnowledgeAssetPath);
@@ -46,6 +61,7 @@ namespace PrehistoricTribe.EditorTools
             var berry = AssetDatabase.LoadAssetAtPath<CropData>(BerryDataPath);
             var techFarming = AssetDatabase.LoadAssetAtPath<TechNode>(TechFarmingPath);
             var boarData = AssetDatabase.LoadAssetAtPath<AnimalData>(BoarDataPath);
+            var treePrefab = AssetDatabase.LoadAssetAtPath<GameObject>(GameContentBuilder.TreePrefabPath);
             var buttonPrefab = AssetDatabase.LoadAssetAtPath<Button>(ButtonPrefabPath);
 
             if (wood == null || food == null || knowledge == null || hut == null || storage == null ||
@@ -55,78 +71,60 @@ namespace PrehistoricTribe.EditorTools
                 return;
             }
 
-            if (hut.prefab == null || storage.prefab == null || boarData.prefab == null)
+            if (hut.prefab == null || storage.prefab == null || boarData.prefab == null || treePrefab == null)
             {
-                Debug.LogError("[GameplaySceneBuilder] BuildingData/AnimalData chua co prefab. Chay 'Tools/Prehistoric/Build Missing Content' truoc (hoac dung 'Build All').");
+                Debug.LogError("[GameplaySceneBuilder] Chua co prefab 3D. Chay 'Tools/Prehistoric/Build Missing Content' truoc (hoac dung 'Build All').");
                 return;
             }
 
             var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
 
-            var cameraGO = new GameObject("Main Camera");
-            cameraGO.tag = "MainCamera";
-            var cam = cameraGO.AddComponent<Camera>();
-            cam.orthographic = true;
-            cam.orthographicSize = 5f;
-            cam.transform.position = new Vector3(0f, 0f, -10f);
-            cameraGO.AddComponent<AudioListener>();
-            var camFollow = cameraGO.AddComponent<CameraFollow>();
+            SetupLighting();
+            var environment = new GameObject("Environment").transform;
+            CreateGround(environment);
+            CreateDecorForest(environment);
 
             var rmGO = new GameObject("ResourceManager");
             var rm = rmGO.AddComponent<ResourceManager>();
             SetPrivateField(rm, "knownResourceTypes", new List<ResourceTypeData> { wood, food, knowledge });
 
-            var playerGO = new GameObject("Player");
-            playerGO.tag = "Player";
-            playerGO.transform.position = Vector3.zero;
-            var playerSr = playerGO.AddComponent<SpriteRenderer>();
-            playerSr.sprite = CreateSquareSprite(new Color(0.2f, 0.5f, 1f), "PlayerSprite");
-            var rb = playerGO.AddComponent<Rigidbody2D>();
-            rb.gravityScale = 0f;
-            rb.freezeRotation = true;
-            var playerCol = playerGO.AddComponent<CircleCollider2D>();
-            playerCol.radius = 0.45f;
-            playerGO.AddComponent<PlayerController>();
-            playerGO.AddComponent<PlayerInteraction>();
+            var player = CreatePlayer();
+            CreateCamera(player.transform);
 
-            SetPrivateField(camFollow, "target", playerGO.transform);
-
-            var treeGO = new GameObject("Tree");
-            treeGO.transform.position = new Vector3(2f, 1f, 0f);
-            var treeSr = treeGO.AddComponent<SpriteRenderer>();
-            treeSr.sprite = CreateSquareSprite(new Color(0.2f, 0.6f, 0.2f), "TreeSprite");
-            var treeCol = treeGO.AddComponent<BoxCollider2D>();
-            treeCol.isTrigger = true;
-            var node = treeGO.AddComponent<ResourceNode>();
-            SetPrivateField(node, "resourceType", wood);
-            SetPrivateField(node, "amountRemaining", 10);
-            SetPrivateField(node, "yieldPerHit", 1);
+            var resources = new GameObject("ResourceNodes").transform;
+            for (int i = 0; i < TreePositions.Length; i++)
+            {
+                var tree = (GameObject)PrefabUtility.InstantiatePrefab(treePrefab, resources);
+                tree.name = i == 0 ? "Tree" : $"Tree_{i}";
+                tree.transform.position = new Vector3(TreePositions[i].x, 0f, TreePositions[i].y);
+                tree.transform.rotation = Quaternion.Euler(0f, i * 47f, 0f);
+            }
 
             var gridGO = new GameObject("Grid");
-            gridGO.AddComponent<Grid>();
+            var grid = gridGO.AddComponent<Grid>();
+            grid.cellSize = Vector3.one;
+            grid.cellSwizzle = GridLayout.CellSwizzle.XZY; // ô (x, y) ↔ thế giới (x, z)
 
-            var previewGO = new GameObject("PlacementPreview");
-            var previewSr = previewGO.AddComponent<SpriteRenderer>();
-            previewSr.sprite = CreateSquareSprite(new Color(1f, 1f, 1f, 0.4f), "PlacementPreviewSprite");
+            var previewGO = Part(null, "PlacementPreview", PrimitiveType.Cube, new Vector3(0f, 0.02f, 0f),
+                new Vector3(0.98f, 0.04f, 0.98f), Palette.Preview);
+            previewGO.GetComponent<Renderer>().shadowCastingMode = ShadowCastingMode.Off;
+            previewGO.SetActive(false); // BuildingPlacer tự bật khi đang chọn công trình
 
             var placerGO = new GameObject("BuildingPlacer");
             var placer = placerGO.AddComponent<BuildingPlacer>();
-            SetPrivateField(placer, "grid", gridGO.GetComponent<Grid>());
+            SetPrivateField(placer, "grid", grid);
             SetPrivateField(placer, "availableBuildings", new List<BuildingData> { hut, storage });
             SetPrivateField(placer, "placementPreview", previewGO);
 
-            var farmManagerGO = new GameObject("FarmManager");
-            farmManagerGO.AddComponent<FarmManager>();
+            new GameObject("FarmManager").AddComponent<FarmManager>();
+            new GameObject("TamingSystem").AddComponent<TamingSystem>();
 
-            var tamingSystemGO = new GameObject("TamingSystem");
-            tamingSystemGO.AddComponent<TamingSystem>();
-
-            CreateFarmPlot("FarmPlot_1", new Vector3(-2f, -1.5f, 0f));
-            CreateFarmPlot("FarmPlot_2", new Vector3(-3.2f, -1.5f, 0f));
+            CreateFarmPlot("FarmPlot_1", new Vector3(-2f, 0f, -1.5f));
+            CreateFarmPlot("FarmPlot_2", new Vector3(-3.2f, 0f, -1.5f));
 
             var boarInstance = (GameObject)PrefabUtility.InstantiatePrefab(boarData.prefab);
             boarInstance.name = "WildBoar";
-            boarInstance.transform.position = new Vector3(3f, -1.5f, 0f);
+            boarInstance.transform.SetPositionAndRotation(new Vector3(3f, 0f, -1.5f), Quaternion.Euler(0f, 200f, 0f));
             SetPrivateField(boarInstance.GetComponent<AnimalController>(), "data", boarData);
 
             var techManagerGO = new GameObject("TechManager");
@@ -136,11 +134,141 @@ namespace PrehistoricTribe.EditorTools
 
             var gameManagerGO = new GameObject("GameManager");
             var gameManager = gameManagerGO.AddComponent<GameManager>();
-            SetPrivateField(gameManager, "player", playerGO.GetComponent<PlayerController>());
+            SetPrivateField(gameManager, "player", player.GetComponent<PlayerController>());
             SetPrivateField(gameManager, "resourceManager", rm);
             SetPrivateField(gameManager, "buildingPlacer", placer);
             gameManagerGO.AddComponent<SaveLoadHotkeys>();
 
+            CreateUI(buttonPrefab, wood, food, knowledge, hut, storage, berry, techFarming);
+
+            EditorSceneManager.SaveScene(scene, ScenePath);
+            AssetDatabase.SaveAssets();
+            Debug.Log($"[GameplaySceneBuilder] Da tao scene 2.5D tai {ScenePath}");
+        }
+
+        // ─── World ───────────────────────────────────────────────────────────
+        private static void SetupLighting()
+        {
+            RenderSettings.ambientMode = AmbientMode.Flat;
+            RenderSettings.ambientLight = new Color(0.42f, 0.42f, 0.4f);
+            RenderSettings.fog = true;
+            RenderSettings.fogMode = FogMode.Linear;
+            RenderSettings.fogColor = SkyColor;
+            RenderSettings.fogStartDistance = 25f;
+            RenderSettings.fogEndDistance = 55f;
+
+            var sunGO = new GameObject("Sun");
+            var sun = sunGO.AddComponent<Light>();
+            sun.type = LightType.Directional;
+            sun.color = new Color(1f, 0.9f, 0.76f);
+            sun.intensity = 1f;
+            sun.shadows = LightShadows.Soft;
+            sunGO.transform.rotation = Quaternion.Euler(50f, -30f, 0f);
+        }
+
+        private static void CreateGround(Transform parent)
+        {
+            // Plane mặc định 10×10 → scale 6 = 60×60. Không cần collider: chuột raycast vào mặt phẳng toán học.
+            var ground = Part(parent, "Ground", PrimitiveType.Plane, Vector3.zero, new Vector3(6f, 1f, 6f), Palette.Grass);
+            ground.GetComponent<Renderer>().shadowCastingMode = ShadowCastingMode.Off;
+
+            var camp = Part(parent, "CampGround", PrimitiveType.Cylinder, new Vector3(0f, -0.045f, 0f),
+                new Vector3(9f, 0.05f, 7.5f), Mat("CampGround", Palette.Hex(0x8a7a50)));
+            camp.GetComponent<Renderer>().shadowCastingMode = ShadowCastingMode.Off;
+        }
+
+        /// <summary>Rừng trang trí bao quanh khu chơi — chỉ hình ảnh, không thu hoạch được.</summary>
+        private static void CreateDecorForest(Transform parent)
+        {
+            var forest = new GameObject("DecorForest").transform;
+            forest.SetParent(parent, false);
+            var random = new System.Random(1987);
+
+            int placed = 0;
+            while (placed < 70)
+            {
+                float x = (float)(random.NextDouble() - 0.5) * 44f;
+                float z = (float)(random.NextDouble() - 0.5) * 44f;
+                if (Mathf.Abs(x) < 12f && Mathf.Abs(z) < 12f) continue;
+
+                var tree = new GameObject($"DecorTree_{placed}").transform;
+                tree.SetParent(forest, false);
+                tree.SetPositionAndRotation(new Vector3(x, 0f, z), Quaternion.Euler(0f, (float)random.NextDouble() * 360f, 0f));
+                tree.localScale = Vector3.one * (1.2f + (float)random.NextDouble() * 1.2f);
+                GameContentBuilder.BuildTreeVisual(tree);
+                placed++;
+            }
+        }
+
+        private static GameObject CreatePlayer()
+        {
+            var playerGO = new GameObject("Player") { tag = "Player" };
+            var rb = playerGO.AddComponent<Rigidbody>();
+            rb.useGravity = false;
+            rb.constraints = RigidbodyConstraints.FreezeRotation | RigidbodyConstraints.FreezePositionY;
+            rb.interpolation = RigidbodyInterpolation.Interpolate;
+            var col = playerGO.AddComponent<CapsuleCollider>();
+            col.center = new Vector3(0f, 0.5f, 0f);
+            col.radius = 0.3f;
+            col.height = 1f;
+
+            var visual = new GameObject("Visual").transform;
+            visual.SetParent(playerGO.transform, false);
+            Part(visual, "LegL", PrimitiveType.Cylinder, new Vector3(-0.09f, 0.16f, 0f), new Vector3(0.12f, 0.16f, 0.12f), Palette.Skin);
+            Part(visual, "LegR", PrimitiveType.Cylinder, new Vector3(0.09f, 0.16f, 0f), new Vector3(0.12f, 0.16f, 0.12f), Palette.Skin);
+            Part(visual, "Tunic", PrimitiveType.Cylinder, new Vector3(0f, 0.52f, 0f), new Vector3(0.46f, 0.23f, 0.46f), Palette.Fur);
+            Part(visual, "ArmL", PrimitiveType.Cylinder, new Vector3(-0.25f, 0.55f, 0f), new Vector3(0.11f, 0.16f, 0.11f), Palette.Skin);
+            Part(visual, "ArmR", PrimitiveType.Cylinder, new Vector3(0.25f, 0.55f, 0f), new Vector3(0.11f, 0.16f, 0.11f), Palette.Skin);
+            Part(visual, "Head", PrimitiveType.Sphere, new Vector3(0f, 0.9f, 0f), Vector3.one * 0.34f, Palette.Skin);
+            Part(visual, "Hair", PrimitiveType.Sphere, new Vector3(0f, 0.95f, -0.03f), new Vector3(0.37f, 0.25f, 0.37f), Palette.Hair);
+            Part(visual, "SpearShaft", PrimitiveType.Cylinder, new Vector3(0.3f, 0.62f, 0.05f), new Vector3(0.04f, 0.6f, 0.04f), Palette.Wood, new Vector3(14f, 0f, 0f));
+            Cone(visual, "SpearTip", 5, new Vector3(0.3f, 1.2f, 0.2f), new Vector3(0.1f, 0.16f, 0.1f), Palette.Stone, new Vector3(14f, 0f, 0f));
+
+            var controller = playerGO.AddComponent<PlayerController>();
+            SetPrivateField(controller, "visual", visual);
+            playerGO.AddComponent<PlayerInteraction>();
+            return playerGO;
+        }
+
+        private static void CreateCamera(Transform target)
+        {
+            var cameraGO = new GameObject("Main Camera") { tag = "MainCamera" };
+            var cam = cameraGO.AddComponent<Camera>();
+            cam.orthographic = false;
+            cam.fieldOfView = 40f;
+            cam.nearClipPlane = 0.1f;
+            cam.farClipPlane = 200f;
+            cam.clearFlags = CameraClearFlags.SolidColor; // hết nền trời Skybox (nợ polish ở PROGRESS.md)
+            cam.backgroundColor = SkyColor;
+            cameraGO.AddComponent<AudioListener>();
+
+            var follow = cameraGO.AddComponent<CameraFollow>();
+            SetPrivateField(follow, "target", target);
+            follow.SnapToTarget();
+        }
+
+        private static void CreateFarmPlot(string name, Vector3 position)
+        {
+            var plotGO = new GameObject(name);
+            plotGO.transform.position = position;
+            var t = plotGO.transform;
+
+            Part(t, "Soil", PrimitiveType.Cube, new Vector3(0f, 0.04f, 0f), new Vector3(0.96f, 0.08f, 0.96f), Palette.Soil);
+            foreach (float z in new[] { -0.3f, 0f, 0.3f })
+                Part(t, "Furrow", PrimitiveType.Cube, new Vector3(0f, 0.09f, z), new Vector3(0.86f, 0.03f, 0.1f), Palette.SoilDark);
+
+            var anchor = new GameObject("CropAnchor").transform;
+            anchor.SetParent(t, false);
+            anchor.localPosition = new Vector3(0f, 0.1f, 0f);
+
+            var plot = plotGO.AddComponent<FarmPlot>();
+            SetPrivateField(plot, "cropAnchor", anchor);
+        }
+
+        // ─── UI (Canvas overlay — giữ nguyên như bản 2D) ─────────────────────
+        private static void CreateUI(Button buttonPrefab, ResourceTypeData wood, ResourceTypeData food, ResourceTypeData knowledge,
+            BuildingData hut, BuildingData storage, CropData berry, TechNode techFarming)
+        {
             var eventSystemGO = new GameObject("EventSystem");
             eventSystemGO.AddComponent<EventSystem>();
             eventSystemGO.AddComponent<StandaloneInputModule>();
@@ -151,53 +279,18 @@ namespace PrehistoricTribe.EditorTools
             canvasGO.AddComponent<CanvasScaler>();
             canvasGO.AddComponent<GraphicRaycaster>();
 
-            var textGO = new GameObject("WoodLabel");
-            textGO.transform.SetParent(canvasGO.transform, false);
-            var rect = textGO.AddComponent<RectTransform>();
-            rect.anchorMin = new Vector2(0f, 1f);
-            rect.anchorMax = new Vector2(0f, 1f);
-            rect.pivot = new Vector2(0f, 1f);
-            rect.anchoredPosition = new Vector2(20f, -20f);
-            rect.sizeDelta = new Vector2(300f, 50f);
-            var tmp = textGO.AddComponent<TextMeshProUGUI>();
-            tmp.fontSize = 28f;
-            tmp.text = "Wood: 0";
-            var barUI = textGO.AddComponent<ResourceBarUI>();
-            SetPrivateField(barUI, "displayedResource", wood);
-            SetPrivateField(barUI, "label", tmp);
-
-            CreateResourceLabel(canvasGO.transform, "FoodLabel", new Vector2(20f, -50f), food, "Food: 0");
-            CreateResourceLabel(canvasGO.transform, "KnowledgeLabel", new Vector2(20f, -80f), knowledge, "Knowledge: 0");
+            CreateResourceLabel(canvasGO.transform, "WoodLabel", new Vector2(20f, -20f), wood, "Wood: 0", 28f);
+            CreateResourceLabel(canvasGO.transform, "FoodLabel", new Vector2(20f, -55f), food, "Food: 0", 20f);
+            CreateResourceLabel(canvasGO.transform, "KnowledgeLabel", new Vector2(20f, -85f), knowledge, "Knowledge: 0", 20f);
 
             CreateBuildMenuPanel(canvasGO.transform, buttonPrefab, hut, storage);
             CreateCropSelectionPanel(canvasGO.transform, buttonPrefab, berry);
             CreateTechTreePanel(canvasGO.transform, buttonPrefab, techFarming);
             CreateNotificationLabel(canvasGO.transform);
-
-            EditorSceneManager.SaveScene(scene, ScenePath);
-            AssetDatabase.SaveAssets();
-            Debug.Log($"[GameplaySceneBuilder] Da tao scene tai {ScenePath}");
         }
 
-        private static void CreateFarmPlot(string name, Vector3 position)
-        {
-            var plotGO = new GameObject(name);
-            plotGO.transform.position = position;
-            var soilSr = plotGO.AddComponent<SpriteRenderer>();
-            soilSr.sprite = CreateSquareSprite(new Color(0.35f, 0.25f, 0.15f), "SoilSprite");
-            var col = plotGO.AddComponent<BoxCollider2D>();
-            col.isTrigger = true;
-
-            var cropVisualGO = new GameObject("CropVisual");
-            cropVisualGO.transform.SetParent(plotGO.transform, false);
-            var cropSr = cropVisualGO.AddComponent<SpriteRenderer>();
-            cropSr.sortingOrder = 1;
-
-            var plot = plotGO.AddComponent<FarmPlot>();
-            SetPrivateField(plot, "cropRenderer", cropSr);
-        }
-
-        private static void CreateResourceLabel(Transform canvasTransform, string name, Vector2 anchoredPosition, ResourceTypeData resource, string initialText)
+        private static void CreateResourceLabel(Transform canvasTransform, string name, Vector2 anchoredPosition,
+            ResourceTypeData resource, string initialText, float fontSize)
         {
             var labelGO = new GameObject(name);
             labelGO.transform.SetParent(canvasTransform, false);
@@ -206,9 +299,9 @@ namespace PrehistoricTribe.EditorTools
             rect.anchorMax = new Vector2(0f, 1f);
             rect.pivot = new Vector2(0f, 1f);
             rect.anchoredPosition = anchoredPosition;
-            rect.sizeDelta = new Vector2(300f, 30f);
+            rect.sizeDelta = new Vector2(300f, fontSize + 10f);
             var tmp = labelGO.AddComponent<TextMeshProUGUI>();
-            tmp.fontSize = 20f;
+            tmp.fontSize = fontSize;
             tmp.text = initialText;
             var barUI = labelGO.AddComponent<ResourceBarUI>();
             SetPrivateField(barUI, "displayedResource", resource);
@@ -278,31 +371,6 @@ namespace PrehistoricTribe.EditorTools
             SetPrivateField(ui, "allTechs", new List<TechNode> { techFarming });
             SetPrivateField(ui, "entryButtonPrefab", buttonPrefab);
             SetPrivateField(ui, "entryContainer", container);
-        }
-
-        private static Sprite CreateSquareSprite(Color color, string spriteName)
-        {
-            const int size = 8;
-            var tex = new Texture2D(size, size) { name = spriteName };
-            var pixels = new Color[size * size];
-            for (int i = 0; i < pixels.Length; i++) pixels[i] = color;
-            tex.SetPixels(pixels);
-            tex.Apply();
-
-            var sprite = Sprite.Create(tex, new Rect(0f, 0f, size, size), new Vector2(0.5f, 0.5f), size);
-            sprite.name = spriteName;
-            return sprite;
-        }
-
-        private static void SetPrivateField(object target, string fieldName, object value)
-        {
-            var field = target.GetType().GetField(fieldName, BindingFlags.NonPublic | BindingFlags.Instance);
-            if (field == null)
-            {
-                Debug.LogError($"[GameplaySceneBuilder] Khong tim thay field '{fieldName}' tren {target.GetType()}");
-                return;
-            }
-            field.SetValue(target, value);
         }
     }
 }

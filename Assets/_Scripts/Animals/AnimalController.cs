@@ -12,7 +12,16 @@ namespace PrehistoricTribe
     {
         [SerializeField] private AnimalData data;
 
-        private SpriteRenderer spriteRenderer;
+        [Tooltip("Các phần thân được tô màu theo trạng thái (hoang/đã thuần). Để trống = mọi Renderer con")]
+        [SerializeField] private Renderer[] bodyRenderers;
+
+        [Tooltip("Hiện khi đã thuần hóa (vd vòng cổ) — phân biệt rõ con hoang/con thuần")]
+        [SerializeField] private GameObject tamedIndicator;
+
+        [Tooltip("Hiện khi có sản phẩm sẵn sàng để thu")]
+        [SerializeField] private GameObject productIndicator;
+
+        private Color[] wildColors;
         private float hungerTimer;
         private float reproductionTimer;
         private float productionTimer;
@@ -30,8 +39,22 @@ namespace PrehistoricTribe
 
         private void Awake()
         {
-            spriteRenderer = GetComponent<SpriteRenderer>();
+            if (bodyRenderers == null || bodyRenderers.Length == 0)
+                bodyRenderers = System.Array.FindAll(GetComponentsInChildren<Renderer>(true), r => !IsIndicator(r.transform));
+
+            wildColors = new Color[bodyRenderers.Length];
+            for (int i = 0; i < bodyRenderers.Length; i++)
+                wildColors[i] = bodyRenderers[i].material.color;
+
+            UpdateVisual();
         }
+
+        private bool IsIndicator(Transform t) =>
+            (tamedIndicator != null && t.IsChildOf(tamedIndicator.transform)) ||
+            (productIndicator != null && t.IsChildOf(productIndicator.transform));
+
+        private void OnEnable() => InteractableRegistry.Register(this);
+        private void OnDisable() => InteractableRegistry.Unregister(this);
 
         private void Update()
         {
@@ -91,8 +114,23 @@ namespace PrehistoricTribe
 
         private void UpdateVisual()
         {
-            if (spriteRenderer == null || State != AnimalState.Tamed) return;
-            spriteRenderer.color = ProductReady ? ProductReadyColor : TamedColor;
+            bool tamed = State == AnimalState.Tamed;
+            if (tamedIndicator != null) tamedIndicator.SetActive(tamed);
+            if (productIndicator != null) productIndicator.SetActive(tamed && ProductReady);
+
+            if (wildColors == null) return;
+            for (int i = 0; i < bodyRenderers.Length; i++)
+            {
+                if (bodyRenderers[i] == null) continue;
+                Color color = wildColors[i];
+                if (tamed)
+                {
+                    // Có biểu tượng sản phẩm riêng thì giữ màu thuần; không có thì đổi màu vàng như bản 2D.
+                    bool showReadyByColor = ProductReady && productIndicator == null;
+                    color = showReadyByColor ? ProductReadyColor : color * TamedColor;
+                }
+                bodyRenderers[i].material.color = color;
+            }
         }
 
         private void UpdateHunger()
@@ -129,7 +167,8 @@ namespace PrehistoricTribe
         {
             if (data.prefab == null) return;
 
-            Vector3 spawnPosition = transform.position + (Vector3)Random.insideUnitCircle;
+            Vector2 offset = Random.insideUnitCircle;
+            Vector3 spawnPosition = transform.position + new Vector3(offset.x, 0f, offset.y);
             GameObject offspring = Instantiate(data.prefab, spawnPosition, Quaternion.identity);
             offspring.GetComponent<AnimalController>()?.InitializeAsTamed(data);
         }

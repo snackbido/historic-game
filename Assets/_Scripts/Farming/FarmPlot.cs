@@ -20,14 +20,19 @@ namespace PrehistoricTribe
 
     public class FarmPlot : MonoBehaviour
     {
-        [SerializeField] private SpriteRenderer cropRenderer;
+        [Tooltip("Điểm gắn model cây trồng (thường là mặt trên của ô đất)")]
+        [SerializeField] private Transform cropAnchor;
 
+        private GameObject cropVisual;
         private CropData crop;
         private CropStage stage;
         private float stageTimer;
 
         public FarmPlotState State { get; private set; } = FarmPlotState.Empty;
         public CropData Crop => crop;
+
+        private void OnEnable() => InteractableRegistry.Register(this);
+        private void OnDisable() => InteractableRegistry.Unregister(this);
 
         private void Update()
         {
@@ -112,22 +117,23 @@ namespace PrehistoricTribe
 
         private void UpdateVisual()
         {
-            if (cropRenderer == null) return;
+            if (cropVisual != null) Destroy(cropVisual);
+            cropVisual = null;
 
-            if (crop == null)
-            {
-                cropRenderer.sprite = null;
-                return;
-            }
+            if (crop == null) return;
 
-            cropRenderer.sprite = stage switch
+            GameObject model = stage switch
             {
-                CropStage.Seed => crop.seedSprite,
-                CropStage.Sprouting => crop.sproutSprite,
-                CropStage.Mature => crop.matureSprite,
-                CropStage.Withered => crop.witheredSprite,
+                CropStage.Seed => crop.seedModel,
+                CropStage.Sprouting => crop.sproutModel,
+                CropStage.Mature => crop.matureModel,
+                CropStage.Withered => crop.witheredModel,
                 _ => null
             };
+            if (model == null) return;
+
+            Transform parent = cropAnchor != null ? cropAnchor : transform;
+            cropVisual = Instantiate(model, parent.position, parent.rotation, parent);
         }
     }
 }
