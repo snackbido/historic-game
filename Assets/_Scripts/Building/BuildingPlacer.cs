@@ -52,6 +52,13 @@ namespace PrehistoricTribe
 
         public bool IsPlacing => selectedBuilding != null;
 
+        /// <summary>
+        /// Chuột phải vừa hủy đặt công trình trong frame này — hệ thống khác (ra lệnh NPC) bỏ qua
+        /// cú click đó để không vừa hủy vừa ra lệnh.
+        /// </summary>
+        public bool UsedMouseThisFrame => Time.frameCount == lastCancelFrame;
+        private int lastCancelFrame = -1;
+
         public void SelectBuilding(BuildingData data)
         {
             selectedBuilding = data;
@@ -60,6 +67,7 @@ namespace PrehistoricTribe
 
         public void CancelSelection()
         {
+            if (selectedBuilding != null) lastCancelFrame = Time.frameCount;
             selectedBuilding = null;
             if (placementPreview != null) placementPreview.SetActive(false);
         }

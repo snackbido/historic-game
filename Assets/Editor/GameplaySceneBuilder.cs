@@ -152,6 +152,7 @@ namespace PrehistoricTribe.EditorTools
             // Nạp lại: tạo asset NavMesh ở trên có thể làm tham chiếu prefab cũ mất hiệu lực.
             villagerPrefab = AssetDatabase.LoadAssetAtPath<NpcController>(GameContentBuilder.VillagerPrefabPath);
             CreateVillagers(villagerPrefab, professions);
+            new GameObject("SelectionManager").AddComponent<SelectionManager>();
             var npcManager = new GameObject("NpcManager").AddComponent<NpcManager>();
             SetPrivateField(npcManager, "npcPrefab", villagerPrefab);
             SetPrivateField(npcManager, "knownProfessions", professions);

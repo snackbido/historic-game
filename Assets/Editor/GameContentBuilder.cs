@@ -322,6 +322,17 @@ namespace PrehistoricTribe.EditorTools
                 new ProfessionTool { profession = professions[3], tool = BuildFeatherBand(visual) },
             };
 
+            var selectionRing = new GameObject("SelectionRing");
+            selectionRing.transform.SetParent(root.transform, false);
+            selectionRing.transform.localPosition = new Vector3(0f, 0.03f, 0f);
+            selectionRing.transform.localScale = Vector3.one * 0.6f;
+            selectionRing.AddComponent<MeshFilter>().sharedMesh = RingMesh(0.62f, 0.72f, 40);
+            var ringRenderer = selectionRing.AddComponent<MeshRenderer>();
+            ringRenderer.sharedMaterial = Mat("SelectionRing", Palette.Hex(0xb8f07a), emission: 0.8f);
+            ringRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            selectionRing.SetActive(false);
+            SetPrivateField(npc, "selectionRing", selectionRing);
+
             // Mặc định trong prefab: dân làng nam — chỉ bật tóc nam + rìu (NpcController tự đổi theo nghề/giới tính).
             femaleHair.SetActive(false);
             for (int i = 1; i < tools.Count; i++) tools[i].tool.SetActive(false);

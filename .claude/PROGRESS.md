@@ -86,7 +86,8 @@
   - Dân số: bắt đầu **3–4 NPC có cả nam lẫn nữ**; một cặp nam + nữ trưởng thành **sinh em bé**, em bé **lớn dần theo thời gian** (em bé → trẻ em → người lớn), chỉ người lớn mới làm việc/nhận lệnh. Chi tiết tự đề xuất (chỉnh được): cặp đôi cố định; sinh con khi còn chỗ ở (mỗi lều +2 chỗ) và đủ thức ăn (tốn thức ăn); thời gian lớn lên cấu hình trong data
   - Người mới trưởng thành là "Dân làng", người chơi **đổi nghề qua UI**
   - Khi không có lệnh, NPC **tự làm việc theo nghề** ở gần (vd nông dân tự thu hoạch ô đã chín)
-- [ ] Cơ chế chỉ huy nhóm: chọn NPC (kéo khung) + ra lệnh theo nghề + UI nhóm/nghề
+- [x] M5.2 Chọn + ra lệnh di chuyển (2026-09-30): `Npc/SelectionManager.cs` — kéo khung/click chọn (Shift thêm/bỏ), chuột phải đi tới (dàn lưới, không chồng nhau), Ctrl+1..9 lưu nhóm / 1..9 gọi nhóm, vòng chọn dưới chân; NPC đã nhận lệnh đứng giữ vị trí (lưu trong save)
+- [ ] Cơ chế chỉ huy nhóm: ra lệnh theo nghề (M5.3) + UI nhóm/nghề (M5.4)
 - [ ] Dân số: giới tính, cặp đôi, sinh con, lớn lên theo thời gian, sức chứa theo số lều
 
 ## Milestone 6 — Thiên tai
@@ -180,6 +181,13 @@
 - Bẫy gặp phải khi dựng scene bằng code: (1) `PrefabUtility.InstantiatePrefab(component)` trả về null — phải truyền GameObject; (2) tạo asset (NavMesh) giữa chừng làm tham chiếu prefab đã nạp trước đó mất hiệu lực — nạp lại ngay trước khi dùng; (3) bật/tắt object con của prefab instance trong Editor phải `RecordPrefabInstancePropertyModifications` cho từng object con, nếu không scene chỉ lưu giá trị gốc của prefab (dân làng hiện đủ 4 dụng cụ trong Scene view).
 - **Đã xác nhận**: **16/16 test PlayMode pass** (4 test mới `Milestone5NpcTests.cs`: 4 dân làng có cả nam/nữ và mỗi người một nghề, đứng trên NavMesh, tốc độ/máu theo nghề; `MoveTo` đi tới đích; `HealthComponent` chết đúng 1 lần; lưu/tải giữ nghề + giới tính, không nhân đôi); ảnh render trong Play mode xác nhận màu áo/dụng cụ/tóc đúng theo nghề và giới tính; Console sạch.
 - Chưa làm (các bước M5 sau): chọn NPC bằng kéo khung + ra lệnh (M5.2), việc theo nghề (M5.3), UI nhóm/nghề + đổi nghề (M5.4), thú dữ + chiến đấu (M5.5), tự làm việc khi rảnh + dân số sinh con (M5.6).
+
+## Nhật ký phiên làm việc 2026-09-30 (phần 4 — M5.2 chọn NPC + ra lệnh)
+- Mới `Npc/SelectionManager.cs`: chuột trái kéo khung (vẽ bằng `OnGUI`) hoặc click (chọn NPC gần con trỏ nhất trong 40px trên màn hình, không cần collider) — Shift để thêm/bỏ; click chỗ trống bỏ chọn; chuột phải lên mặt đất → cả nhóm `MoveTo` theo lưới cách nhau 0.9m; Ctrl+1..9 / 1..9 lưu/gọi nhóm. Chỉ người lớn chọn được. NPC bị xóa tự rời khỏi nhóm/đang chọn.
+- Nhường chuột cho đặt công trình: bỏ qua khi `BuildingPlacer.IsPlacing` hoặc `UsedMouseThisFrame` (chuột phải vừa hủy đặt công trình trong cùng frame → không ra lệnh nhầm).
+- `NpcController`: `SetSelected` (vòng xanh `SelectionRing` trong prefab), `holdPosition` — sau lệnh của người chơi thì đứng giữ vị trí, không đi dạo (lưu trong `NpcSaveData`). Mới `EventBus.OnSelectionChanged` (chuẩn bị cho UI nhóm/nghề M5.4).
+- **Đã xác nhận**: **21/21 test PlayMode pass** (5 test mới `Milestone5SelectionTests.cs`: kéo khung chọn đủ người lớn + hiện vòng; click/Shift-click/click trống; lệnh đi tới dàn đội hình không chồng nhau rồi giữ vị trí; lưu/gọi nhóm + NPC bị xóa rời nhóm; đội hình cân giữa); ảnh render Play mode xác nhận vòng chọn; Console sạch. Toàn bộ chạy trong Editor đang mở qua Unity MCP (`TestResultReporter`).
+- **Chưa xác nhận**: kéo khung/click bằng chuột thật (cảm giác, khung vẽ `OnGUI`), phím Ctrl+số khi Game view có focus.
 
 ## Vấn đề đang tồn đọng (Known issues / Open questions)
 - [x] Chế độ combat: lai (2026-09-26) + chi tiết chỉ huy NPC theo nghề (2026-09-30)

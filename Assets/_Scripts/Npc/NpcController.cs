@@ -42,6 +42,7 @@ namespace PrehistoricTribe
         public float z;
         public float rotationY;
         public float health;
+        public bool holdPosition;
     }
 
     /// <summary>
@@ -66,6 +67,8 @@ namespace PrehistoricTribe
         [SerializeField] private GameObject femaleHair;
         [Tooltip("Dụng cụ cầm tay theo nghề — chỉ hiện dụng cụ của nghề hiện tại")]
         [SerializeField] private List<ProfessionTool> tools = new List<ProfessionTool>();
+        [Tooltip("Vòng sáng dưới chân khi đang được người chơi chọn")]
+        [SerializeField] private GameObject selectionRing;
 
         [Header("Đi dạo khi rảnh")]
         [SerializeField] private float wanderRadius = 3f;
@@ -77,6 +80,9 @@ namespace PrehistoricTribe
         private Vector3 home;
         private float idleTimer;
 
+        // Đã nhận lệnh từ người chơi → đứng giữ vị trí đó thay vì đi dạo (kiểu RTS).
+        private bool holdPosition;
+
         public string NpcName => npcName;
         public Gender Gender => gender;
         public AgeStage Age => age;
@@ -84,6 +90,9 @@ namespace PrehistoricTribe
         public HealthComponent Health => health;
         public NpcState State { get; private set; } = NpcState.Idle;
         public bool IsAdult => age == AgeStage.Adult;
+        public bool IsSelected { get; private set; }
+        public bool IsHoldingPosition => holdPosition;
+        public Vector3 Destination => agent.destination;
 
         private void Awake()
         {
@@ -92,6 +101,7 @@ namespace PrehistoricTribe
             home = transform.position;
             idleTimer = Random.Range(minIdlePause, maxIdlePause);
             RefreshVisuals();
+            SetSelected(false);
         }
 
         private void OnEnable() => all.Add(this);
@@ -108,6 +118,7 @@ namespace PrehistoricTribe
             switch (State)
             {
                 case NpcState.Idle:
+                    if (holdPosition) break;
                     idleTimer -= Time.deltaTime;
                     if (idleTimer <= 0f) TryWander();
                     break;
@@ -119,7 +130,7 @@ namespace PrehistoricTribe
             }
         }
 
-        /// <summary>Lệnh di chuyển. Điểm đến trở thành "nhà" mới để đi dạo quanh đó.</summary>
+        /// <summary>Lệnh di chuyển của người chơi: đi tới đó rồi đứng giữ vị trí.</summary>
         public bool MoveTo(Vector3 destination)
         {
             if (!agent.isOnNavMesh || !NavMesh.SamplePosition(destination, out NavMeshHit hit, 2f, NavMesh.AllAreas))
@@ -127,8 +138,15 @@ namespace PrehistoricTribe
 
             agent.SetDestination(hit.position);
             home = hit.position;
+            holdPosition = true;
             State = NpcState.Moving;
             return true;
+        }
+
+        public void SetSelected(bool selected)
+        {
+            IsSelected = selected;
+            if (selectionRing != null) selectionRing.SetActive(selected);
         }
 
         public void SetProfession(ProfessionData newProfession)
@@ -211,7 +229,8 @@ namespace PrehistoricTribe
             x = transform.position.x,
             z = transform.position.z,
             rotationY = transform.eulerAngles.y,
-            health = health.Current
+            health = health.Current,
+            holdPosition = holdPosition
         };
 
         /// <summary>Khôi phục thông tin (vị trí do nơi gọi đặt lúc Instantiate).</summary>
@@ -226,6 +245,7 @@ namespace PrehistoricTribe
             ApplyAppearance();
             health.SetCurrent(saved.health);
             home = transform.position;
+            holdPosition = saved.holdPosition;
             BecomeIdle();
         }
     }
