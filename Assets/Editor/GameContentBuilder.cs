@@ -224,6 +224,7 @@ namespace PrehistoricTribe.EditorTools
             });
             SetPrivateField(controller, "tamedIndicator", collar);
             SetPrivateField(controller, "productIndicator", productIcon);
+            BuildHealthBar(root, 1.25f);
 
             GameObject prefab = SavePrefab(root, BoarPrefabPath);
 
@@ -247,6 +248,37 @@ namespace PrehistoricTribe.EditorTools
                 AssetDatabase.CreateAsset(data, BoarDataPath);
             else
                 EditorUtility.SetDirty(data);
+        }
+
+        // ─── Health bar ──────────────────────────────────────────────────────
+        /// <summary>Thanh máu nổi trên đầu: nền tối + phần màu co giãn từ mép trái.</summary>
+        private static void BuildHealthBar(GameObject owner, float height, NpcController npc = null)
+        {
+            var barRoot = new GameObject("HealthBar");
+            barRoot.transform.SetParent(owner.transform, false);
+            barRoot.transform.localPosition = new Vector3(0f, height, 0f);
+
+            var background = Part(barRoot.transform, "Background", PrimitiveType.Cube, Vector3.zero,
+                new Vector3(0.62f, 0.09f, 0.01f), Mat("BarBackground", Palette.Hex(0x1e1a14)));
+            background.GetComponent<Renderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+
+            // Pivot ở mép trái: co giãn pivot theo x thì phần màu ngắn lại về phía trái.
+            var fillPivot = new GameObject("FillPivot").transform;
+            fillPivot.SetParent(barRoot.transform, false);
+            fillPivot.localPosition = new Vector3(-0.29f, 0f, -0.012f);
+            fillPivot.localScale = new Vector3(0.58f, 1f, 1f);
+            var fill = Part(fillPivot, "Fill", PrimitiveType.Cube, new Vector3(0.5f, 0f, 0f),
+                new Vector3(1f, 0.06f, 0.01f), Mat("BarFill", Color.white));
+            var fillRenderer = fill.GetComponent<Renderer>();
+            fillRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            barRoot.SetActive(false);
+
+            var bar = owner.AddComponent<HealthBar>();
+            SetPrivateField(bar, "health", owner.GetComponent<HealthComponent>());
+            SetPrivateField(bar, "npc", npc);
+            SetPrivateField(bar, "barRoot", barRoot);
+            SetPrivateField(bar, "fill", fillPivot);
+            SetPrivateField(bar, "fillRenderer", fillRenderer);
         }
 
         // ─── Professions + villager ──────────────────────────────────────────
@@ -334,6 +366,7 @@ namespace PrehistoricTribe.EditorTools
             ringRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             selectionRing.SetActive(false);
             SetPrivateField(npc, "selectionRing", selectionRing);
+            BuildHealthBar(root, 1.4f, npc);
 
             // Mặc định trong prefab: dân làng nam — chỉ bật tóc nam + rìu (NpcController tự đổi theo nghề/giới tính).
             femaleHair.SetActive(false);

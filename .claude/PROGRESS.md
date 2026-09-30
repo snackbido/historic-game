@@ -88,7 +88,7 @@
   - Khi không có lệnh, NPC **tự làm việc theo nghề** ở gần (vd nông dân tự thu hoạch ô đã chín)
 - [x] M5.2 Chọn + ra lệnh di chuyển (2026-09-30): `Npc/SelectionManager.cs` — kéo khung/click chọn (Shift thêm/bỏ), chuột phải đi tới (dàn lưới, không chồng nhau), Ctrl+1..9 lưu nhóm / 1..9 gọi nhóm, vòng chọn dưới chân; NPC đã nhận lệnh đứng giữ vị trí (lưu trong save)
 - [x] M5.3 Ra lệnh theo nghề (2026-09-30): chuột phải lên cây → chặt (dân làng/nông dân/thợ săn); ô đất → làm ruộng liên tục (nông dân); thú hoang → săn (thợ săn) hoặc thuần hóa (nông dân); thú thuần → chăm (nông dân); ai không làm được thì đi theo
-- [ ] Cơ chế chỉ huy nhóm: UI nhóm/nghề + đổi nghề (M5.4)
+- [x] M5.4 UI nhóm/nghề + đổi nghề (2026-09-30): bảng "Đang chọn" (tên + giới tính, ô theo nghề bấm để lọc, nút đổi nghề cho cả nhóm), thanh máu trên đầu NPC/thú
 - [ ] Dân số: giới tính, cặp đôi, sinh con, lớn lên theo thời gian, sức chứa theo số lều
 
 ## Milestone 6 — Thiên tai
@@ -197,6 +197,13 @@
 - Săn bắt: `AnimalData.huntYield` (heo rừng: +6 thức ăn), heo có `HealthComponent` 60 máu; `AnimalController` chết thì rơi tài nguyên rồi biến mất. Máu thú chưa lưu trong save.
 - **Đã xác nhận**: **27/27 test PlayMode pass** (6 test mới `Milestone5JobTests.cs`: nhóm lẫn nghề chặt cây/trinh sát đi theo + đủ 10 gỗ; nông dân gieo → thu hoạch → gieo lại; không chọn hạt thì dừng; thợ săn hạ heo +6 thức ăn; nông dân thuần hóa heo hoang; lệnh di chuyển hủy việc). Chạy thử trong Play mode qua MCP xác nhận phân việc đúng (Ka/Mây/Đá chặt cây, Suối đi theo).
 - **Chưa xác nhận bằng mắt**: NPC đi tới và làm việc — Editor không focus thì gần như không chạy frame (đã ghi 2026-09-26), nên ảnh chụp không thấy NPC di chuyển; cần user chơi thử.
+
+## Nhật ký phiên làm việc 2026-09-30 (phần 6 — M5.4 UI nhóm/nghề)
+- Mới `UI/SelectionPanelUI.cs` (góc dưới trái, trên dòng gợi ý): tiêu đề "Đang chọn: N người", danh sách tên + (nam)/(nữ), mỗi nghề một ô tô màu theo màu áo "Nông dân ×2" — bấm để chỉ giữ người nghề đó (`SelectionManager.SetSelection`), hàng nút "→ <nghề>" đổi nghề cả nhóm (`NpcController.SetProfession` → tốc độ/máu/dụng cụ/màu áo đổi theo). Ẩn khi không chọn ai — script nằm ở object cha, chỉ ẩn/hiện object con `Content` (nếu ẩn chính object gắn script thì mất luôn việc nghe sự kiện).
+- Mới `UI/HealthBar.cs`: thanh máu 3D nổi trên đầu, luôn quay về camera, co từ mép trái theo % máu, xanh → đỏ; hiện khi bị thương hoặc NPC đang được chọn. Gắn vào prefab Villager và WildBoar.
+- **Lần đầu xem được UI Canvas bằng ảnh**: trong Play mode tạm chuyển Canvas sang `ScreenSpaceCamera` rồi render camera (thay đổi mất khi thoát Play) — xác nhận bảng chọn, ô nghề, nút đổi nghề, tiếng Việt có dấu, thanh máu (Suối mất 35/70 máu → thanh vàng ngắn lại). Cách này dùng lại được để kiểm tra mọi UI sau này.
+- Phát hiện khi xem UI: tên trong data cũ không dấu ("Go", "Thuc an", "Tri thuc", "Leu trai", "Kho chua", "Cay mong", "Nong nghiep", "Heo rung") dù font hiển thị được tiếng Việt có dấu → nên sửa cho đồng bộ (việc nhỏ, chưa làm).
+- **Đã xác nhận**: **31/31 test PlayMode pass** (4 test mới `Milestone5UiTests.cs`: bảng ẩn/hiện + nhóm theo nghề; bấm ô nghề để lọc; đổi nghề cập nhật tốc độ/máu/bảng; thanh máu hiện khi chọn/bị thương, co theo máu); Console sạch.
 
 ## Vấn đề đang tồn đọng (Known issues / Open questions)
 - [x] Chế độ combat: lai (2026-09-26) + chi tiết chỉ huy NPC theo nghề (2026-09-30)

@@ -374,6 +374,81 @@ namespace PrehistoricTribe.EditorTools
             CreateTechTreePanel(canvasGO.transform, buttonPrefab, techFarming);
             CreateNotificationLabel(canvasGO.transform);
             CreateInteractionPrompt(canvasGO.transform, interaction);
+            CreateSelectionPanel(canvasGO.transform, buttonPrefab);
+        }
+
+        /// <summary>Bảng "Đang chọn" góc dưới trái (trên dòng gợi ý tương tác): tên, ô theo nghề, nút đổi nghề.</summary>
+        private static void CreateSelectionPanel(Transform canvasTransform, Button buttonPrefab)
+        {
+            var rootGO = new GameObject("SelectionPanel");
+            rootGO.transform.SetParent(canvasTransform, false);
+            var rootRect = rootGO.AddComponent<RectTransform>();
+            rootRect.anchorMin = rootRect.anchorMax = rootRect.pivot = Vector2.zero;
+            rootRect.anchoredPosition = new Vector2(20f, 90f);
+            rootRect.sizeDelta = new Vector2(700f, 0f);
+
+            // Nội dung là object con: ẩn/hiện nó mà script ở object cha vẫn nghe sự kiện.
+            var content = new GameObject("Content");
+            content.transform.SetParent(rootGO.transform, false);
+            var contentRect = content.AddComponent<RectTransform>();
+            contentRect.anchorMin = contentRect.anchorMax = contentRect.pivot = Vector2.zero;
+            contentRect.sizeDelta = new Vector2(700f, 0f);
+            content.AddComponent<Image>().color = new Color(0.12f, 0.09f, 0.06f, 0.82f);
+            var layout = content.AddComponent<VerticalLayoutGroup>();
+            layout.padding = new RectOffset(12, 12, 10, 10);
+            layout.spacing = 6f;
+            layout.childControlWidth = true;
+            layout.childControlHeight = true;
+            layout.childForceExpandWidth = true;
+            layout.childForceExpandHeight = false;
+            var fitter = content.AddComponent<ContentSizeFitter>();
+            fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+
+            TMP_Text title = CreateLayoutLabel(content.transform, "Title", 22f, FontStyles.Bold);
+            TMP_Text members = CreateLayoutLabel(content.transform, "Members", 18f, FontStyles.Normal);
+            Transform chips = CreateButtonRow(content.transform, "ProfessionChips");
+            TMP_Text changeLabel = CreateLayoutLabel(content.transform, "ChangeLabel", 16f, FontStyles.Italic);
+            changeLabel.text = "Đổi nghề cho nhóm đang chọn:";
+            Transform changeRow = CreateButtonRow(content.transform, "ChangeProfession");
+            content.SetActive(false);
+
+            var panel = rootGO.AddComponent<SelectionPanelUI>();
+            SetPrivateField(panel, "panelRoot", content);
+            SetPrivateField(panel, "titleLabel", title);
+            SetPrivateField(panel, "membersLabel", members);
+            SetPrivateField(panel, "professionChipContainer", chips);
+            SetPrivateField(panel, "changeProfessionContainer", changeRow);
+            SetPrivateField(panel, "buttonPrefab", buttonPrefab);
+        }
+
+        private static TMP_Text CreateLayoutLabel(Transform parent, string name, float fontSize, FontStyles style)
+        {
+            var go = new GameObject(name);
+            go.transform.SetParent(parent, false);
+            go.AddComponent<RectTransform>();
+            var tmp = go.AddComponent<TextMeshProUGUI>();
+            tmp.fontSize = fontSize;
+            tmp.fontStyle = style;
+            tmp.color = new Color(0.96f, 0.92f, 0.85f);
+            tmp.text = string.Empty;
+            go.AddComponent<LayoutElement>().preferredHeight = fontSize + 6f;
+            return tmp;
+        }
+
+        private static Transform CreateButtonRow(Transform parent, string name)
+        {
+            var go = new GameObject(name);
+            go.transform.SetParent(parent, false);
+            go.AddComponent<RectTransform>();
+            var row = go.AddComponent<HorizontalLayoutGroup>();
+            row.spacing = 6f;
+            row.childAlignment = TextAnchor.MiddleLeft;
+            row.childControlWidth = false; // nút giữ kích thước của prefab
+            row.childControlHeight = false;
+            row.childForceExpandWidth = false;
+            row.childForceExpandHeight = false;
+            go.AddComponent<LayoutElement>().preferredHeight = 32f;
+            return go.transform;
         }
 
         private static void CreateInteractionPrompt(Transform canvasTransform, PlayerInteraction interaction)
