@@ -111,7 +111,7 @@ Quyết định user: quy trình **vừa phải** (lúa ~6 bước: làm đất 
 - [x] F1 Xây ruộng: "Ruộng cạn" + "Ruộng nước" trong menu xây; ruộng mới là đất hoang → nông dân khai hoang/đắp bờ; ruộng nước phải gần nguồn nước; lúa chỉ trồng ruộng nước, rau/quả mọng ruộng cạn. 2 ô vườn có sẵn giữ lại (đã khai hoang)
 - [x] F2 Làm đất + nước: cày/xới trước mỗi vụ; ruộng có mức nước (bốc hơi dần, ruộng nước cần ngập mới cấy/lớn, ruộng cạn thiếu nước thì ngừng lớn rồi héo); việc mới "gánh nước" từ ao; công trình Giếng
 - [x] F3 Gieo mạ & cấy: ô ươm mạ (gieo thóc giống → mạ), nhổ mạ, cấy vào ruộng nước đã cày + ngập; giữ thóc giống sau gặt
-- [ ] F4 Chăm sóc: cỏ dại mọc giảm năng suất → làm cỏ; bón phân (phân từ vật nuôi) tăng năng suất
+- [x] F4 Chăm sóc: cỏ dại mọc giảm năng suất → làm cỏ; bón phân (phân từ vật nuôi) tăng năng suất
 - [ ] F5 Sau gặt: lúa gặt về là bó lúa → phơi/tuốt/giã ở công trình Cối giã → gạo ăn được
 - [ ] F6 Mương dẫn nước (tech Thủy lợi): đào mương từ ao, ruộng cạnh mương tự có nước
 - [ ] F7 Guồng nước (tech): đặt bên ao/đầu mương, bơm nước mạnh → ruộng nối mương luôn đầy nước
@@ -337,6 +337,14 @@ Quyết định user: quy trình **vừa phải** (lúa ~6 bước: làm đất 
 - `TechNode.grantOnUnlock`: nghiên cứu Trồng lúa tặng 4 thóc giống để bắt đầu. Ruộng nước/ruộng mạ chỉ có 1 loại cây → `FarmManager.CropFor` tự chọn (không cần bấm hạt giống); ruộng cạn vẫn theo lựa chọn.
 - Hình: thóc ngâm rải trên ruộng mạ → mạ mọc dày như thảm; lúa vừa cấy là từng khóm mạ nhỏ theo hàng.
 - Test: 6 test mới `Milestone5dSeedlingTests.cs` (gồm chuỗi đầy đủ: nông dân làm ruộng mạ → nhổ mạ → cấy sang ruộng nước); test cũ có cấy lúa được cấp mạ; nới sai số mức nước trong test lưu/tải (frame tải dài khi test chạy tăng tốc). **113/113 test PlayMode pass**.
+
+## Nhật ký phiên làm việc 2026-10-01 (phần 11 — M5d/F4 chăm sóc)
+- Cỏ dại: `FarmPlot.Weeds` 0..1 mọc khi đang có cây (ban ngày, 1/60 mỗi giây → ~1 phút phủ kín); cỏ phủ kín làm mất tối đa 40% sản lượng. `DoWeedWork()` mỗi lượt nhổ 0,5 (2 lượt sạch). Cày lại đất là lấp hết cỏ. Hình: khóm cỏ vàng xanh mọc xen giữa hàng, cao dần.
+- Phân bón: tài nguyên mới **Phân bón** (`manure`) — dê và heo thuần cho thêm 1 phân mỗi lần thu sản phẩm. `FarmManager.TryFertilize()` (tốn 1 phân, mỗi vụ 1 lần) → sản lượng +50%; hình cục phân sẫm màu trên mặt ruộng.
+- Sản lượng khi thu = gốc × (bón phân 1,5) × (1 − 0,4 × cỏ), làm tròn lên từ .5, ít nhất 1 (`FarmPlot.HarvestAmount`) — áp cho mọi thứ thu được (lúa, thóc giống, mạ…).
+- Nông dân: sau gánh nước → làm cỏ khi cỏ ≥ 40% (làm đến sạch) → bón phân nếu kho có; tự làm khi rảnh. Người chơi bấm E: có cỏ thì làm cỏ, sạch cỏ thì bón phân. Gợi ý hiện % cỏ / "đã bón phân".
+- `FarmPlot.WeedsEnabled` tắt trong `PlayModeTestBase` (test cũ đếm sản lượng chính xác), test F4 tự bật. Lưu/tải cỏ + đã bón.
+- Test: 7 test mới `Milestone5dCareTests.cs`. **120/120 test PlayMode pass**.
 
 ## Vấn đề đang tồn đọng (Known issues / Open questions)
 - [x] Chế độ combat: lai (2026-09-26) + chi tiết chỉ huy NPC theo nghề (2026-09-30)

@@ -91,6 +91,7 @@ namespace PrehistoricTribe.EditorTools
             var seedlingCrop = AssetDatabase.LoadAssetAtPath<CropData>(GameContentBuilder.SeedlingDataPath);
             var riceSeed = AssetDatabase.LoadAssetAtPath<ResourceTypeData>(GameContentBuilder.ResourcePath("RiceSeed"));
             var seedling = AssetDatabase.LoadAssetAtPath<ResourceTypeData>(GameContentBuilder.ResourcePath("Seedling"));
+            var manure = AssetDatabase.LoadAssetAtPath<ResourceTypeData>(GameContentBuilder.ResourcePath("Manure"));
             var seedbed = AssetDatabase.LoadAssetAtPath<BuildingData>(GameContentBuilder.SeedbedDataPath);
             var crops = new List<CropData> { berry, vegetable, rice, seedlingCrop };
             // M5d: ruộng do người chơi xây.
@@ -104,7 +105,7 @@ namespace PrehistoricTribe.EditorTools
                 berry == null || techFarming == null || boarData == null || buttonPrefab == null ||
                 rice == null || vegetable == null || techRice == null || goatData == null || foodTypes.Contains(null) ||
                 dryField == null || paddyField == null || well == null ||
-                seedlingCrop == null || riceSeed == null || seedling == null || seedbed == null)
+                seedlingCrop == null || riceSeed == null || seedling == null || seedbed == null || manure == null)
             {
                 Debug.LogError("[GameplaySceneBuilder] Thieu asset can thiet. Chay 'Tools/Prehistoric/Build Missing Content' truoc (hoac dung 'Build All').");
                 return;
@@ -131,6 +132,7 @@ namespace PrehistoricTribe.EditorTools
             knownTypes.AddRange(foodTypes);
             knownTypes.Add(riceSeed);
             knownTypes.Add(seedling);
+            knownTypes.Add(manure);
             SetPrivateField(rm, "knownResourceTypes", knownTypes);
 
             var player = CreatePlayer();
@@ -175,6 +177,7 @@ namespace PrehistoricTribe.EditorTools
 
             var farmManager = new GameObject("FarmManager").AddComponent<FarmManager>();
             SetPrivateField(farmManager, "knownCrops", crops);
+            SetPrivateField(farmManager, "fertilizerCost", new List<ResourceAmount> { new ResourceAmount { type = manure, amount = 1 } });
             var tamingSystem = new GameObject("TamingSystem").AddComponent<TamingSystem>();
             SetPrivateField(tamingSystem, "knownAnimals", new List<AnimalData> { boarData, goatData });
 
@@ -223,7 +226,7 @@ namespace PrehistoricTribe.EditorTools
 
             // Nạp lại: tạo asset NavMesh phía trên làm tham chiếu prefab (component) đã nạp trước đó mất hiệu lực.
             buttonPrefab = AssetDatabase.LoadAssetAtPath<Button>(ButtonPrefabPath);
-            CreateUI(buttonPrefab, wood, food, knowledge, new[] { riceSeed, seedling }, buildings, crops, techs, player.GetComponent<PlayerInteraction>());
+            CreateUI(buttonPrefab, wood, food, knowledge, new[] { riceSeed, seedling, manure }, buildings, crops, techs, player.GetComponent<PlayerInteraction>());
 
             EditorSceneManager.SaveScene(scene, ScenePath);
             AssetDatabase.SaveAssets();

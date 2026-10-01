@@ -37,6 +37,8 @@ namespace PrehistoricTribe
         // Save cũ chưa có → giữ -1 → coi như đầy nước (trước F2 ruộng không cần nước).
         public float water = -1f;
         public float droughtTimer;
+        public float weeds;
+        public bool fertilized;
     }
 
     /// <summary>
@@ -65,6 +67,14 @@ namespace PrehistoricTribe
         [Tooltip("Thiếu nước liên tục bao lâu (giây) thì cây chết khô")]
         [SerializeField] private float droughtWitherTime = 60f;
 
+        [Header("Chăm sóc (F4)")]
+        [Tooltip("Cỏ dại mọc thêm mỗi giây (ban ngày, khi có cây) — 1/60: một phút là cỏ phủ kín")]
+        [SerializeField] private float weedGrowthPerSecond = 1f / 60f;
+        [Tooltip("Cỏ dại (hiện + to dần theo mức cỏ)")]
+        [SerializeField] private Transform weedsVisual;
+        [Tooltip("Phân đã bón (hiện khi đã bón)")]
+        [SerializeField] private GameObject fertilizerVisual;
+
         [Header("Hình ảnh")]
         [Tooltip("Hiện khi còn là đất hoang")]
         [SerializeField] private GameObject wildVisual;
@@ -74,6 +84,17 @@ namespace PrehistoricTribe
         [SerializeField] private GameObject preparedVisual;
         [Tooltip("Mặt nước (ruộng nước) / đất ướt (ruộng cạn) — hiện theo mức nước")]
         [SerializeField] private Transform waterVisual;
+
+        /// <summary>Tắt cỏ dại (test cũ đếm sản lượng chính xác).</summary>
+        public static bool WeedsEnabled { get; set; } = true;
+
+        /// <summary>Cỏ từ mức này trở lên thì nên làm cỏ.</summary>
+        public const float WeedingNeededAt = 0.4f;
+        private const float WeedRemovedPerWork = 0.5f;
+        /// <summary>Cỏ phủ kín làm mất tối đa chừng này sản lượng.</summary>
+        public const float MaxWeedPenalty = 0.4f;
+        /// <summary>Bón phân tăng sản lượng thêm chừng này.</summary>
+        public const float FertilizerBonus = 0.5f;
 
         /// <summary>Ruộng nước phải ngập ít nhất mức này mới cấy được lúa.</summary>
         public const float FloodedLevel = 0.6f;
@@ -114,6 +135,18 @@ namespace PrehistoricTribe
 
         /// <summary>Mức nước 0..1.</summary>
         public float Water { get; private set; }
+
+        /// <summary>Mức cỏ dại 0..1 (chỉ mọc khi đang có cây).</summary>
+        public float Weeds { get; private set; }
+
+        /// <summary>Vụ này đã bón phân chưa.</summary>
+        public bool Fertilized { get; private set; }
+
+        public bool NeedsWeeding => State == FarmPlotState.Growing && Weeds >= WeedingNeededAt;
+        public bool CanFertilize => State == FarmPlotState.Growing && !Fertilized;
+
+        /// <summary>Hệ số sản lượng: bón phân +50%, cỏ phủ kín −40%.</summary>
+        public float YieldMultiplier => (Fertilized ? 1f + FertilizerBonus : 1f) * (1f - MaxWeedPenalty * Weeds);
 
         /// <summary>0..1 tiến độ khai hoang.</summary>
         public float ClearProgress => State == FarmPlotState.Wild ? (float)clearWorkDone / Mathf.Max(1, clearWorkNeeded) : 1f;
@@ -174,6 +207,7 @@ namespace PrehistoricTribe
             if (startsWild) State = FarmPlotState.Wild;
             Water = startsWild ? 0f : startWater;
             UpdateSoilVisual();
+            UpdateCareVisual();
         }
 
         private void OnEnable() => InteractableRegistry.Register(this);
@@ -201,6 +235,9 @@ namespace PrehistoricTribe
                 return;
             }
             droughtTimer = 0f;
+
+            if (State == FarmPlotState.Growing && WeedsEnabled && Weeds < 1f)
+                SetWeeds(Weeds + weedGrowthPerSecond * Time.deltaTime);
 
             if (State != FarmPlotState.Growing && !(State == FarmPlotState.ReadyToHarvest && crop.witherTime > 0f))
                 return;
@@ -241,10 +278,37 @@ namespace PrehistoricTribe
         {
             if (State != FarmPlotState.ReadyToHarvest) return false;
 
+            float multiplier = YieldMultiplier;
             foreach (var yield in crop.harvestYield)
-                ResourceManager.Instance.AddResource(yield.type, yield.amount);
+                ResourceManager.Instance.AddResource(yield.type, HarvestAmount(yield.amount, multiplier));
 
             ResetToUnplowed();
+            return true;
+        }
+
+        /// <summary>Sản lượng sau khi tính phân bón / cỏ dại (làm tròn lên từ .5, ít nhất 1).</summary>
+        public static int HarvestAmount(int baseAmount, float multiplier) =>
+            Mathf.Max(1, Mathf.FloorToInt(baseAmount * multiplier + 0.5f));
+
+        /// <summary>Một lượt làm cỏ. Trả về true khi ruộng đã sạch cỏ.</summary>
+        public bool DoWeedWork()
+        {
+            SetWeeds(Weeds - WeedRemovedPerWork);
+            return Weeds <= 0f;
+        }
+
+        public void SetWeeds(float level)
+        {
+            Weeds = Mathf.Clamp01(level);
+            UpdateCareVisual();
+        }
+
+        /// <summary>Bón phân cho vụ đang trồng (chi phí trả ở <see cref="FarmManager.TryFertilize"/>).</summary>
+        public bool ApplyFertilizer()
+        {
+            if (!CanFertilize) return false;
+            Fertilized = true;
+            UpdateCareVisual();
             return true;
         }
 
@@ -329,7 +393,21 @@ namespace PrehistoricTribe
             stage = CropStage.Seed;
             stageTimer = 0f;
             droughtTimer = 0f;
+            Weeds = 0f; // cày lại đất là lấp luôn cỏ
+            Fertilized = false;
             UpdateVisual();
+            UpdateCareVisual();
+        }
+
+        private void UpdateCareVisual()
+        {
+            if (weedsVisual != null)
+            {
+                bool show = Weeds > 0.15f;
+                weedsVisual.gameObject.SetActive(show);
+                if (show) weedsVisual.localScale = new Vector3(1f, Mathf.Lerp(0.4f, 1f, Weeds), 1f);
+            }
+            if (fertilizerVisual != null) fertilizerVisual.SetActive(Fertilized);
         }
 
         public FarmPlotSaveData GetSaveData() => new FarmPlotSaveData
@@ -342,7 +420,9 @@ namespace PrehistoricTribe
             clearWorkDone = clearWorkDone,
             plowWorkDone = plowWorkDone,
             water = Water,
-            droughtTimer = droughtTimer
+            droughtTimer = droughtTimer,
+            weeds = Weeds,
+            fertilized = Fertilized
         };
 
         public void LoadFromSaveData(FarmPlotSaveData data, CropData cropData)
@@ -370,7 +450,10 @@ namespace PrehistoricTribe
                 stageTimer = data.stageTimer;
                 droughtTimer = data.droughtTimer;
                 State = data.state;
+                Weeds = data.weeds;
+                Fertilized = data.fertilized;
                 UpdateVisual();
+                UpdateCareVisual();
             }
             else
             {

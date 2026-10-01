@@ -108,8 +108,10 @@ namespace PrehistoricTribe.EditorTools
                 unlockedByDefault: false, waterWithin: 0f, Cost(wood, 8));
             SavePrefab(BuildTree(wood), TreePrefabPath);
             SavePrefab(BuildPond(foods.fish), PondPrefabPath);
-            BuildWildBoarContent(foods);
-            BuildGoatContent(foods);
+            // M5d/F4: phân chuồng — vật nuôi thuần cho ra cùng sản phẩm, dùng bón ruộng.
+            var manure = SaveResourceType("Manure", "manure", "Phân bón", ResourceCategory.Material);
+            BuildWildBoarContent(foods, manure);
+            BuildGoatContent(foods, manure);
             // M5d/F3: thóc giống (gieo mạ) và mạ (cấy lúa) — vật tư nông nghiệp, không ăn được.
             var riceSeed = SaveResourceType("RiceSeed", "rice_seed", "Thóc giống", ResourceCategory.Material);
             var seedling = SaveResourceType("Seedling", "rice_seedling", "Mạ", ResourceCategory.Material);
@@ -380,6 +382,25 @@ namespace PrehistoricTribe.EditorTools
                 : Part(t, "WetSoil", PrimitiveType.Cube, new Vector3(0f, 0.082f, 0f), new Vector3(0.94f, 0.004f, 0.94f), Mat("WetSoil", Palette.Hex(0x3a2614)));
             water.GetComponent<Renderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
 
+            // Cỏ dại (F4): mọc xen giữa các hàng cây, cao dần theo mức cỏ (gốc tại mặt đất để scale theo chiều cao).
+            var weeds = new GameObject("Weeds").transform;
+            weeds.SetParent(t, false);
+            weeds.localPosition = new Vector3(0f, 0.06f, 0f);
+            var weedMat = Mat("Weed", Palette.Hex(0x9bb53a));
+            foreach (var p in new[] { new Vector3(0f, 0f, -0.3f), new Vector3(0f, 0f, 0.02f), new Vector3(0f, 0f, 0.3f),
+                         new Vector3(-0.42f, 0f, 0.15f), new Vector3(0.42f, 0f, -0.15f), new Vector3(0.4f, 0f, 0.36f) })
+                for (int i = -1; i <= 1; i++)
+                    Part(weeds, "Weed", PrimitiveType.Cylinder, p + new Vector3(i * 0.025f, 0.07f, (i & 1) * 0.02f), new Vector3(0.012f, 0.07f, 0.012f), weedMat, new Vector3(0f, 0f, i * 25f));
+            weeds.gameObject.SetActive(false);
+
+            // Phân đã bón (F4): vài cục phân chuồng sẫm màu rải trên mặt ruộng.
+            var manure = new GameObject("Fertilizer").transform;
+            manure.SetParent(t, false);
+            var manureMat = Mat("ManureLump", Palette.Hex(0x3b2a18));
+            foreach (var p in new[] { new Vector3(-0.12f, 0f, -0.15f), new Vector3(0.12f, 0f, 0.14f), new Vector3(-0.1f, 0f, 0.32f), new Vector3(0.14f, 0f, -0.36f) })
+                Part(manure, "Lump", PrimitiveType.Sphere, p + new Vector3(0f, 0.095f, 0f), new Vector3(0.07f, 0.03f, 0.06f), manureMat);
+            manure.gameObject.SetActive(false);
+
             // Trạng thái trong prefab/scene: ruộng mới = đất hoang; ô vườn có sẵn = đã cày.
             unplowed.gameObject.SetActive(false);
             prepared.gameObject.SetActive(!startsWild);
@@ -397,6 +418,8 @@ namespace PrehistoricTribe.EditorTools
             SetPrivateField(plot, "unplowedVisual", unplowed.gameObject);
             SetPrivateField(plot, "preparedVisual", prepared.gameObject);
             SetPrivateField(plot, "waterVisual", water.transform);
+            SetPrivateField(plot, "weedsVisual", weeds);
+            SetPrivateField(plot, "fertilizerVisual", manure.gameObject);
         }
 
         /// <summary>Giếng (M5d/F2): thành đá tròn, khung gỗ, gàu treo — nguồn nước để gánh tưới (không nuôi được ruộng nước).</summary>
@@ -598,7 +621,7 @@ namespace PrehistoricTribe.EditorTools
             new List<ResourceAmount> { new ResourceAmount { type = type, amount = amount } };
 
         /// <summary>Dê núi (E3): thuần hóa để vắt sữa.</summary>
-        private static void BuildGoatContent(Foods foods)
+        private static void BuildGoatContent(Foods foods, ResourceTypeData manure)
         {
             var root = new GameObject("Goat");
             var controller = root.AddComponent<AnimalController>();
@@ -631,12 +654,13 @@ namespace PrehistoricTribe.EditorTools
             data.feedingsToTame = 3;
             data.reproductionInterval = 120f;
             data.products = Amounts(foods.milk, 2);
+            data.products.Add(new ResourceAmount { type = manure, amount = 1 });
             data.productionInterval = 45f;
             data.huntYield = Amounts(foods.meat, 4);
             EditorUtility.SetDirty(data);
         }
 
-        private static void BuildWildBoarContent(Foods foods)
+        private static void BuildWildBoarContent(Foods foods, ResourceTypeData manure)
         {
             var root = new GameObject("WildBoar");
             var controller = root.AddComponent<AnimalController>();
@@ -671,6 +695,7 @@ namespace PrehistoricTribe.EditorTools
             data.feedingsToTame = 2;
             data.reproductionInterval = 90f;
             data.products = Amounts(foods.meat, 2);
+            data.products.Add(new ResourceAmount { type = manure, amount = 1 });
             data.productionInterval = 30f;
             data.huntYield = Amounts(foods.meat, 6);
             EditorUtility.SetDirty(data);

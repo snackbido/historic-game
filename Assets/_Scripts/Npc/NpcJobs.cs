@@ -82,6 +82,7 @@ namespace PrehistoricTribe
                 FarmPlot plot = Nearest(InteractableRegistry.All<FarmPlot>(), position, radius, p =>
                     p.State == FarmPlotState.ReadyToHarvest || p.State == FarmPlotState.Withered ||
                     p.State == FarmPlotState.Wild || p.State == FarmPlotState.Unplowed || p.IsThirsty ||
+                    p.NeedsWeeding || (p.CanFertilize && farm != null && farm.HasFertilizer) ||
                     (p.State == FarmPlotState.Empty && farm != null && FarmPlot.HasSeedFor(farm.CropFor(p))));
                 if (plot != null) return new FarmJob(plot, continuous: false);
             }
@@ -229,6 +230,7 @@ namespace PrehistoricTribe
         private WaterSource source;
         private bool fetching;
         private bool carrying;
+        private bool weeding;
 
         public FarmJob(FarmPlot plot, bool continuous = true)
         {
@@ -245,7 +247,8 @@ namespace PrehistoricTribe
         public override string Description =>
             fetching || carrying ? "gánh nước" :
             plot.State == FarmPlotState.Wild ? $"khai hoang {plot.FieldName}" :
-            plot.State == FarmPlotState.Unplowed ? "cày/xới đất" : "làm ruộng";
+            plot.State == FarmPlotState.Unplowed ? "cày/xới đất" :
+            weeding || plot.NeedsWeeding ? "làm cỏ" : "làm ruộng";
 
         public override float WorkRange => fetching ? source.DrawRange : 0.7f;
         public override float Interval => 1f;
@@ -289,6 +292,19 @@ namespace PrehistoricTribe
             }
 
             if (plot.IsThirsty) return StartFetchingWater(npc);
+
+            // Chăm sóc (F4): làm cỏ đến khi sạch; có phân trong kho thì bón (mỗi vụ một lần).
+            if (plot.NeedsWeeding || (weeding && plot.Weeds > 0f))
+            {
+                weeding = !plot.DoWeedWork();
+                return weeding || continuous;
+            }
+            weeding = false;
+            if (plot.CanFertilize && FarmManager.Instance.TryFertilize(plot))
+            {
+                EventBus.RaiseNotification($"{npc.NpcName} bón phân cho {plot.Crop.displayName.ToLowerInvariant()}");
+                return continuous;
+            }
 
             switch (plot.State)
             {

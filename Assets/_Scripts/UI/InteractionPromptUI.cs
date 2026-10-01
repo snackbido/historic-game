@@ -75,7 +75,11 @@ namespace PrehistoricTribe
                         : "Ô đất trống — chọn hạt giống ở bảng bên phải";
                 case FarmPlotState.Growing:
                     string water = plot.HasEnoughWater ? $"nước {Percent(plot.Water)}" : "THIẾU NƯỚC — cây ngừng lớn!";
-                    return $"{plot.Crop.displayName} đang lớn — {Percent(plot.GrowthProgress)} · {water}";
+                    string growing = $"{plot.Crop.displayName} đang lớn — {Percent(plot.GrowthProgress)} · {water}";
+                    if (plot.Weeds > 0.15f) return $"[E] Làm cỏ (cỏ {Percent(plot.Weeds)}) · {growing}";
+                    if (plot.CanFertilize && FarmManager.Instance != null && FarmManager.Instance.HasFertilizer)
+                        return $"[E] Bón phân (+{Percent(FarmPlot.FertilizerBonus)} sản lượng) · {growing}";
+                    return plot.Fertilized ? $"{growing} · đã bón phân" : growing;
                 case FarmPlotState.ReadyToHarvest:
                     return $"[E] {plot.Crop.harvestVerb} {plot.Crop.displayName.ToLowerInvariant()} ({FormatAmounts(plot.Crop.harvestYield, "+")})";
                 case FarmPlotState.Withered:
