@@ -136,8 +136,9 @@ namespace PrehistoricTribe
 
             Vector3 center = CellToGround(cell);
             if (WaterSource.IsOnWater(center, WaterClearance)) return "Không xây đè lên mặt nước";
-            if (data.requiresWaterWithin > 0f && !WaterSource.AnyWithin(center, data.requiresWaterWithin))
-                return $"{data.displayName} phải ở gần nguồn nước (ao)";
+            // Cần nguồn nước lớn (ao, mương) — giếng không đủ nước cho ruộng ngập.
+            if (data.requiresWaterWithin > 0f && !WaterSource.AnyWithin(center, data.requiresWaterWithin, forPaddy: true))
+                return $"{data.displayName} phải ở gần nguồn nước lớn (ao)";
 
             if (!ResourceManager.Instance.CanAfford(data.costs)) return "Chưa đủ tài nguyên";
             return null;

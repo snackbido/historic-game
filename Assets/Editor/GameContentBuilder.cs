@@ -62,6 +62,8 @@ namespace PrehistoricTribe.EditorTools
         public const string PaddyFieldDataPath = "Assets/_Data/BuildingData_PaddyField.asset";
         private const string DryFieldPrefabPath = "Assets/Prefabs/Buildings/DryField.prefab";
         private const string PaddyFieldPrefabPath = "Assets/Prefabs/Buildings/PaddyField.prefab";
+        public const string WellDataPath = "Assets/_Data/BuildingData_Well.asset";
+        private const string WellPrefabPath = "Assets/Prefabs/Buildings/Well.prefab";
 
         private const string HutPrefabPath = "Assets/Prefabs/Buildings/Hut.prefab";
         private const string StoragePrefabPath = "Assets/Prefabs/Buildings/Storage.prefab";
@@ -82,7 +84,7 @@ namespace PrehistoricTribe.EditorTools
             if (!ConfirmOverwrite("Tạo lại prefab placeholder?",
                     "Prefab lều/kho/cây/heo rừng đã tồn tại. Tạo lại sẽ ghi đè mọi chỉnh sửa hoặc model thật bạn đã thay vào.",
                     HutPrefabPath, StoragePrefabPath, BoarPrefabPath, TreePrefabPath, VillagerPrefabPath, WolfPrefabPath,
-                    GoatPrefabPath, PondPrefabPath, DryFieldPrefabPath, PaddyFieldPrefabPath))
+                    GoatPrefabPath, PondPrefabPath, DryFieldPrefabPath, PaddyFieldPrefabPath, WellPrefabPath))
                 return;
 
             Foods foods = EnsureResourceTypes(out var wood, out var knowledge);
@@ -92,12 +94,15 @@ namespace PrehistoricTribe.EditorTools
                 "Nhà ở của dân làng", HutLevels(wood, knowledge), "Lều");
             AssignBuildingPrefab(StorageDataPath, SavePrefab(BuildStorage(), StoragePrefabPath),
                 "Cất giữ lương thực", StorageLevels(wood, knowledge), "Kho");
-            SaveFieldData(DryFieldDataPath, "dry_field", "Ruộng cạn", SavePrefab(BuildField(FieldType.Dry), DryFieldPrefabPath),
+            SaveSingleLevelBuilding(DryFieldDataPath, "dry_field", "Ruộng cạn", SavePrefab(BuildField(FieldType.Dry), DryFieldPrefabPath),
                 "Trồng rau, quả mọng. Mới xây là đất hoang — nông dân khai hoang xong mới gieo được",
                 unlockedByDefault: true, waterWithin: 0f, Cost(wood, 2));
-            SaveFieldData(PaddyFieldDataPath, "paddy_field", "Ruộng nước", SavePrefab(BuildField(FieldType.Paddy), PaddyFieldPrefabPath),
+            SaveSingleLevelBuilding(PaddyFieldDataPath, "paddy_field", "Ruộng nước", SavePrefab(BuildField(FieldType.Paddy), PaddyFieldPrefabPath),
                 "Cấy lúa. Phải xây gần ao — nông dân đắp bờ xong mới cấy được",
                 unlockedByDefault: false, waterWithin: 3f, Cost(wood, 4));
+            SaveSingleLevelBuilding(WellDataPath, "well", "Giếng", SavePrefab(BuildWell(), WellPrefabPath),
+                "Nguồn nước gần ruộng: nông dân gánh nước tưới từ đây. Không đủ nước cho ruộng nước",
+                unlockedByDefault: false, waterWithin: 0f, Cost(wood, 8));
             SavePrefab(BuildTree(wood), TreePrefabPath);
             SavePrefab(BuildPond(foods.fish), PondPrefabPath);
             BuildWildBoarContent(foods);
@@ -264,7 +269,7 @@ namespace PrehistoricTribe.EditorTools
         }
 
         // ─── Ruộng (Milestone 5d) ────────────────────────────────────────────
-        private static void SaveFieldData(string path, string id, string displayName, GameObject prefab, string function,
+        private static void SaveSingleLevelBuilding(string path, string id, string displayName, GameObject prefab, string function,
             bool unlockedByDefault, float waterWithin, params ResourceAmount[] cost)
         {
             var data = AssetDatabase.LoadAssetAtPath<BuildingData>(path);
@@ -296,30 +301,62 @@ namespace PrehistoricTribe.EditorTools
             col.size = new Vector3(0.96f, 0.1f, 0.96f);
             root.AddComponent<BuildingInstance>();
             AttachLevelModels(root, _ => { }); // chỉ có 1 cấp; lấy vòng chọn
-            var t = root.transform;
 
-            var wild = new GameObject("Wild").transform;
-            wild.SetParent(t, false);
-            Part(wild, "Ground", PrimitiveType.Cube, new Vector3(0f, 0.015f, 0f), new Vector3(0.96f, 0.03f, 0.96f),
-                paddy ? Mat("Marsh", Palette.Hex(0x55613a)) : Mat("WildGround", Palette.Hex(0x6b7a3c)));
-            var tuft = Mat("WildGrass", Palette.Hex(0x7f9a3e));
-            foreach (var p in new[] { new Vector3(-0.3f, 0f, 0.25f), new Vector3(0.28f, 0f, 0.3f), new Vector3(0.05f, 0f, -0.05f),
-                         new Vector3(-0.2f, 0f, -0.32f), new Vector3(0.32f, 0f, -0.22f) })
-                for (int i = -1; i <= 1; i++)
-                    Part(wild, "Tuft", PrimitiveType.Cylinder, p + new Vector3(i * 0.03f, 0.08f, 0f), new Vector3(0.012f, 0.06f, 0.012f), tuft, new Vector3(0f, 0f, i * 18f));
-            Part(wild, "Rock", PrimitiveType.Sphere, new Vector3(-0.05f, 0.04f, 0.32f), new Vector3(0.14f, 0.08f, 0.11f), Palette.Stone);
-            Part(wild, "Rock", PrimitiveType.Sphere, new Vector3(0.22f, 0.03f, 0.02f), new Vector3(0.09f, 0.06f, 0.08f), Palette.Stone);
+            var plot = root.AddComponent<FarmPlot>();
+            SetupFieldPlot(plot, type, startsWild: true);
+            SetPrivateField(plot, "clearWorkNeeded", paddy ? 12 : 8); // đắp bờ lâu hơn
+            SetPrivateField(plot, "plowWorkNeeded", paddy ? 4 : 3);
+            return root;
+        }
 
+        /// <summary>
+        /// Gắn hình ảnh + thông số cho một ô ruộng (dùng cho ruộng xây mới và ô vườn có sẵn trong scene):
+        /// đất hoang (cỏ, đá) → đất chưa cày (phẳng, chai) → đất đã cày (luống / bùn có rãnh) + mặt nước dâng theo mức nước.
+        /// </summary>
+        public static void SetupFieldPlot(FarmPlot plot, FieldType type, bool startsWild, float startWater = 0f)
+        {
+            bool paddy = type == FieldType.Paddy;
+            var t = plot.transform;
+
+            GameObject wild = null;
+            if (startsWild)
+            {
+                wild = new GameObject("Wild");
+                wild.transform.SetParent(t, false);
+                var w = wild.transform;
+                Part(w, "Ground", PrimitiveType.Cube, new Vector3(0f, 0.015f, 0f), new Vector3(0.96f, 0.03f, 0.96f),
+                    paddy ? Mat("Marsh", Palette.Hex(0x55613a)) : Mat("WildGround", Palette.Hex(0x6b7a3c)));
+                var tuft = Mat("WildGrass", Palette.Hex(0x7f9a3e));
+                foreach (var p in new[] { new Vector3(-0.3f, 0f, 0.25f), new Vector3(0.28f, 0f, 0.3f), new Vector3(0.05f, 0f, -0.05f),
+                             new Vector3(-0.2f, 0f, -0.32f), new Vector3(0.32f, 0f, -0.22f) })
+                    for (int i = -1; i <= 1; i++)
+                        Part(w, "Tuft", PrimitiveType.Cylinder, p + new Vector3(i * 0.03f, 0.08f, 0f), new Vector3(0.012f, 0.06f, 0.012f), tuft, new Vector3(0f, 0f, i * 18f));
+                Part(w, "Rock", PrimitiveType.Sphere, new Vector3(-0.05f, 0.04f, 0.32f), new Vector3(0.14f, 0.08f, 0.11f), Palette.Stone);
+                Part(w, "Rock", PrimitiveType.Sphere, new Vector3(0.22f, 0.03f, 0.02f), new Vector3(0.09f, 0.06f, 0.08f), Palette.Stone);
+            }
+
+            // Đất chưa cày: mặt phẳng, chai, màu nhạt.
+            var unplowed = new GameObject("Unplowed").transform;
+            unplowed.SetParent(t, false);
+            if (paddy)
+            {
+                Part(unplowed, "HardMud", PrimitiveType.Cube, new Vector3(0f, 0.02f, 0f), new Vector3(0.9f, 0.04f, 0.9f), Mat("HardMud", Palette.Hex(0x7a6244)));
+                AddPaddyBanks(unplowed);
+            }
+            else
+            {
+                Part(unplowed, "HardSoil", PrimitiveType.Cube, new Vector3(0f, 0.03f, 0f), new Vector3(0.96f, 0.06f, 0.96f), Mat("HardSoil", Palette.Hex(0x7d5f3e)));
+            }
+
+            // Đất đã cày: luống (ruộng cạn) / bùn sẫm có rãnh (ruộng nước).
             var prepared = new GameObject("Prepared").transform;
             prepared.SetParent(t, false);
             if (paddy)
             {
                 Part(prepared, "Mud", PrimitiveType.Cube, new Vector3(0f, 0.02f, 0f), new Vector3(0.9f, 0.04f, 0.9f), Mat("PaddyMud", Palette.Hex(0x4e3b26)));
-                var bank = Mat("PaddyBank", Palette.Hex(0x6f8a3c)); // bờ đất có cỏ
-                Part(prepared, "Bank", PrimitiveType.Cube, new Vector3(0f, 0.06f, 0.46f), new Vector3(0.98f, 0.12f, 0.07f), bank);
-                Part(prepared, "Bank", PrimitiveType.Cube, new Vector3(0f, 0.06f, -0.46f), new Vector3(0.98f, 0.12f, 0.07f), bank);
-                Part(prepared, "Bank", PrimitiveType.Cube, new Vector3(0.46f, 0.06f, 0f), new Vector3(0.07f, 0.12f, 0.98f), bank);
-                Part(prepared, "Bank", PrimitiveType.Cube, new Vector3(-0.46f, 0.06f, 0f), new Vector3(0.07f, 0.12f, 0.98f), bank);
+                foreach (float z in new[] { -0.25f, 0f, 0.25f })
+                    Part(prepared, "Ridge", PrimitiveType.Cube, new Vector3(0f, 0.045f, z), new Vector3(0.82f, 0.012f, 0.06f), Mat("MudRidge", Palette.Hex(0x5e4830)));
+                AddPaddyBanks(prepared);
             }
             else
             {
@@ -327,20 +364,61 @@ namespace PrehistoricTribe.EditorTools
                 foreach (float z in new[] { -0.3f, 0f, 0.3f })
                     Part(prepared, "Furrow", PrimitiveType.Cube, new Vector3(0f, 0.09f, z), new Vector3(0.86f, 0.03f, 0.1f), Palette.SoilDark);
             }
-            prepared.gameObject.SetActive(false);
+
+            // Nước: ruộng nước = mặt nước đục dâng trong bờ; ruộng cạn = vệt đất ướt sẫm màu.
+            var water = paddy
+                ? Part(t, "Water", PrimitiveType.Cube, new Vector3(0f, 0.06f, 0f), new Vector3(0.86f, 0.01f, 0.86f), Mat("PaddyWater", Palette.Hex(0x4f7d86), emission: 0.03f))
+                : Part(t, "WetSoil", PrimitiveType.Cube, new Vector3(0f, 0.082f, 0f), new Vector3(0.94f, 0.004f, 0.94f), Mat("WetSoil", Palette.Hex(0x3a2614)));
+            water.GetComponent<Renderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+
+            // Trạng thái trong prefab/scene: ruộng mới = đất hoang; ô vườn có sẵn = đã cày.
+            unplowed.gameObject.SetActive(false);
+            prepared.gameObject.SetActive(!startsWild);
+            water.SetActive(!startsWild && startWater > 0.05f);
 
             var anchor = new GameObject("CropAnchor").transform;
             anchor.SetParent(t, false);
             anchor.localPosition = new Vector3(0f, 0.1f, 0f);
 
-            var plot = root.AddComponent<FarmPlot>();
             SetPrivateField(plot, "cropAnchor", anchor);
             SetPrivateField(plot, "fieldType", type);
-            SetPrivateField(plot, "startsWild", true);
-            SetPrivateField(plot, "clearWorkNeeded", paddy ? 12 : 8); // đắp bờ lâu hơn
-            SetPrivateField(plot, "wildVisual", wild.gameObject);
+            SetPrivateField(plot, "startsWild", startsWild);
+            SetPrivateField(plot, "startWater", startWater);
+            SetPrivateField(plot, "wildVisual", wild);
+            SetPrivateField(plot, "unplowedVisual", unplowed.gameObject);
             SetPrivateField(plot, "preparedVisual", prepared.gameObject);
+            SetPrivateField(plot, "waterVisual", water.transform);
+        }
+
+        /// <summary>Giếng (M5d/F2): thành đá tròn, khung gỗ, gàu treo — nguồn nước để gánh tưới (không nuôi được ruộng nước).</summary>
+        private static GameObject BuildWell()
+        {
+            var root = new GameObject("Well");
+            AddBuildingComponents(root, new Vector3(0f, 0.3f, 0f), new Vector3(0.7f, 0.6f, 0.7f), 150f);
+            AttachLevelModels(root, t =>
+            {
+                Part(t, "Wall", PrimitiveType.Cylinder, new Vector3(0f, 0.15f, 0f), new Vector3(0.62f, 0.15f, 0.62f), Palette.Stone);
+                Part(t, "Water", PrimitiveType.Cylinder, new Vector3(0f, 0.28f, 0f), new Vector3(0.46f, 0.01f, 0.46f), Mat("WellWater", Palette.Hex(0x2f5f86), emission: 0.15f))
+                    .GetComponent<Renderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                Part(t, "PostL", PrimitiveType.Cube, new Vector3(-0.3f, 0.45f, 0f), new Vector3(0.05f, 0.6f, 0.05f), Palette.Wood);
+                Part(t, "PostR", PrimitiveType.Cube, new Vector3(0.3f, 0.45f, 0f), new Vector3(0.05f, 0.6f, 0.05f), Palette.Wood);
+                Part(t, "Beam", PrimitiveType.Cylinder, new Vector3(0f, 0.72f, 0f), new Vector3(0.05f, 0.33f, 0.05f), Palette.Wood, new Vector3(0f, 0f, 90f));
+                Part(t, "Rope", PrimitiveType.Cylinder, new Vector3(0f, 0.6f, 0f), new Vector3(0.012f, 0.12f, 0.012f), Palette.Rope);
+                Part(t, "Pail", PrimitiveType.Cylinder, new Vector3(0f, 0.44f, 0f), new Vector3(0.12f, 0.06f, 0.12f), Palette.Plank);
+            });
+            var source = root.AddComponent<WaterSource>();
+            SetPrivateField(source, "radius", 0.3f);
+            SetPrivateField(source, "feedsPaddies", false);
             return root;
+        }
+
+        private static void AddPaddyBanks(Transform parent)
+        {
+            var bank = Mat("PaddyBank", Palette.Hex(0x6f8a3c)); // bờ đất có cỏ
+            Part(parent, "Bank", PrimitiveType.Cube, new Vector3(0f, 0.06f, 0.46f), new Vector3(0.98f, 0.12f, 0.07f), bank);
+            Part(parent, "Bank", PrimitiveType.Cube, new Vector3(0f, 0.06f, -0.46f), new Vector3(0.98f, 0.12f, 0.07f), bank);
+            Part(parent, "Bank", PrimitiveType.Cube, new Vector3(0.46f, 0.06f, 0f), new Vector3(0.07f, 0.12f, 0.98f), bank);
+            Part(parent, "Bank", PrimitiveType.Cube, new Vector3(-0.46f, 0.06f, 0f), new Vector3(0.07f, 0.12f, 0.98f), bank);
         }
 
         private static GameObject BuildHut()
@@ -720,6 +798,15 @@ namespace PrehistoricTribe.EditorTools
             SetPrivateField(npc, "maleHair", maleHair);
             SetPrivateField(npc, "femaleHair", femaleHair);
             SetPrivateField(npc, "tools", tools);
+
+            // Gàu nước bên tay trái (M5d/F2) — chỉ hiện khi đang gánh nước.
+            var bucket = new GameObject("WaterBucket").transform;
+            bucket.SetParent(visual, false);
+            Part(bucket, "Pail", PrimitiveType.Cylinder, new Vector3(-0.32f, 0.36f, 0.06f), new Vector3(0.16f, 0.08f, 0.16f), Palette.Plank);
+            Part(bucket, "Water", PrimitiveType.Cylinder, new Vector3(-0.32f, 0.44f, 0.06f), new Vector3(0.13f, 0.005f, 0.13f), Mat("Water", Palette.Hex(0x3f7fb0), emission: 0.15f));
+            Part(bucket, "Handle", PrimitiveType.Cube, new Vector3(-0.32f, 0.5f, 0.06f), new Vector3(0.015f, 0.12f, 0.015f), Palette.Rope);
+            bucket.gameObject.SetActive(false);
+            SetPrivateField(npc, "waterBucket", bucket.gameObject);
             return root;
         }
 
@@ -829,6 +916,7 @@ namespace PrehistoricTribe.EditorTools
             }
             farming.displayName = "Nông nghiệp";
             farming.unlockedCropIds = new List<string> { "berry", "vegetable" };
+            farming.unlockedBuildingIds = new List<string> { "storage", "well" };
             EditorUtility.SetDirty(farming);
 
             var rice = AssetDatabase.LoadAssetAtPath<TechNode>(TechRicePath);
@@ -910,6 +998,7 @@ namespace PrehistoricTribe.EditorTools
         private static void BuildRiceCrop(ResourceTypeData rice)
         {
             var crop = SaveCropData(RiceDataPath, "rice", "Lúa", false, sprout: 20f, mature: 40f, wither: 60f, rice, 6, FieldType.Paddy);
+            crop.minWater = 0.3f; // lúa cần ruộng còn ngập nước mới lớn
             var seedMat = Mat("RiceSeed", Palette.Hex(0xd8c9a0));
             var stalkMat = Mat("RiceStalk", Palette.Hex(0x7fb24a));
             var grainMat = Mat("RiceGrain", Palette.Hex(0xe2c25a), emission: 0.1f);

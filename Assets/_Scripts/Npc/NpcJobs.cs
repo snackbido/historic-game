@@ -16,6 +16,9 @@ namespace PrehistoricTribe
         public virtual float Interval => 1.5f;
         public virtual bool IsValid => Target != null && Target.isActiveAndEnabled;
 
+        /// <summary>Việc này đang "giữ" đối tượng này (để người khác không tranh làm).</summary>
+        public virtual bool Claims(MonoBehaviour target) => Target == target;
+
         /// <summary>Làm một lượt. Trả về false khi việc đã xong (hoặc không làm tiếp được).</summary>
         public abstract bool DoWork(NpcController npc);
     }
@@ -78,7 +81,7 @@ namespace PrehistoricTribe
                 FarmManager farm = FarmManager.Instance;
                 FarmPlot plot = Nearest(InteractableRegistry.All<FarmPlot>(), position, radius, p =>
                     p.State == FarmPlotState.ReadyToHarvest || p.State == FarmPlotState.Withered ||
-                    p.State == FarmPlotState.Wild ||
+                    p.State == FarmPlotState.Wild || p.State == FarmPlotState.Unplowed || p.IsThirsty ||
                     (p.State == FarmPlotState.Empty && farm != null && farm.CropFor(p) != null));
                 if (plot != null) return new FarmJob(plot, continuous: false);
             }
@@ -119,7 +122,7 @@ namespace PrehistoricTribe
         private static bool IsClaimed(MonoBehaviour target)
         {
             foreach (var npc in NpcController.All)
-                if (npc.CurrentJob != null && npc.CurrentJob.Target == target) return true;
+                if (npc.CurrentJob != null && npc.CurrentJob.Claims(target)) return true;
             return false;
         }
 
@@ -222,27 +225,56 @@ namespace PrehistoricTribe
         private readonly FarmPlot plot;
         private readonly bool continuous;
 
+        // Gánh nước (M5d/F2): đi tới nguồn nước múc → mang về đổ vào ruộng.
+        private WaterSource source;
+        private bool fetching;
+        private bool carrying;
+
         public FarmJob(FarmPlot plot, bool continuous = true)
         {
             this.plot = plot;
             this.continuous = continuous;
         }
 
-        public override MonoBehaviour Target => plot;
-        public override string Description => plot.State == FarmPlotState.Wild ? $"khai hoang {plot.FieldName}" : "làm ruộng";
-        public override float WorkRange => 0.7f;
+        public FarmPlot Plot => plot;
+        public bool IsCarryingWater => carrying;
+        public override MonoBehaviour Target => fetching ? source : plot;
+        public override bool Claims(MonoBehaviour target) => target == plot;
+        public override bool IsValid => plot != null && plot.isActiveAndEnabled && (!fetching || source != null);
+
+        public override string Description =>
+            fetching || carrying ? "gánh nước" :
+            plot.State == FarmPlotState.Wild ? $"khai hoang {plot.FieldName}" :
+            plot.State == FarmPlotState.Unplowed ? "cày/xới đất" : "làm ruộng";
+
+        public override float WorkRange => fetching ? source.DrawRange : 0.7f;
         public override float Interval => 1f;
 
         public override bool DoWork(NpcController npc)
         {
+            if (fetching)
+            {
+                fetching = false; // múc đầy gàu → quay về ruộng
+                carrying = true;
+                return true;
+            }
+
+            if (carrying)
+            {
+                carrying = false;
+                plot.AddWater(plot.WaterPerTrip);
+                // Tự làm: gánh đến khi đủ nước rồi thôi; lệnh: làm tiếp các bước khác.
+                return continuous || plot.IsThirsty;
+            }
+
             switch (plot.State)
             {
                 case FarmPlotState.Wild:
                     // Khai hoang/đắp bờ: làm đến khi xong rồi mới thôi (kể cả khi tự làm).
                     return !plot.DoClearWork() || continuous;
 
-                case FarmPlotState.Growing:
-                    return continuous; // lệnh: đứng chờ cây lớn; tự làm: đi tìm việc khác
+                case FarmPlotState.Unplowed:
+                    return !plot.DoPlowWork() || continuous;
 
                 case FarmPlotState.ReadyToHarvest:
                     FarmManager.Instance.TryInteract(plot);
@@ -252,12 +284,38 @@ namespace PrehistoricTribe
                 case FarmPlotState.Withered:
                     plot.ClearWithered();
                     return continuous;
+            }
+
+            if (plot.IsThirsty) return StartFetchingWater(npc);
+
+            switch (plot.State)
+            {
+                case FarmPlotState.Growing:
+                    return continuous; // lệnh: đứng chờ cây lớn; tự làm: đi tìm việc khác
 
                 default: // Empty
                     if (FarmManager.Instance.TryInteract(plot)) return continuous;
-                    if (continuous) EventBus.RaiseNotification($"{npc.NpcName}: chưa chọn hạt giống để gieo");
+                    if (continuous)
+                    {
+                        CropData seed = FarmManager.Instance.CropFor(plot);
+                        EventBus.RaiseNotification(seed == null
+                            ? $"{npc.NpcName}: chưa chọn hạt giống để gieo"
+                            : $"{npc.NpcName}: {plot.PlantBlocker(seed)}");
+                    }
                     return false;
             }
+        }
+
+        private bool StartFetchingWater(NpcController npc)
+        {
+            source = WaterSource.Nearest(plot.transform.position);
+            if (source == null)
+            {
+                if (continuous) EventBus.RaiseNotification($"{npc.NpcName}: không có nguồn nước để gánh");
+                return false;
+            }
+            fetching = true;
+            return true;
         }
     }
 

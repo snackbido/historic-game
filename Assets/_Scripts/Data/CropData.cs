@@ -22,6 +22,9 @@ namespace PrehistoricTribe
         [Tooltip("Trồng trên loại ruộng nào (lúa = ruộng nước)")]
         public FieldType fieldType = FieldType.Dry;
 
+        [Tooltip("Mức nước tối thiểu (0..1) của ruộng để cây còn lớn; thấp hơn là khô hạn (lúa cần ruộng còn ngập)")]
+        [Range(0f, 1f)] public float minWater = 0.01f;
+
         [Tooltip("Thời gian (giây) từ khi gieo hạt đến khi nảy mầm")]
         public float timeToSprout = 10f;
 

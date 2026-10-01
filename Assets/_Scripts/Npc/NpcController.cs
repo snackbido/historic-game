@@ -81,6 +81,8 @@ namespace PrehistoricTribe
         [SerializeField] private List<ProfessionTool> tools = new List<ProfessionTool>();
         [Tooltip("Vòng sáng dưới chân khi đang được người chơi chọn")]
         [SerializeField] private GameObject selectionRing;
+        [Tooltip("Gàu nước — hiện khi đang gánh nước về ruộng (M5d)")]
+        [SerializeField] private GameObject waterBucket;
 
         [Header("Đi dạo khi rảnh")]
         [SerializeField] private float wanderRadius = 3f;
@@ -221,6 +223,11 @@ namespace PrehistoricTribe
         {
             UpdateAge();
             agent.speed = baseSpeed * (IsStarving ? StarvingSpeedFactor : 1f);
+            if (waterBucket != null)
+            {
+                bool carrying = job is FarmJob farm && farm.IsCarryingWater;
+                if (waterBucket.activeSelf != carrying) waterBucket.SetActive(carrying);
+            }
             if (!agent.isOnNavMesh) return;
 
             switch (State)

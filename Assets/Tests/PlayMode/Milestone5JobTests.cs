@@ -75,7 +75,7 @@ namespace PrehistoricTribe.Tests
             yield return WaitUntil(() => ResourceManager.Instance.GetAmount(food) > foodBefore, 60f);
             Assert.AreEqual(foodBefore + berry.harvestYield[0].amount, ResourceManager.Instance.GetAmount(food), "Farmer harvests the ripe crop");
 
-            yield return WaitUntil(() => plot.State == FarmPlotState.Growing, 5f);
+            yield return WaitUntil(() => plot.State == FarmPlotState.Growing, 12f); // cày lại đất (M5d/F2) rồi gieo
             Assert.AreEqual(FarmPlotState.Growing, plot.State, "Farmer replants right after harvesting");
             Assert.IsInstanceOf<FarmJob>(farmer.CurrentJob, "Farming keeps going until a new order");
         }

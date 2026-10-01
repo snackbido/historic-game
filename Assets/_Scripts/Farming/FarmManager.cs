@@ -49,6 +49,10 @@ namespace PrehistoricTribe
                     plot.DoClearWork();
                     return true;
 
+                case FarmPlotState.Unplowed:
+                    plot.DoPlowWork();
+                    return true;
+
                 case FarmPlotState.Empty:
                     return plot.Plant(CropFor(plot));
 

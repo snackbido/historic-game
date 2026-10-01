@@ -26,6 +26,14 @@ namespace PrehistoricTribe.Tests
         private static FarmPlot Place(BuildingData data, Vector3Int cell) =>
             BuildingPlacer.Instance.PlaceBuilding(data, cell, spendResources: false).GetComponent<FarmPlot>();
 
+        /// <summary>Khai hoang + cày + (ruộng nước) cho ngập — sẵn sàng gieo/cấy.</summary>
+        private static void ReadyToPlant(FarmPlot plot)
+        {
+            while (plot.State == FarmPlotState.Wild) plot.DoClearWork();
+            while (plot.State == FarmPlotState.Unplowed) plot.DoPlowWork();
+            plot.SetWater(1f);
+        }
+
         private static NpcController Farmer => NpcController.All.First(n => n.Profession != null && n.Profession.id == "farmer");
 
         private static IEnumerator WaitUntil(System.Func<bool> condition, float gameSeconds)
@@ -56,10 +64,10 @@ namespace PrehistoricTribe.Tests
             StringAssert.Contains("khai hoang", farmer.CurrentJob.Description);
 
             yield return WaitUntil(() => plot.State != FarmPlotState.Wild, 40f);
-            Assert.AreEqual(FarmPlotState.Empty, plot.State, "The farmer clears the field");
+            Assert.AreEqual(FarmPlotState.Unplowed, plot.State, "The farmer clears the field (next: plowing)");
 
             FarmManager.Instance.SelectCrop(Berry);
-            yield return WaitUntil(() => plot.State == FarmPlotState.Growing, 10f);
+            yield return WaitUntil(() => plot.State == FarmPlotState.Growing, 15f);
             Assert.AreEqual(FarmPlotState.Growing, plot.State, "…and keeps working it: plants the chosen seed");
         }
 
@@ -73,7 +81,7 @@ namespace PrehistoricTribe.Tests
 
             var paddy = Place(PaddyField, PondSideCell);
             Assert.AreEqual(FieldType.Paddy, paddy.FieldType);
-            while (paddy.State == FarmPlotState.Wild) paddy.DoClearWork();
+            ReadyToPlant(paddy);
             Assert.IsFalse(paddy.Plant(Berry), "Berries don't grow in a flooded paddy");
             Assert.IsTrue(paddy.Plant(Rice));
         }
@@ -119,7 +127,7 @@ namespace PrehistoricTribe.Tests
             NpcController.AutoWorkEnabled = true;
 
             yield return WaitUntil(() => plot.State != FarmPlotState.Wild, 60f);
-            Assert.AreEqual(FarmPlotState.Empty, plot.State, "Farmers clear wild fields without being told");
+            Assert.AreEqual(FarmPlotState.Unplowed, plot.State, "Farmers clear wild fields without being told");
         }
 
         [UnityTest]
@@ -132,7 +140,7 @@ namespace PrehistoricTribe.Tests
                 var dry = Place(DryField, DryCell);
                 for (int i = 0; i < 3; i++) dry.DoClearWork();
                 var paddy = Place(PaddyField, PondSideCell);
-                while (paddy.State == FarmPlotState.Wild) paddy.DoClearWork();
+                ReadyToPlant(paddy);
                 Assert.IsTrue(paddy.Plant(Rice));
                 float progress = dry.ClearProgress;
 

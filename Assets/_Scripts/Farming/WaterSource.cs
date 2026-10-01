@@ -14,8 +14,29 @@ namespace PrehistoricTribe
 
         [Tooltip("Bán kính mặt nước (m) — tính khoảng cách từ mép nước")]
         [SerializeField] private float radius = 1f;
+        [Tooltip("Đủ nước cho ruộng nước (ao, mương) — giếng thì không, chỉ để gánh nước")]
+        [SerializeField] private bool feedsPaddies = true;
 
         public float Radius => radius;
+        public bool FeedsPaddies => feedsPaddies;
+
+        /// <summary>Đứng cách tâm chừng này là múc được nước.</summary>
+        public float DrawRange => radius + 0.9f;
+
+        /// <summary>Nguồn nước gần điểm này nhất (null nếu không có).</summary>
+        public static WaterSource Nearest(Vector3 position)
+        {
+            WaterSource best = null;
+            float bestDistance = float.MaxValue;
+            foreach (var source in all)
+            {
+                float d = source.DistanceToEdge(position);
+                if (d >= bestDistance) continue;
+                best = source;
+                bestDistance = d;
+            }
+            return best;
+        }
 
         private void OnEnable() => all.Add(this);
         private void OnDisable() => all.Remove(this);
@@ -28,10 +49,10 @@ namespace PrehistoricTribe
             InteractableRegistry.GroundDistance(position, transform.position) - radius;
 
         /// <summary>Có nguồn nước nào mà mép nước cách điểm này không quá <paramref name="range"/> mét.</summary>
-        public static bool AnyWithin(Vector3 position, float range)
+        public static bool AnyWithin(Vector3 position, float range, bool forPaddy = false)
         {
             foreach (var source in all)
-                if (source.DistanceToEdge(position) <= range) return true;
+                if ((!forPaddy || source.feedsPaddies) && source.DistanceToEdge(position) <= range) return true;
             return false;
         }
 

@@ -4,12 +4,15 @@ namespace PrehistoricTribe
 {
     public enum FarmPlotState
     {
+        /// <summary>Đất đã cày/xới, sẵn sàng gieo.</summary>
         Empty,
         Growing,
         ReadyToHarvest,
         Withered,
         /// <summary>Ruộng mới xây: còn là đất hoang, phải khai hoang/đắp bờ trước khi trồng (Milestone 5d).</summary>
-        Wild
+        Wild,
+        /// <summary>Đất đã khai hoang nhưng chưa cày/xới — phải cày trước mỗi vụ (Milestone 5d/F2).</summary>
+        Unplowed
     }
 
     public enum CropStage
@@ -29,8 +32,16 @@ namespace PrehistoricTribe
         public float stageTimer;
         public FarmPlotState state;
         public int clearWorkDone;
+        public int plowWorkDone;
+        // Save cũ chưa có → giữ -1 → coi như đầy nước (trước F2 ruộng không cần nước).
+        public float water = -1f;
+        public float droughtTimer;
     }
 
+    /// <summary>
+    /// Một ô ruộng. Quy trình (Milestone 5d): đất hoang → khai hoang → cày/xới → (ruộng nước: dẫn nước cho ngập)
+    /// → gieo/cấy → lớn (cần đủ nước, ban đêm không lớn) → thu hoạch → lại phải cày cho vụ sau.
+    /// </summary>
     public class FarmPlot : MonoBehaviour
     {
         [Tooltip("Điểm gắn model cây trồng (thường là mặt trên của ô đất)")]
@@ -42,33 +53,43 @@ namespace PrehistoricTribe
         [SerializeField] private bool startsWild;
         [Tooltip("Số lượt công (mỗi lượt ~1s của một nông dân) để khai hoang/đắp bờ")]
         [SerializeField] private int clearWorkNeeded = 8;
+        [Tooltip("Số lượt công để cày/xới trước mỗi vụ")]
+        [SerializeField] private int plowWorkNeeded = 3;
+
+        [Header("Nước")]
+        [Tooltip("Mức nước lúc bắt đầu (0..1) — ô vườn có sẵn được tưới đầy")]
+        [SerializeField, Range(0f, 1f)] private float startWater;
+        [Tooltip("Nước mất đi mỗi giây ban ngày (ban đêm còn 30%)")]
+        [SerializeField] private float evaporationPerSecond = 1f / 150f;
+        [Tooltip("Thiếu nước liên tục bao lâu (giây) thì cây chết khô")]
+        [SerializeField] private float droughtWitherTime = 60f;
+
+        [Header("Hình ảnh")]
         [Tooltip("Hiện khi còn là đất hoang")]
         [SerializeField] private GameObject wildVisual;
-        [Tooltip("Hiện khi đã khai hoang (đất đã làm, bờ ruộng)")]
+        [Tooltip("Đất đã khai hoang nhưng chưa cày (mặt đất phẳng, cứng)")]
+        [SerializeField] private GameObject unplowedVisual;
+        [Tooltip("Đất đã cày/xới (luống, bùn)")]
         [SerializeField] private GameObject preparedVisual;
+        [Tooltip("Mặt nước (ruộng nước) / đất ướt (ruộng cạn) — hiện theo mức nước")]
+        [SerializeField] private Transform waterVisual;
+
+        /// <summary>Ruộng nước phải ngập ít nhất mức này mới cấy được lúa.</summary>
+        public const float FloodedLevel = 0.6f;
+        private const float NightEvaporationFactor = 0.3f;
 
         private GameObject cropVisual;
         private CropData crop;
         private CropStage stage;
         private float stageTimer;
         private int clearWorkDone;
+        private int plowWorkDone;
+        private float droughtTimer;
 
         public FarmPlotState State { get; private set; } = FarmPlotState.Empty;
         public CropData Crop => crop;
         public FieldType FieldType => fieldType;
         public string FieldName => fieldType == FieldType.Paddy ? "ruộng nước" : "ruộng cạn";
-
-        /// <summary>0..1 tiến độ khai hoang.</summary>
-        public float ClearProgress => State == FarmPlotState.Wild ? (float)clearWorkDone / Mathf.Max(1, clearWorkNeeded) : 1f;
-
-        /// <summary>Cây này trồng được trên ruộng này không (lúa cần ruộng nước).</summary>
-        public bool Accepts(CropData data) => data != null && data.fieldType == fieldType;
-
-        private void Awake()
-        {
-            if (startsWild) State = FarmPlotState.Wild;
-            UpdateSoilVisual();
-        }
 
         /// <summary>0..1 từ lúc gieo tới lúc chín — dùng cho gợi ý trên UI.</summary>
         public float GrowthProgress
@@ -87,13 +108,79 @@ namespace PrehistoricTribe
             }
         }
 
+        /// <summary>Mức nước 0..1.</summary>
+        public float Water { get; private set; }
+
+        /// <summary>0..1 tiến độ khai hoang.</summary>
+        public float ClearProgress => State == FarmPlotState.Wild ? (float)clearWorkDone / Mathf.Max(1, clearWorkNeeded) : 1f;
+
+        /// <summary>0..1 tiến độ cày/xới.</summary>
+        public float PlowProgress => State == FarmPlotState.Unplowed ? (float)plowWorkDone / Mathf.Max(1, plowWorkNeeded) : 1f;
+
+        /// <summary>Cây đang có đủ nước để lớn không.</summary>
+        public bool HasEnoughWater => crop == null || Water >= crop.minWater;
+
+        /// <summary>Đang thiếu nước (có cây mà khô, hoặc ruộng nước chưa ngập để cấy).</summary>
+        public bool IsThirsty => State switch
+        {
+            FarmPlotState.Growing => Water < RefillBelow,
+            FarmPlotState.Empty => fieldType == FieldType.Paddy && Water < FloodedLevel,
+            _ => false
+        };
+
+        /// <summary>Đang có cây mà nước xuống dưới mức này thì nên đi gánh nước thêm.</summary>
+        private float RefillBelow => fieldType == FieldType.Paddy ? FloodedLevel : 0.35f;
+
+        /// <summary>Một chuyến gánh nước đổ vào được bao nhiêu (ruộng nước cần nhiều chuyến mới ngập).</summary>
+        public float WaterPerTrip => fieldType == FieldType.Paddy ? 0.25f : 0.4f;
+
+        /// <summary>Cây này trồng được trên ruộng này không (lúa cần ruộng nước).</summary>
+        public bool Accepts(CropData data) => data != null && data.fieldType == fieldType;
+
+        /// <summary>Lý do không gieo/cấy được lúc này (null = được).</summary>
+        public string PlantBlocker(CropData data)
+        {
+            if (data == null) return "Chưa chọn hạt giống";
+            if (!Accepts(data)) return $"{data.displayName} không trồng được trên {FieldName}";
+            if (State == FarmPlotState.Wild) return "Phải khai hoang trước";
+            if (State == FarmPlotState.Unplowed) return "Phải cày/xới đất trước";
+            if (State != FarmPlotState.Empty) return "Ruộng đang có cây";
+            if (fieldType == FieldType.Paddy && Water < FloodedLevel) return "Ruộng chưa ngập nước — phải dẫn nước vào trước khi cấy";
+            return null;
+        }
+
+        private void Awake()
+        {
+            if (startsWild) State = FarmPlotState.Wild;
+            Water = startsWild ? 0f : startWater;
+            UpdateSoilVisual();
+        }
+
         private void OnEnable() => InteractableRegistry.Register(this);
         private void OnDisable() => InteractableRegistry.Unregister(this);
 
         private void Update()
         {
+            bool night = DayNightCycle.Instance != null && DayNightCycle.Instance.IsNight;
+            Evaporate(Time.deltaTime * (night ? NightEvaporationFactor : 1f));
+
             // Cây chỉ lớn khi có nắng (Milestone 5c) — ban đêm đứng yên, kể cả không héo thêm.
-            if (DayNightCycle.Instance != null && DayNightCycle.Instance.IsNight) return;
+            if (night) return;
+
+            if (State == FarmPlotState.Growing && !HasEnoughWater)
+            {
+                // Khô hạn: không lớn; khô lâu quá thì chết.
+                droughtTimer += Time.deltaTime;
+                if (droughtTimer >= droughtWitherTime)
+                {
+                    droughtTimer = 0f;
+                    SetStage(CropStage.Withered);
+                    State = FarmPlotState.Withered;
+                    EventBus.RaiseNotification($"{crop.displayName} chết khô vì thiếu nước!");
+                }
+                return;
+            }
+            droughtTimer = 0f;
 
             if (State != FarmPlotState.Growing && !(State == FarmPlotState.ReadyToHarvest && crop.witherTime > 0f))
                 return;
@@ -102,13 +189,28 @@ namespace PrehistoricTribe
             AdvanceStage();
         }
 
+        private void Evaporate(float seconds)
+        {
+            if (Water <= 0f || State == FarmPlotState.Wild) return;
+            SetWater(Water - evaporationPerSecond * seconds);
+        }
+
+        public void AddWater(float amount) => SetWater(Water + amount);
+
+        public void SetWater(float level)
+        {
+            Water = Mathf.Clamp01(level);
+            UpdateWaterVisual();
+        }
+
         public bool Plant(CropData data)
         {
-            if (State != FarmPlotState.Empty || !Accepts(data)) return false;
+            if (PlantBlocker(data) != null) return false;
 
             crop = data;
             stage = CropStage.Seed;
             stageTimer = 0f;
+            droughtTimer = 0f;
             State = FarmPlotState.Growing;
             UpdateVisual();
             return true;
@@ -121,11 +223,11 @@ namespace PrehistoricTribe
             foreach (var yield in crop.harvestYield)
                 ResourceManager.Instance.AddResource(yield.type, yield.amount);
 
-            Reset();
+            ResetToUnplowed();
             return true;
         }
 
-        /// <summary>Một lượt công khai hoang. Trả về true khi lượt này làm xong (đất sẵn sàng để trồng).</summary>
+        /// <summary>Một lượt công khai hoang. Trả về true khi lượt này làm xong.</summary>
         public bool DoClearWork()
         {
             if (State != FarmPlotState.Wild) return false;
@@ -133,16 +235,28 @@ namespace PrehistoricTribe
             if (clearWorkDone < clearWorkNeeded) return false;
 
             clearWorkDone = 0;
+            ResetToUnplowed();
+            EventBus.RaiseNotification($"Đã khai hoang xong {FieldName} — giờ cần cày/xới đất");
+            return true;
+        }
+
+        /// <summary>Một lượt công cày/xới. Trả về true khi lượt này làm xong (đất sẵn sàng gieo).</summary>
+        public bool DoPlowWork()
+        {
+            if (State != FarmPlotState.Unplowed) return false;
+            plowWorkDone++;
+            if (plowWorkDone < plowWorkNeeded) return false;
+
+            plowWorkDone = 0;
             State = FarmPlotState.Empty;
             UpdateSoilVisual();
-            EventBus.RaiseNotification($"Đã khai hoang xong {FieldName}");
             return true;
         }
 
         public void ClearWithered()
         {
             if (State != FarmPlotState.Withered) return;
-            Reset();
+            ResetToUnplowed();
         }
 
         private void AdvanceStage()
@@ -179,21 +293,22 @@ namespace PrehistoricTribe
             UpdateVisual();
         }
 
-        private void Reset()
+        /// <summary>Thu hoạch / dọn cây xong: đất chai lại, vụ sau phải cày/xới lại.</summary>
+        private void ResetToUnplowed()
+        {
+            ClearCrop();
+            plowWorkDone = 0;
+            State = FarmPlotState.Unplowed;
+            UpdateSoilVisual();
+        }
+
+        private void ClearCrop()
         {
             crop = null;
             stage = CropStage.Seed;
             stageTimer = 0f;
-            State = FarmPlotState.Empty;
+            droughtTimer = 0f;
             UpdateVisual();
-            UpdateSoilVisual();
-        }
-
-        private void UpdateSoilVisual()
-        {
-            bool wild = State == FarmPlotState.Wild;
-            if (wildVisual != null) wildVisual.SetActive(wild);
-            if (preparedVisual != null) preparedVisual.SetActive(!wild);
         }
 
         public FarmPlotSaveData GetSaveData() => new FarmPlotSaveData
@@ -203,31 +318,46 @@ namespace PrehistoricTribe
             stage = stage,
             stageTimer = stageTimer,
             state = State,
-            clearWorkDone = clearWorkDone
+            clearWorkDone = clearWorkDone,
+            plowWorkDone = plowWorkDone,
+            water = Water,
+            droughtTimer = droughtTimer
         };
 
         public void LoadFromSaveData(FarmPlotSaveData data, CropData cropData)
         {
-            if (data != null && data.state == FarmPlotState.Wild)
+            ClearCrop();
+            clearWorkDone = plowWorkDone = 0;
+            if (data == null)
             {
-                Reset();
-                State = FarmPlotState.Wild;
-                clearWorkDone = data.clearWorkDone;
+                State = FarmPlotState.Empty;
                 UpdateSoilVisual();
                 return;
             }
 
-            if (data == null || cropData == null)
+            SetWater(data.water < 0f ? 1f : data.water);
+            bool hasCrop = data.state == FarmPlotState.Growing || data.state == FarmPlotState.ReadyToHarvest ||
+                           data.state == FarmPlotState.Withered;
+            if (hasCrop && cropData == null)
             {
-                Reset();
-                return;
+                State = FarmPlotState.Unplowed; // cây không còn trong game → đất trống chưa cày
             }
-
-            crop = cropData;
-            stage = data.stage;
-            stageTimer = data.stageTimer;
-            State = data.state;
-            UpdateVisual();
+            else if (hasCrop)
+            {
+                crop = cropData;
+                stage = data.stage;
+                stageTimer = data.stageTimer;
+                droughtTimer = data.droughtTimer;
+                State = data.state;
+                UpdateVisual();
+            }
+            else
+            {
+                State = data.state;
+                clearWorkDone = data.clearWorkDone;
+                plowWorkDone = data.plowWorkDone;
+            }
+            UpdateSoilVisual();
         }
 
         private void UpdateVisual()
@@ -249,6 +379,32 @@ namespace PrehistoricTribe
 
             Transform parent = cropAnchor != null ? cropAnchor : transform;
             cropVisual = Instantiate(model, parent.position, parent.rotation, parent);
+        }
+
+        private void UpdateSoilVisual()
+        {
+            bool wild = State == FarmPlotState.Wild;
+            bool unplowed = State == FarmPlotState.Unplowed;
+            if (wildVisual != null) wildVisual.SetActive(wild);
+            if (unplowedVisual != null) unplowedVisual.SetActive(unplowed);
+            // Ô vườn cũ không có hình "chưa cày" → vẫn hiện luống đất.
+            if (preparedVisual != null) preparedVisual.SetActive(!wild && !(unplowed && unplowedVisual != null));
+            UpdateWaterVisual();
+        }
+
+        private void UpdateWaterVisual()
+        {
+            if (waterVisual == null) return;
+            bool show = State != FarmPlotState.Wild && Water > 0.05f;
+            waterVisual.gameObject.SetActive(show);
+            if (!show) return;
+
+            // Nước dâng dần trong bờ ruộng; ruộng cạn: vệt đất ướt rộng dần.
+            Vector3 p = waterVisual.localPosition;
+            if (fieldType == FieldType.Paddy)
+                waterVisual.localPosition = new Vector3(p.x, Mathf.Lerp(0.035f, 0.09f, Water), p.z);
+            else
+                waterVisual.localScale = new Vector3(Mathf.Lerp(0.5f, 0.94f, Water), waterVisual.localScale.y, Mathf.Lerp(0.5f, 0.94f, Water));
         }
     }
 }

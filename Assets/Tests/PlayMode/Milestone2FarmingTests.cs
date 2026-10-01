@@ -36,7 +36,7 @@ namespace PrehistoricTribe.Tests
             Assert.IsTrue(harvested);
             int foodAfter = ResourceManager.Instance.GetAmount(food);
             Assert.AreEqual(foodBefore + berry.harvestYield[0].amount, foodAfter, "Harvest should grant the crop's harvestYield");
-            Assert.AreEqual(FarmPlotState.Empty, plot.State, "Plot should reset to Empty after harvest");
+            Assert.AreEqual(FarmPlotState.Unplowed, plot.State, "After harvest the soil must be plowed again (M5d/F2)");
         }
 
         [UnityTest]
@@ -54,7 +54,7 @@ namespace PrehistoricTribe.Tests
             Assert.AreEqual(FarmPlotState.Withered, plot.State, "Plot should wither if not harvested in time");
 
             plot.ClearWithered();
-            Assert.AreEqual(FarmPlotState.Empty, plot.State, "Withered plot should reset to Empty after clearing");
+            Assert.AreEqual(FarmPlotState.Unplowed, plot.State, "Cleared withered plot must be plowed again (M5d/F2)");
         }
 
         [UnityTest]

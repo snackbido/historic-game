@@ -109,7 +109,7 @@ Quyết định user: một ngày **20 phút** thời gian thật (~14 phút ng�
 ## Milestone 5d — Canh tác thực tế (thêm 2026-10-01)
 Quyết định user: quy trình **vừa phải** (lúa ~6 bước: làm đất → dẫn nước → gieo mạ → cấy → chăm → gặt + giã); **người chơi tự đặt ruộng** qua menu xây dựng; nước **đủ 3 giai đoạn** (gánh nước → mương → guồng nước, mở dần theo tech); **nông dân tự làm bước kế tiếp**, người chơi vẫn ra lệnh được.
 - [x] F1 Xây ruộng: "Ruộng cạn" + "Ruộng nước" trong menu xây; ruộng mới là đất hoang → nông dân khai hoang/đắp bờ; ruộng nước phải gần nguồn nước; lúa chỉ trồng ruộng nước, rau/quả mọng ruộng cạn. 2 ô vườn có sẵn giữ lại (đã khai hoang)
-- [ ] F2 Làm đất + nước: cày/xới trước mỗi vụ; ruộng có mức nước (bốc hơi dần, ruộng nước cần ngập mới cấy/lớn, ruộng cạn thiếu nước thì ngừng lớn rồi héo); việc mới "gánh nước" từ ao; công trình Giếng
+- [x] F2 Làm đất + nước: cày/xới trước mỗi vụ; ruộng có mức nước (bốc hơi dần, ruộng nước cần ngập mới cấy/lớn, ruộng cạn thiếu nước thì ngừng lớn rồi héo); việc mới "gánh nước" từ ao; công trình Giếng
 - [ ] F3 Gieo mạ & cấy: ô ươm mạ (gieo thóc giống → mạ), nhổ mạ, cấy vào ruộng nước đã cày + ngập; giữ thóc giống sau gặt
 - [ ] F4 Chăm sóc: cỏ dại mọc giảm năng suất → làm cỏ; bón phân (phân từ vật nuôi) tăng năng suất
 - [ ] F5 Sau gặt: lúa gặt về là bó lúa → phơi/tuốt/giã ở công trình Cối giã → gạo ăn được
@@ -321,6 +321,14 @@ Quyết định user: quy trình **vừa phải** (lúa ~6 bước: làm đất 
 - `CropData.fieldType` (lúa = ruộng nước, rau/quả mọng = ruộng cạn); `FarmPlot.Accepts`. `FarmManager` nhớ hạt giống chọn gần nhất **cho từng loại ruộng** (`CropFor(plot)`): chọn Lúa rồi Quả mọng → ruộng nước cấy lúa, ruộng cạn trồng quả mọng.
 - Mới `Farming/WaterSource.cs` (ao cá có bán kính mặt nước 0,95). `BuildingData.requiresWaterWithin`; `BuildingPlacer.PlacementBlocker()` nêu lý do không đặt được (đã có công trình / chưa mở khóa / đè lên mặt nước / xa nguồn nước / thiếu tài nguyên) và hiện thông báo khi click sai chỗ. Công trình đặt ra được đặt tên theo ô (`{id}_{x}_{y}`) để lưu/tải ô ruộng khớp đúng; lưu tiến độ khai hoang (`clearWorkDone`).
 - Test: 6 test mới `Milestone5dFieldTests.cs`; test lúa cũ chuyển sang ruộng nước cạnh ao. **100/100 test PlayMode pass**. Ảnh render xác nhận hình đất hoang/ruộng cạn/ruộng nước có bờ cạnh ao.
+
+## Nhật ký phiên làm việc 2026-10-01 (phần 9 — M5d/F2 làm đất + nước)
+- `FarmPlotState.Unplowed` (thêm cuối enum): khai hoang xong, thu hoạch xong, dọn cây héo xong → đất chưa cày; `DoPlowWork()` (ruộng cạn 3, ruộng nước 4 lượt) → `Empty` mới gieo được. 2 ô vườn có sẵn bắt đầu đã cày + đầy nước.
+- Mức nước `Water` 0..1 mỗi ô: bốc hơi 1/150 mỗi giây (ban đêm 30%). Ruộng nước phải ngập ≥ 0,6 (`FloodedLevel`) mới cấy lúa; `CropData.minWater` (lúa 0,3, còn lại ~0) — dưới mức này cây ngừng lớn, khô liên tục 60s thì chết khô. `PlantBlocker()` nêu lý do không gieo được; `IsThirsty` = cây cần thêm nước / ruộng nước chưa ngập.
+- `FarmJob` biết gánh nước: tới nguồn nước gần ruộng nhất (`WaterSource.Nearest`) múc → mang về đổ (ruộng cạn +0,4, ruộng nước +0,25 mỗi chuyến), có gàu nước hiện trên tay. Thứ tự việc: khai hoang → cày → thu hoạch/dọn héo → gánh nước nếu thiếu → gieo. Nông dân tự làm cả cày và gánh nước khi rảnh. `NpcJob.Claims()` để việc gánh nước vẫn "giữ" ruộng, người khác không tranh.
+- Công trình mới **Giếng** (`well`, 8 gỗ, mở cùng tech Nông nghiệp): nguồn nước để gánh, nhưng `feedsPaddies = false` → không cho xây ruộng nước cạnh giếng (cần ao/mương).
+- Hình: đất chưa cày (phẳng, nhạt), đã cày (luống / bùn có rãnh), mặt nước đục dâng trong bờ ruộng nước, vệt đất ướt trên ruộng cạn; hàm dùng chung `GameContentBuilder.SetupFieldPlot` cho cả ruộng xây và ô vườn. Gợi ý [E] hiện % cày và mức nước, cảnh báo THIẾU NƯỚC.
+- Test: 7 test mới `Milestone5dWaterTests.cs`; cập nhật test cũ (sau thu hoạch là `Unplowed`, chờ cày lại trước khi gieo). **107/107 test PlayMode pass**. Ảnh render xác nhận các trạng thái đất, nước, giếng, người cầm gàu.
 
 ## Vấn đề đang tồn đọng (Known issues / Open questions)
 - [x] Chế độ combat: lai (2026-09-26) + chi tiết chỉ huy NPC theo nghề (2026-09-30)

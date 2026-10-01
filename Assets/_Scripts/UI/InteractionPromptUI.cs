@@ -53,20 +53,29 @@ namespace PrehistoricTribe
             }
         }
 
+        private static string Percent(float value) => $"{Mathf.FloorToInt(value * 100f)}%";
+
         private static string DescribePlot(FarmPlot plot)
         {
             switch (plot.State)
             {
                 case FarmPlotState.Wild:
                     return $"[E] Khai hoang {plot.FieldName} — {Mathf.FloorToInt(plot.ClearProgress * 100f)}%";
+                case FarmPlotState.Unplowed:
+                    return $"[E] Cày/xới đất — {Mathf.FloorToInt(plot.PlowProgress * 100f)}%";
                 case FarmPlotState.Empty:
                     CropData selected = FarmManager.Instance != null ? FarmManager.Instance.CropFor(plot) : null;
-                    if (selected != null) return $"[E] Gieo {selected.displayName}";
+                    if (selected != null)
+                    {
+                        string blocker = plot.PlantBlocker(selected);
+                        return blocker == null ? $"[E] Gieo {selected.displayName}" : $"{blocker} (nước {Percent(plot.Water)})";
+                    }
                     return plot.FieldType == FieldType.Paddy
                         ? "Ruộng nước trống — chọn hạt giống lúa ở bảng bên phải"
                         : "Ô đất trống — chọn hạt giống ở bảng bên phải";
                 case FarmPlotState.Growing:
-                    return $"{plot.Crop.displayName} đang lớn — {Mathf.FloorToInt(plot.GrowthProgress * 100f)}%";
+                    string water = plot.HasEnoughWater ? $"nước {Percent(plot.Water)}" : "THIẾU NƯỚC — cây ngừng lớn!";
+                    return $"{plot.Crop.displayName} đang lớn — {Percent(plot.GrowthProgress)} · {water}";
                 case FarmPlotState.ReadyToHarvest:
                     return $"[E] Thu hoạch {plot.Crop.displayName} ({FormatAmounts(plot.Crop.harvestYield, "+")})";
                 case FarmPlotState.Withered:

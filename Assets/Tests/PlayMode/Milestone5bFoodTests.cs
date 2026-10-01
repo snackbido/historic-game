@@ -93,6 +93,8 @@ namespace PrehistoricTribe.Tests
                 new Vector3Int(2, 5, 0), spendResources: false);
             var plot = paddy.GetComponent<FarmPlot>();
             while (plot.State == FarmPlotState.Wild) plot.DoClearWork();
+            while (plot.State == FarmPlotState.Unplowed) plot.DoPlowWork();
+            plot.SetWater(1f); // ngập nước mới cấy được
             FarmManager.Instance.SelectCrop(rice);
             Assert.IsTrue(FarmManager.Instance.TryInteract(plot));
 

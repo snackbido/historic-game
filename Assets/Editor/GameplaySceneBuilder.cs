@@ -91,13 +91,14 @@ namespace PrehistoricTribe.EditorTools
             // M5d: ruộng do người chơi xây.
             var dryField = AssetDatabase.LoadAssetAtPath<BuildingData>(GameContentBuilder.DryFieldDataPath);
             var paddyField = AssetDatabase.LoadAssetAtPath<BuildingData>(GameContentBuilder.PaddyFieldDataPath);
-            var buildings = new List<BuildingData> { hut, storage, dryField, paddyField };
+            var well = AssetDatabase.LoadAssetAtPath<BuildingData>(GameContentBuilder.WellDataPath);
+            var buildings = new List<BuildingData> { hut, storage, dryField, paddyField, well };
             var techs = new List<TechNode> { techFarming, techRice };
 
             if (wood == null || food == null || knowledge == null || hut == null || storage == null ||
                 berry == null || techFarming == null || boarData == null || buttonPrefab == null ||
                 rice == null || vegetable == null || techRice == null || goatData == null || foodTypes.Contains(null) ||
-                dryField == null || paddyField == null)
+                dryField == null || paddyField == null || well == null)
             {
                 Debug.LogError("[GameplaySceneBuilder] Thieu asset can thiet. Chay 'Tools/Prehistoric/Build Missing Content' truoc (hoac dung 'Build All').");
                 return;
@@ -472,18 +473,10 @@ namespace PrehistoricTribe.EditorTools
         {
             var plotGO = new GameObject(name);
             plotGO.transform.position = position;
-            var t = plotGO.transform;
 
-            Part(t, "Soil", PrimitiveType.Cube, new Vector3(0f, 0.04f, 0f), new Vector3(0.96f, 0.08f, 0.96f), Palette.Soil);
-            foreach (float z in new[] { -0.3f, 0f, 0.3f })
-                Part(t, "Furrow", PrimitiveType.Cube, new Vector3(0f, 0.09f, z), new Vector3(0.86f, 0.03f, 0.1f), Palette.SoilDark);
-
-            var anchor = new GameObject("CropAnchor").transform;
-            anchor.SetParent(t, false);
-            anchor.localPosition = new Vector3(0f, 0.1f, 0f);
-
+            // Ô vườn có sẵn: đã khai hoang, đã cày, tưới đầy nước — trồng được ngay từ đầu game.
             var plot = plotGO.AddComponent<FarmPlot>();
-            SetPrivateField(plot, "cropAnchor", anchor);
+            GameContentBuilder.SetupFieldPlot(plot, FieldType.Dry, startsWild: false, startWater: 1f);
         }
 
         // ─── UI (Canvas overlay — giữ nguyên như bản 2D) ─────────────────────
