@@ -164,6 +164,15 @@ namespace PrehistoricTribe.EditorTools
                 "ao tràn bờ — ruộng cạn, nhà gần ao bị ngập. Đắp đê để chắn nước",
                 "Nước lũ đã rút — sửa lại nhà cửa, dọn ruộng úng", durationDays: 0.5f);
             SetPrivateField(flood, "floodWaterMaterial", Mat("FloodWater", Palette.Hex(0x6b8c94), emission: 0.05f));
+            var wildfire = disasters.AddComponent<WildfireDisaster>();
+            ConfigureDisaster(wildfire, "wildfire", "Cháy rừng",
+                "trời hanh khô, gió lớn, sấm chớp xa xa",
+                "sét đánh cháy cây, lửa lan sang nhà và ruộng — gánh nước dập lửa!",
+                "Đám cháy đã tắt — dọn dẹp, sửa lại nhà cửa", durationDays: 0.5f);
+            SetPrivateField(wildfire, "flameMaterial", Mat("WildfireFlame", Palette.Hex(0xf0561a), emission: 0.55f));
+            SetPrivateField(wildfire, "flameCoreMaterial", Mat("WildfireFlameCore", Palette.Hex(0xffc94a), emission: 0.8f));
+            SetPrivateField(wildfire, "smokeMaterial", Mat("Smoke", Palette.Hex(0x6a6560)));
+            SetPrivateField(wildfire, "charredMaterial", Mat("CharredWood", Palette.Hex(0x3a2a1c)));
 
             var resources = new GameObject("ResourceNodes").transform;
             for (int i = 0; i < TreePositions.Length; i++)

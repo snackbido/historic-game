@@ -38,6 +38,9 @@ namespace PrehistoricTribe
 
         public static string Describe(MonoBehaviour target)
         {
+            Fire fire = target != null ? target.GetComponent<Fire>() : null;
+            if (fire != null) return $"[E] Dập lửa — đang cháy {Percent(fire.Intensity)} (chuột phải ra lệnh dân làng gánh nước dập)";
+
             switch (target)
             {
                 case ResourceNode node:

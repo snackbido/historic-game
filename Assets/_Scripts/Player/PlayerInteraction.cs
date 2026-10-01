@@ -21,8 +21,18 @@ namespace PrehistoricTribe
                 Interact(Nearest);
         }
 
+        /// <summary>Người chơi đập lửa bằng cành cây mỗi lần bấm E.</summary>
+        public const float PlayerBeatFire = 0.2f;
+
         private static void Interact(MonoBehaviour target)
         {
+            Fire fire = target != null ? target.GetComponent<Fire>() : null;
+            if (fire != null)
+            {
+                if (fire.Douse(PlayerBeatFire)) EventBus.RaiseNotification("Đã dập tắt đám cháy");
+                return;
+            }
+
             switch (target)
             {
                 case ResourceNode node:

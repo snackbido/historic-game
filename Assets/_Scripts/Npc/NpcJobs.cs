@@ -31,6 +31,10 @@ namespace PrehistoricTribe
             ProfessionData profession = npc.Profession;
             if (profession == null) return null;
 
+            // Đang cháy: ai cũng xách nước đi dập (M6/D4).
+            Fire fire = target != null ? target.GetComponent<Fire>() : null;
+            if (fire != null) return new FirefightJob(fire);
+
             switch (target)
             {
                 case PredatorAI predator when CanFight(profession):
@@ -63,6 +67,8 @@ namespace PrehistoricTribe
         }
 
         private const float GuardRadius = 10f;
+        /// <summary>Thấy cháy trong bán kính này thì đi dập (rộng hơn bán kính tự làm việc thường).</summary>
+        public const float FireAlarmRadius = 15f;
 
         /// <summary>
         /// Việc tự tìm khi rảnh, theo <see cref="ProfessionData.autoWork"/>, trong bán kính quanh NPC.
@@ -71,8 +77,14 @@ namespace PrehistoricTribe
         public static NpcJob FindAutoJob(NpcController npc, float radius)
         {
             ProfessionData profession = npc.Profession;
-            if (profession == null || profession.autoWork == NpcCapability.None) return null;
+            if (profession == null) return null;
             Vector3 position = npc.transform.position;
+
+            // Cháy gần làng: bỏ mọi việc đi dập lửa (cả trinh sát).
+            Fire fire = Fire.Nearest(position, FireAlarmRadius);
+            if (fire != null) return new FirefightJob(fire);
+
+            if (profession.autoWork == NpcCapability.None) return null;
 
             // Canh gác: sói đang đuổi/cắn ai đó gần đây thì lao vào.
             if ((profession.autoWork & NpcCapability.Hunt) != 0)
@@ -378,6 +390,68 @@ namespace PrehistoricTribe
             lastTask = mortar.NextTask;
             if (!mortar.DoWork()) return false;
             return mortar.HasWork;
+        }
+    }
+
+    /// <summary>
+    /// Dập lửa (M6/D4): múc nước ở nguồn gần nhất → dội vào đám cháy, lặp tới khi tắt; không có nguồn nước gần
+    /// thì đập lửa bằng cành cây (chậm hơn). Tắt xong thì sang đám cháy gần đó.
+    /// </summary>
+    public class FirefightJob : NpcJob
+    {
+        public const float DousePerBucket = 0.5f;
+        public const float DousePerBeat = 0.15f;
+        private const float MaxWaterTrip = 20f;
+        private const float NextFireRadius = 6f;
+
+        private Fire fire;
+        private WaterSource source;
+        private bool fetching;
+        private bool carrying;
+
+        public FirefightJob(Fire fire) => this.fire = fire;
+
+        public Fire Fire => fire;
+        public bool IsCarryingWater => carrying;
+        public override MonoBehaviour Target => fetching ? (MonoBehaviour)source : fire;
+        public override bool Claims(MonoBehaviour target) => false; // càng đông người dập càng tốt
+        public override bool IsValid => fire != null && (!fetching || source != null);
+        public override string Description => fetching || carrying ? "gánh nước dập lửa" : "dập lửa";
+        public override float WorkRange => fetching ? source.DrawRange : 1.6f;
+        public override float Interval => 1f;
+
+        public override bool DoWork(NpcController npc)
+        {
+            if (fetching)
+            {
+                fetching = false;
+                carrying = true;
+                return true;
+            }
+
+            bool extinguished;
+            if (carrying)
+            {
+                carrying = false;
+                extinguished = fire.Douse(DousePerBucket);
+            }
+            else
+            {
+                source = WaterSource.Nearest(fire.transform.position);
+                if (source != null && source.DistanceToEdge(fire.transform.position) <= MaxWaterTrip)
+                {
+                    fetching = true;
+                    return true;
+                }
+                extinguished = fire.Douse(DousePerBeat); // không có nước gần: đập lửa
+            }
+
+            if (!extinguished) return true;
+            EventBus.RaiseNotification($"{npc.NpcName} đã dập tắt một đám cháy");
+            Fire next = Fire.Nearest(fire.transform.position, NextFireRadius, except: fire);
+            if (next == null) return false;
+            fire = next;
+            return true;
         }
     }
 

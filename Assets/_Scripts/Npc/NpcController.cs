@@ -225,7 +225,7 @@ namespace PrehistoricTribe
             agent.speed = baseSpeed * (IsStarving ? StarvingSpeedFactor : 1f);
             if (waterBucket != null)
             {
-                bool carrying = job is FarmJob farm && farm.IsCarryingWater;
+                bool carrying = (job is FarmJob farm && farm.IsCarryingWater) || (job is FirefightJob firefight && firefight.IsCarryingWater);
                 if (waterBucket.activeSelf != carrying) waterBucket.SetActive(carrying);
             }
             if (!agent.isOnNavMesh) return;
@@ -285,10 +285,12 @@ namespace PrehistoricTribe
         /// <summary>Trời tối và đang rảnh (không giữ lệnh, không bị chọn) → về lều ngủ, chưa có lều thì ngủ cạnh đống lửa.</summary>
         /// <summary>Có lều và lều chưa sập (lều sập thì ra đống lửa ngủ).</summary>
         private bool HasLivableHome => Home != null && !Home.IsCollapsed;
+        private bool FireNearby => Fire.Nearest(transform.position, NpcJobFactory.FireAlarmRadius) != null;
 
         private bool TrySleep()
         {
             if (!IsNightNow || IsSelected || holdPosition) return false;
+            if (FireNearby) return false; // cháy gần làng thì thức dập lửa
 
             if (HasLivableHome)
             {
@@ -386,14 +388,14 @@ namespace PrehistoricTribe
             }
 
             // Trời tối: việc tự làm (chặt cây, làm ruộng…) dừng để đi ngủ; lệnh của người chơi và tự vệ thì không.
-            if (IsNightNow && !jobFromPlayer && !(job is SleepJob) && !(job is AttackJob))
+            if (IsNightNow && !jobFromPlayer && !(job is SleepJob) && !(job is AttackJob) && !(job is FirefightJob))
             {
                 EndJob();
                 return;
             }
 
             // Trời sáng thì dậy; đang nằm cạnh đống lửa mà vừa được chia lều thì về lều ngủ.
-            if (job is SleepJob sleep && (!IsNightNow || (!sleep.InsideHut && HasLivableHome) || (sleep.InsideHut && !HasLivableHome)))
+            if (job is SleepJob sleep && (!IsNightNow || FireNearby || (!sleep.InsideHut && HasLivableHome) || (sleep.InsideHut && !HasLivableHome)))
             {
                 EndJob();
                 return;

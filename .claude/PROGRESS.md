@@ -120,7 +120,7 @@ Quyết định user: quy trình **vừa phải** (lúa ~6 bước: làm đất 
 - [x] D1 Khung: `DisasterManager` (ngày đầu an toàn, sau đó 2–3 ngày/lần, báo trước nửa ngày) + `DisasterEvent` base + băng cảnh báo + công trình hư hại/sập → dân làng sửa (tốn gỗ) + lưu/tải
 - [x] D2 Hạn hán: ruộng bốc hơi nhanh, ao cạn dần (ít cá, mương/guồng yếu) — chống bằng giếng, mương, guồng
 - [x] D3 Lũ lụt: mưa lớn, ao tràn — ruộng/công trình gần ao ngập (cây chết úng, nhà hư) — chống bằng Đê (công trình mới)
-- [ ] D4 Cháy rừng: sét/lửa lan qua cây và lều — dân gánh nước dập lửa
+- [x] D4 Cháy rừng: sét/lửa lan qua cây và lều — dân gánh nước dập lửa
 - [ ] D5 Bầy sói đột kích: đêm cả bầy tràn vào trại theo đợt — chống bằng hàng rào, lính gác, đuốc
 
 ## Milestone 7 — Polish & mở rộng
@@ -393,6 +393,13 @@ Quyết định user: quy trình **vừa phải** (lúa ~6 bước: làm đất 
 - **Đê** (`levee`, 2 gỗ, mở cùng Thủy lợi, đi xuyên được) — `Disaster/Levee.cs`: nước tràn từ mép ao tới một điểm mà đường đi cắt qua đê (≤ 0,75m từ tâm đê) thì bị chặn. Thân đê tự xoay chắn ngang hướng ra ao. Lưu ý: đĩa nước lũ vẫn vẽ tràn qua đê (chỉ là hình), nhưng đối tượng sau đê không bị ngập.
 - Điềm báo "mây đen kéo về, mưa rả rích không dứt". Menu xây 10 nút → bảng hạt giống -385, công nghệ -595 (giao diện bên phải bắt đầu chật — cần sắp xếp lại khi làm M7).
 - Test: 7 test mới `Milestone6FloodTests.cs`. **160/160 test PlayMode pass**. Lưu ý: `Milestone5CombatTests.FarmerNearDen_FleesInsteadOfFighting` thỉnh thoảng lỗi (nông dân bị cắn mà đứng Idle thay vì chạy) — chập chờn có từ trước, chạy lại thì pass.
+
+## Nhật ký phiên làm việc 2026-10-01 (phần 18 — M6/D4 cháy rừng)
+- `Disaster/WildfireDisaster.cs` (tối đa 0,5 ngày, kết thúc sớm khi hết lửa; hết giờ thì "mưa" dập nốt): sét đánh cháy 2 cây trong bán kính 16m quanh đống lửa trại.
+- `Disaster/Fire.cs` gắn lên đối tượng đang cháy: độ lửa 0..1 bùng dần (+1/15 mỗi giây); từ 0,5 trở lên cứ 6s có 30% bén sang mỗi đồ dễ cháy trong 2,2m. Cháy được: cây gỗ (40s thì cháy rụi → còn gốc cháy đen), công trình có máu trừ giếng (mất tối đa 1/45 máu/giây theo độ lửa, sập thì tắt), ruộng đang có cây mà **khô (nước < 50%)** (8s thì cây cháy chết) — ruộng tưới đủ không bắt lửa. Hình: 4–5 ngọn lửa hình nón cam có lõi vàng, khói từng cụm bay lên, đèn cam bập bùng.
+- Dập lửa: `FirefightJob` — múc nước ở nguồn gần nhất (≤ 20m) dội −0,5 mỗi gàu (xách thùng nước), không có nước thì đập −0,15; tắt xong sang đám cháy gần đó. Ai cũng làm được (cả trinh sát); chuột phải vào chỗ cháy để ra lệnh; tự đi dập khi có cháy trong 15m — **cả ban đêm** (không đi ngủ, đang ngủ thì dậy). Người chơi bấm E đập lửa −0,2. Gợi ý "[E] Dập lửa — đang cháy N%".
+- Đổi thiết kế so với dự tính: bỏ "hạn hán làm lửa lan nhanh" vì mỗi lúc chỉ có 1 thiên tai; thay bằng luật ruộng ướt không cháy.
+- Test: 9 test mới `Milestone6WildfireTests.cs`. **169/169 test PlayMode pass**.
 
 ## Vấn đề đang tồn đọng (Known issues / Open questions)
 - [x] Chế độ combat: lai (2026-09-26) + chi tiết chỉ huy NPC theo nghề (2026-09-30)
