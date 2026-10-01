@@ -97,7 +97,7 @@ Quyết định user: công trình nâng cấp **5 cấp** (click công trình �
 - [x] E1 Hệ thống nâng cấp 5 cấp cho Lều + Kho (chi phí, model đổi theo cấp, bảng thông tin khi click công trình, lưu/tải cấp) — 2026-09-30
 - [x] E2 Lều là nhà: gán cặp đôi vào lều, cặp đôi về lều để sinh con, cấp lều → thêm chỗ cho con + sinh nhanh hơn — 2026-10-01
 - [x] E3 Nhiều loại lương thực + nguồn mới (lúa, rau = cây trồng mới; cá = đánh cá; sữa = vật nuôi mới; thịt = săn/vật nuôi); chi phí "thức ăn" nhận loại nào cũng được — 2026-10-01
-- [ ] E4 Kho: giới hạn lưu trữ theo loại (không kho ~20/loại, kho + cấp kho tăng), thịt ngoài kho hỏng dần
+- [x] E4 Kho: giới hạn lưu trữ theo loại (không kho ~20/loại, kho + cấp kho tăng), thịt ngoài kho hỏng dần — 2026-10-01
 - [ ] E5 Dân làng ăn hằng ngày: thiếu ăn → đói, yếu, không sinh con
 
 ## Milestone 6 — Thiên tai
@@ -264,6 +264,12 @@ Quyết định user: công trình nâng cấp **5 cấp** (click công trình �
 - `ResourceNode`: `actionName` ("Chặt cây"/"Đánh cá"), `workRange`, `regenInterval`/`maxAmount` (sinh sôi lại — dùng lại được cho cây mọc lại sau này). `GatherJob` dừng khi nguồn cạn; tự làm việc bỏ qua nguồn đã cạn.
 - UI: dòng chi tiết dưới "Thức ăn: N" (`FoodBreakdownUI`: "Thịt 3 · Lúa gạo 0 · Quả mọng 6 · Sữa 0 · Cá 2 · Rau 0"); bảng hạt giống 3 cây; bảng công nghệ 2 mục. Đổi tên dữ liệu sang tiếng Việt có dấu: Gỗ, Tri thức, Heo rừng, Cây mọng, Nông nghiệp, Lều, Kho.
 - **Đã xác nhận**: **67/67 test PlayMode pass** (8 test mới `Milestone5bFoodTests.cs`; sửa `SaveLoadTests` vì giờ bản đồ có 2 con vật); ảnh render lúa chín, rau, dê núi, ao cá.
+
+## Nhật ký phiên làm việc 2026-10-01 (phần 3 — M5b/E4 kho chứa)
+- `ResourceManager`: mỗi loại lương thực có sức chứa `FoodCapacity` = `baseFoodCapacity` (20, đống tạm ngoài trời) + `StoredFoodCapacity` (tổng `StorageCapacity` của mọi kho theo cấp: 30/60/100/150/220). `AddResource` lương thực vượt sức chứa → phần dư bị phí + thông báo "Kho đầy — phí N …" (mỗi loại tối đa 1 thông báo / 5s). Gỗ/tri thức không giới hạn.
+- Hư hỏng: đồ `perishable` (thịt, cá, sữa) — phần vượt quá `StoredFoodCapacity` là "để ngoài kho"; cứ `spoilInterval` 15s mất `spoilFraction` 25% phần đó (ít nhất 1) + thông báo. Phần trong kho không hỏng; lúa gạo, quả mọng, rau không bao giờ hỏng.
+- `FoodBreakdownUI`: "Sức chứa: 50/loại · Thịt 12 (hỏng dần) · …", làm mới khi xây/nâng cấp công trình.
+- Test: `PlayModeTestBase` tắt `ResourceManager.SpoilageEnabled` mặc định (test cũ không bị lệch số), test E4 tự bật. **72/72 test PlayMode pass** (5 test mới `Milestone5bStorageTests.cs`: không kho giữ tối đa 20/loại, phần dư phí; kho cộng sức chứa theo cấp; thịt ngoài kho hỏng; thịt trong kho + lúa không hỏng; chỉ phần vượt sức chứa kho hỏng, hỏng tới đúng mức kho bảo quản thì dừng).
 
 ## Vấn đề đang tồn đọng (Known issues / Open questions)
 - [x] Chế độ combat: lai (2026-09-26) + chi tiết chỉ huy NPC theo nghề (2026-09-30)

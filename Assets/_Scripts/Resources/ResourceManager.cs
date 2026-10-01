@@ -20,12 +20,28 @@ namespace PrehistoricTribe
     /// <summary>
     /// Kho tài nguyên chung. Lương thực có nhiều loại (thịt, gạo, quả mọng, sữa, cá, rau…) và một loại "gộp"
     /// (Thức ăn) = tổng mọi loại: chi phí ghi bằng loại gộp thì trả bằng loại nào cũng được, ưu tiên đồ dễ hỏng.
+    /// M5b/E4: mỗi loại lương thực có sức chứa (đống tạm + các kho); vượt thì phí; đồ dễ hỏng để ngoài kho hỏng dần.
     /// </summary>
     public class ResourceManager : MonoBehaviour
     {
         public static ResourceManager Instance { get; private set; }
 
+        /// <summary>Tắt để test cũ không bị thịt/cá/sữa tự hỏng làm lệch số; test E4 tự bật lại.</summary>
+        public static bool SpoilageEnabled { get; set; } = true;
+
         [SerializeField] private List<ResourceTypeData> knownResourceTypes = new List<ResourceTypeData>();
+
+        [Header("Kho chứa lương thực (E4)")]
+        [Tooltip("Mỗi loại lương thực giữ được bao nhiêu khi chưa có kho (đống tạm ngoài trời)")]
+        [SerializeField] private int baseFoodCapacity = 20;
+        [Tooltip("Cứ bao nhiêu giây thì đồ dễ hỏng để ngoài kho hỏng một phần")]
+        [SerializeField] private float spoilInterval = 15f;
+        [Tooltip("Mỗi lần hỏng mất phần này của lượng đang để ngoài kho (ít nhất 1)")]
+        [SerializeField, Range(0f, 1f)] private float spoilFraction = 0.25f;
+
+        private float spoilTimer;
+        private readonly Dictionary<ResourceTypeData, float> lastWasteNotice = new Dictionary<ResourceTypeData, float>();
+        private const float WasteNoticeCooldown = 5f;
 
         private readonly Dictionary<ResourceTypeData, int> amounts = new Dictionary<ResourceTypeData, int>();
         private readonly Dictionary<string, ResourceTypeData> typesById = new Dictionary<string, ResourceTypeData>();
@@ -65,6 +81,49 @@ namespace PrehistoricTribe
             return amounts.TryGetValue(type, out int amount) ? amount : 0;
         }
 
+        // ─── Sức chứa & hư hỏng (E4) ─────────────────────────────────────────
+        /// <summary>Tổng sức chứa của mọi kho (theo cấp) — phần lương thực nằm trong này được bảo quản.</summary>
+        public int StoredFoodCapacity
+        {
+            get
+            {
+                int capacity = 0;
+                foreach (var building in BuildingInstance.All) capacity += building.StorageCapacity;
+                return capacity;
+            }
+        }
+
+        /// <summary>Mỗi loại lương thực giữ được tối đa bao nhiêu (đống tạm + kho).</summary>
+        public int FoodCapacity => baseFoodCapacity + StoredFoodCapacity;
+
+        /// <summary>Lượng đồ dễ hỏng đang để ngoài kho (sẽ hỏng dần); 0 với đồ không dễ hỏng.</summary>
+        public int SpoilingAmount(ResourceTypeData type) =>
+            type != null && type.IsFood && type.perishable ? Mathf.Max(0, GetAmount(type) - StoredFoodCapacity) : 0;
+
+        private void Update()
+        {
+            if (!SpoilageEnabled) return;
+            spoilTimer += Time.deltaTime;
+            if (spoilTimer < spoilInterval) return;
+            spoilTimer = 0f;
+            SpoilOutsideFood();
+        }
+
+        private void SpoilOutsideFood()
+        {
+            var lost = new List<string>();
+            foreach (var food in foodTypes)
+            {
+                int outside = SpoilingAmount(food);
+                if (outside <= 0) continue;
+                int spoiled = Mathf.Max(1, Mathf.RoundToInt(outside * spoilFraction));
+                Set(food, GetAmount(food) - spoiled);
+                lost.Add($"{spoiled} {food.displayName}");
+            }
+            if (lost.Count > 0)
+                EventBus.RaiseNotification($"Hỏng {string.Join(", ", lost)} để ngoài kho — xây/nâng cấp kho để bảo quản");
+        }
+
         public void AddResource(ResourceTypeData type, int amount)
         {
             if (amount <= 0 || type == null) return;
@@ -75,7 +134,24 @@ namespace PrehistoricTribe
                 if (target != null) AddResource(target, amount);
                 return;
             }
+
+            if (type.IsFood)
+            {
+                int space = Mathf.Max(0, FoodCapacity - GetAmount(type));
+                int wasted = amount - Mathf.Min(amount, space);
+                amount -= wasted;
+                if (wasted > 0) NotifyWaste(type, wasted);
+                if (amount <= 0) return;
+            }
             Set(type, GetAmount(type) + amount);
+        }
+
+        private void NotifyWaste(ResourceTypeData type, int wasted)
+        {
+            // Không spam: mỗi loại tối đa một thông báo / vài giây.
+            if (lastWasteNotice.TryGetValue(type, out float last) && Time.time - last < WasteNoticeCooldown) return;
+            lastWasteNotice[type] = Time.time;
+            EventBus.RaiseNotification($"Kho đầy — phí {wasted} {type.displayName} (chứa tối đa {FoodCapacity}/loại)");
         }
 
         public bool TrySpend(ResourceTypeData type, int amount)
