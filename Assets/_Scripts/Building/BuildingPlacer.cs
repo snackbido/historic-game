@@ -140,8 +140,10 @@ namespace PrehistoricTribe
             Vector3 center = CellToGround(cell);
             if (WaterSource.IsOnWater(center, WaterClearance)) return "Không xây đè lên mặt nước";
             // Cần nguồn nước lớn (ao, mương) — giếng không đủ nước cho ruộng ngập.
-            if (data.requiresWaterWithin > 0f && !WaterSource.AnyWithin(center, data.requiresWaterWithin, forPaddy: true))
-                return $"{data.displayName} phải ở gần nguồn nước lớn (ao, mương có nước)";
+            if (data.requiresWaterWithin > 0f && !WaterSource.AnyWithin(center, data.requiresWaterWithin, forPaddy: true, naturalOnly: data.requiresOpenWater))
+                return data.requiresOpenWater
+                    ? $"{data.displayName} phải dựng sát mép ao"
+                    : $"{data.displayName} phải ở gần nguồn nước lớn (ao, mương có nước)";
 
             if (!ResourceManager.Instance.CanAfford(data.costs)) return "Chưa đủ tài nguyên";
             return null;

@@ -16,9 +16,12 @@ namespace PrehistoricTribe
         [SerializeField] private float radius = 1f;
         [Tooltip("Đủ nước cho ruộng nước (ao, mương) — giếng thì không, chỉ để gánh nước")]
         [SerializeField] private bool feedsPaddies = true;
+        [Tooltip("Nước tự nhiên (ao) — mương thì không: guồng nước chỉ múc được từ ao")]
+        [SerializeField] private bool natural = true;
 
         public float Radius => radius;
         public bool FeedsPaddies => feedsPaddies;
+        public bool IsNatural => natural;
 
         /// <summary>Đứng cách tâm chừng này là múc được nước.</summary>
         public float DrawRange => radius + 0.9f;
@@ -49,10 +52,10 @@ namespace PrehistoricTribe
             InteractableRegistry.GroundDistance(position, transform.position) - radius;
 
         /// <summary>Có nguồn nước nào mà mép nước cách điểm này không quá <paramref name="range"/> mét.</summary>
-        public static bool AnyWithin(Vector3 position, float range, bool forPaddy = false)
+        public static bool AnyWithin(Vector3 position, float range, bool forPaddy = false, bool naturalOnly = false)
         {
             foreach (var source in all)
-                if ((!forPaddy || source.feedsPaddies) && source.DistanceToEdge(position) <= range) return true;
+                if ((!forPaddy || source.feedsPaddies) && (!naturalOnly || source.natural) && source.DistanceToEdge(position) <= range) return true;
             return false;
         }
 

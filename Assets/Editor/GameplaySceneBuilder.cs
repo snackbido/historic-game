@@ -102,14 +102,16 @@ namespace PrehistoricTribe.EditorTools
             var sheaf = AssetDatabase.LoadAssetAtPath<ResourceTypeData>(GameContentBuilder.ResourcePath("RiceSheaf"));
             var canal = AssetDatabase.LoadAssetAtPath<BuildingData>(GameContentBuilder.CanalDataPath);
             var techIrrigation = AssetDatabase.LoadAssetAtPath<TechNode>(GameContentBuilder.TechIrrigationPath);
-            var buildings = new List<BuildingData> { hut, storage, dryField, seedbed, paddyField, well, canal, mortar };
-            var techs = new List<TechNode> { techFarming, techRice, techIrrigation };
+            var waterWheel = AssetDatabase.LoadAssetAtPath<BuildingData>(GameContentBuilder.WaterWheelDataPath);
+            var techWaterWheel = AssetDatabase.LoadAssetAtPath<TechNode>(GameContentBuilder.TechWaterWheelPath);
+            var buildings = new List<BuildingData> { hut, storage, dryField, seedbed, paddyField, well, canal, waterWheel, mortar };
+            var techs = new List<TechNode> { techFarming, techRice, techIrrigation, techWaterWheel };
 
             if (wood == null || food == null || knowledge == null || hut == null || storage == null ||
                 berry == null || techFarming == null || boarData == null || buttonPrefab == null ||
                 rice == null || vegetable == null || techRice == null || goatData == null || foodTypes.Contains(null) ||
                 dryField == null || paddyField == null || well == null ||
-                seedlingCrop == null || riceSeed == null || seedling == null || seedbed == null || manure == null || mortar == null || sheaf == null || canal == null || techIrrigation == null)
+                seedlingCrop == null || riceSeed == null || seedling == null || seedbed == null || manure == null || mortar == null || sheaf == null || canal == null || techIrrigation == null || waterWheel == null || techWaterWheel == null)
             {
                 Debug.LogError("[GameplaySceneBuilder] Thieu asset can thiet. Chay 'Tools/Prehistoric/Build Missing Content' truoc (hoac dung 'Build All').");
                 return;
@@ -763,7 +765,7 @@ namespace PrehistoricTribe.EditorTools
 
         private static void CreateCropSelectionPanel(Transform canvasTransform, Button buttonPrefab, List<CropData> crops)
         {
-            var container = CreatePanelContainer(canvasTransform, "CropPanel", new Vector2(-20f, -320f));
+            var container = CreatePanelContainer(canvasTransform, "CropPanel", new Vector2(-20f, -350f));
             var ui = container.gameObject.AddComponent<CropSelectionUI>();
             SetPrivateField(ui, "availableCrops", crops);
             SetPrivateField(ui, "buttonPrefab", buttonPrefab);
@@ -772,7 +774,7 @@ namespace PrehistoricTribe.EditorTools
 
         private static void CreateTechTreePanel(Transform canvasTransform, Button buttonPrefab, List<TechNode> techs)
         {
-            var container = CreatePanelContainer(canvasTransform, "TechPanel", new Vector2(-20f, -530f));
+            var container = CreatePanelContainer(canvasTransform, "TechPanel", new Vector2(-20f, -560f));
             var ui = container.gameObject.AddComponent<TechTreeUI>();
             SetPrivateField(ui, "allTechs", techs);
             SetPrivateField(ui, "entryButtonPrefab", buttonPrefab);

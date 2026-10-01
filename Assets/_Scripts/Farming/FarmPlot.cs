@@ -222,7 +222,7 @@ namespace PrehistoricTribe
             bool night = DayNightCycle.Instance != null && DayNightCycle.Instance.IsNight;
             Evaporate(Time.deltaTime * (night ? NightEvaporationFactor : 1f));
             if (IsIrrigated && State != FarmPlotState.Wild && Water < 1f)
-                AddWater(CanalNetwork.IrrigationPerSecond * Time.deltaTime);
+                AddWater(IrrigatedBy.IrrigationRate * Time.deltaTime);
 
             // Cây chỉ lớn khi có nắng (Milestone 5c) — ban đêm đứng yên, kể cả không héo thêm.
             if (night) return;

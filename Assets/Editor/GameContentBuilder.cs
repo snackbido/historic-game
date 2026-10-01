@@ -71,6 +71,9 @@ namespace PrehistoricTribe.EditorTools
         public const string CanalDataPath = "Assets/_Data/BuildingData_Canal.asset";
         private const string CanalPrefabPath = "Assets/Prefabs/Buildings/Canal.prefab";
         public const string TechIrrigationPath = "Assets/_Data/TechNode_Irrigation.asset";
+        public const string WaterWheelDataPath = "Assets/_Data/BuildingData_WaterWheel.asset";
+        private const string WaterWheelPrefabPath = "Assets/Prefabs/Buildings/WaterWheel.prefab";
+        public const string TechWaterWheelPath = "Assets/_Data/TechNode_WaterWheel.asset";
         private const string MortarPrefabPath = "Assets/Prefabs/Buildings/RiceMortar.prefab";
 
         private const string HutPrefabPath = "Assets/Prefabs/Buildings/Hut.prefab";
@@ -92,7 +95,7 @@ namespace PrehistoricTribe.EditorTools
             if (!ConfirmOverwrite("Tạo lại prefab placeholder?",
                     "Prefab lều/kho/cây/heo rừng đã tồn tại. Tạo lại sẽ ghi đè mọi chỉnh sửa hoặc model thật bạn đã thay vào.",
                     HutPrefabPath, StoragePrefabPath, BoarPrefabPath, TreePrefabPath, VillagerPrefabPath, WolfPrefabPath,
-                    GoatPrefabPath, PondPrefabPath, DryFieldPrefabPath, PaddyFieldPrefabPath, WellPrefabPath, SeedbedPrefabPath, MortarPrefabPath, CanalPrefabPath))
+                    GoatPrefabPath, PondPrefabPath, DryFieldPrefabPath, PaddyFieldPrefabPath, WellPrefabPath, SeedbedPrefabPath, MortarPrefabPath, CanalPrefabPath, WaterWheelPrefabPath))
                 return;
 
             Foods foods = EnsureResourceTypes(out var wood, out var knowledge);
@@ -132,6 +135,13 @@ namespace PrehistoricTribe.EditorTools
             SaveSingleLevelBuilding(CanalDataPath, "canal", "Mương", SavePrefab(BuildCanal(), CanalPrefabPath),
                 "Đào nối liền từ ao: nước tự chảy theo mương (tối đa 8 ô), ruộng sát mương tự được tưới",
                 unlockedByDefault: false, waterWithin: 0f, Cost(wood, 1));
+            // M5d/F7: guồng nước bên ao bơm nước vào mương — đi xa hơn, tưới nhanh hơn.
+            SaveSingleLevelBuilding(WaterWheelDataPath, "water_wheel", "Guồng nước", SavePrefab(BuildWaterWheel(), WaterWheelPrefabPath),
+                "Dựng sát mép ao, cạnh đầu mương: guồng quay đổ nước vào mương, nước đi xa tới 20 ô, ruộng được tưới nhanh gấp đôi",
+                unlockedByDefault: false, waterWithin: CanalNetwork.FeedRange, Cost(wood, 10));
+            var wheelData = AssetDatabase.LoadAssetAtPath<BuildingData>(WaterWheelDataPath);
+            wheelData.requiresOpenWater = true;
+            EditorUtility.SetDirty(wheelData);
             BuildCropModels(foods, riceSeed, seedling, sheaf);
             BuildTechs(knowledge, riceSeed);
             ProfessionData[] professions = BuildProfessions();
@@ -567,6 +577,7 @@ namespace PrehistoricTribe.EditorTools
             var source = root.AddComponent<WaterSource>();
             SetPrivateField(source, "radius", 0.2f);
             SetPrivateField(source, "feedsPaddies", true);
+            SetPrivateField(source, "natural", false); // guồng nước không múc từ mương
             source.enabled = false; // chỉ là nguồn nước khi có nước chảy
 
             var canal = root.AddComponent<Canal>();
@@ -575,6 +586,52 @@ namespace PrehistoricTribe.EditorTools
             SetPrivateField(canal, "armTrenches", arms);
             SetPrivateField(canal, "waterSurfaces", waters);
             SetPrivateField(canal, "waterSource", source);
+            return root;
+        }
+
+        /// <summary>
+        /// Guồng nước (M5d/F7): bánh xe tre có 8 cánh múc gắn trên trục giữa 2 cột chống, máng tre trên đỉnh
+        /// đổ nước xuống; bánh xe quay + dòng nước rơi khi đang bơm vào mương.
+        /// </summary>
+        private static GameObject BuildWaterWheel()
+        {
+            var root = new GameObject("WaterWheel");
+            AddBuildingComponents(root, new Vector3(0f, 0.45f, 0f), new Vector3(0.7f, 0.9f, 0.85f), 150f);
+            var bamboo = Mat("Bamboo", Palette.Hex(0xa8a04a));
+            var water = Mat("CanalWater", Palette.Hex(0x3f7f95), emission: 0.08f);
+            Transform wheel = null;
+            GameObject pouring = null;
+            AttachLevelModels(root, t =>
+            {
+                const float hubHeight = 0.45f, radius = 0.36f;
+                Part(t, "PostL", PrimitiveType.Cube, new Vector3(-0.22f, hubHeight * 0.5f, 0f), new Vector3(0.06f, hubHeight + 0.05f, 0.06f), Palette.Wood);
+                Part(t, "PostR", PrimitiveType.Cube, new Vector3(0.22f, hubHeight * 0.5f, 0f), new Vector3(0.06f, hubHeight + 0.05f, 0.06f), Palette.Wood);
+                Part(t, "Axle", PrimitiveType.Cylinder, new Vector3(0f, hubHeight, 0f), new Vector3(0.04f, 0.27f, 0.04f), Palette.DarkWood, new Vector3(0f, 0f, 90f));
+
+                wheel = new GameObject("Wheel").transform;
+                wheel.SetParent(t, false);
+                wheel.localPosition = new Vector3(0f, hubHeight, 0f);
+                Part(wheel, "Hub", PrimitiveType.Cylinder, Vector3.zero, new Vector3(0.12f, 0.08f, 0.12f), Palette.Wood, new Vector3(0f, 0f, 90f));
+                for (int i = 0; i < 8; i++)
+                {
+                    float angle = i * 45f;
+                    var rot = Quaternion.Euler(angle, 0f, 0f);
+                    Part(wheel, "Spoke", PrimitiveType.Cube, rot * new Vector3(0f, radius * 0.5f, 0f), new Vector3(0.025f, radius, 0.025f), bamboo, new Vector3(angle, 0f, 0f));
+                    Part(wheel, "Paddle", PrimitiveType.Cube, rot * new Vector3(0f, radius, 0f), new Vector3(0.2f, 0.025f, 0.12f), Palette.Plank, new Vector3(angle, 0f, 0f));
+                    // Ống tre múc nước gắn mép bánh xe.
+                    Part(wheel, "Tube", PrimitiveType.Cylinder, rot * new Vector3(0.12f, radius * 0.95f, 0.05f), new Vector3(0.04f, 0.05f, 0.04f), bamboo, new Vector3(angle + 60f, 0f, 0f));
+                }
+
+                // Máng tre trên đỉnh, chĩa ra một bên (phía mương), có cột đỡ.
+                Part(t, "Trough", PrimitiveType.Cube, new Vector3(0.2f, hubHeight + radius + 0.04f, 0f), new Vector3(0.42f, 0.03f, 0.08f), bamboo, new Vector3(0f, 0f, -8f));
+                Part(t, "TroughPost", PrimitiveType.Cube, new Vector3(0.38f, (hubHeight + radius) * 0.5f, 0f), new Vector3(0.04f, hubHeight + radius, 0.04f), Palette.Wood);
+                pouring = Part(t, "Pouring", PrimitiveType.Cube, new Vector3(0.43f, (hubHeight + radius) * 0.5f, 0f), new Vector3(0.05f, hubHeight + radius - 0.04f, 0.05f), water);
+                pouring.GetComponent<Renderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            });
+            var ww = root.AddComponent<WaterWheel>();
+            SetPrivateField(ww, "wheel", wheel);
+            SetPrivateField(ww, "pouringWater", pouring);
+            SetPrivateField(ww, "model", root.transform.Find("Level1"));
             return root;
         }
 
@@ -1112,6 +1169,19 @@ namespace PrehistoricTribe.EditorTools
             irrigation.grantOnUnlock = new List<ResourceAmount>();
             if (isNew) AssetDatabase.CreateAsset(irrigation, TechIrrigationPath);
             else EditorUtility.SetDirty(irrigation);
+
+            var waterWheel = AssetDatabase.LoadAssetAtPath<TechNode>(TechWaterWheelPath);
+            isNew = waterWheel == null;
+            if (isNew) waterWheel = ScriptableObject.CreateInstance<TechNode>();
+            waterWheel.id = "tech_water_wheel";
+            waterWheel.displayName = "Guồng nước";
+            waterWheel.cost = Amounts(knowledge, 20);
+            waterWheel.prerequisites = new List<TechNode> { irrigation };
+            waterWheel.unlockedBuildingIds = new List<string> { "water_wheel" };
+            waterWheel.unlockedCropIds = new List<string>();
+            waterWheel.grantOnUnlock = new List<ResourceAmount>();
+            if (isNew) AssetDatabase.CreateAsset(waterWheel, TechWaterWheelPath);
+            else EditorUtility.SetDirty(waterWheel);
         }
 
         // ─── Ao cá ───────────────────────────────────────────────────────────

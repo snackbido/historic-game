@@ -114,7 +114,7 @@ Quyết định user: quy trình **vừa phải** (lúa ~6 bước: làm đất 
 - [x] F4 Chăm sóc: cỏ dại mọc giảm năng suất → làm cỏ; bón phân (phân từ vật nuôi) tăng năng suất
 - [x] F5 Sau gặt: lúa gặt về là bó lúa → phơi/tuốt/giã ở công trình Cối giã → gạo ăn được
 - [x] F6 Mương dẫn nước (tech Thủy lợi): đào mương từ ao, ruộng cạnh mương tự có nước
-- [ ] F7 Guồng nước (tech): đặt bên ao/đầu mương, bơm nước mạnh → ruộng nối mương luôn đầy nước
+- [x] F7 Guồng nước (tech): đặt bên ao/đầu mương, bơm nước mạnh → ruộng nối mương luôn đầy nước
 
 ## Milestone 6 — Thiên tai
 - [ ] DisasterManager: hệ thống sự kiện ngẫu nhiên
@@ -364,6 +364,14 @@ Quyết định user: quy trình **vừa phải** (lúa ~6 bước: làm đất 
 - Bảng hạt giống dời xuống -320, công nghệ -530 (menu xây 8 nút, công nghệ 3 mục).
 - Test: 8 test mới `Milestone5dCanalTests.cs`. **135/135 test PlayMode pass**.
 - Lưu ý: cây trang trí trong scene không chặn đặt công trình (mương/ruộng có thể đè lên gốc cây) — vấn đề có sẵn từ trước.
+
+## Nhật ký phiên làm việc 2026-10-01 (phần 14 — M5d/F7 guồng nước) → **Milestone 5d hoàn tất**
+- Công nghệ mới **Guồng nước** (`tech_water_wheel`, 20 tri thức, cần Thủy lợi) mở công trình **Guồng nước** (`water_wheel`, 10 gỗ). Phải dựng sát mép ao (≤ 1,2m) — `BuildingData.requiresOpenWater` + `WaterSource.IsNatural` (mương không tính: "phải dựng sát mép ao").
+- `Farming/WaterWheel.cs`: guồng cạnh một đoạn mương đã đào thì quay, máng tự xoay về phía mương, có dòng nước đổ xuống; chưa nối mương thì đứng yên.
+- `CanalNetwork`: 2 nguồn loang riêng — tự chảy từ mương sát ao (`GravityReach` 8 ô) và guồng bơm vào mương sát guồng (`PumpedReach` 20 ô). Mương có nước guồng (`Canal.IsPumped`) tưới ruộng sát bên nhanh gấp đôi (`Canal.IrrigationRate`). Gợi ý ruộng: "nước N% (mương)" / "(guồng nước)".
+- Hình: bánh xe tre 8 cánh + ống múc, trục trên 2 cột, máng tre trên đỉnh.
+- Bảng hạt giống dời xuống -350, công nghệ -560 (menu xây 9 nút, công nghệ 4 mục).
+- Test: 6 test mới `Milestone5dWaterWheelTests.cs`. **141/141 test PlayMode pass**.
 
 ## Vấn đề đang tồn đọng (Known issues / Open questions)
 - [x] Chế độ combat: lai (2026-09-26) + chi tiết chỉ huy NPC theo nghề (2026-09-30)

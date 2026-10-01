@@ -79,6 +79,7 @@ namespace PrehistoricTribe
                         : "Ô đất trống — chọn hạt giống ở bảng bên phải";
                 case FarmPlotState.Growing:
                     string water = plot.HasEnoughWater ? $"nước {Percent(plot.Water)}" : "THIẾU NƯỚC — cây ngừng lớn!";
+                    if (plot.IsIrrigated) water += plot.IrrigatedBy.IsPumped ? " (guồng nước)" : " (mương)";
                     string growing = $"{plot.Crop.displayName} đang lớn — {Percent(plot.GrowthProgress)} · {water}";
                     if (plot.Weeds > 0.15f) return $"[E] Làm cỏ (cỏ {Percent(plot.Weeds)}) · {growing}";
                     if (plot.CanFertilize && FarmManager.Instance != null && FarmManager.Instance.HasFertilizer)
@@ -96,6 +97,7 @@ namespace PrehistoricTribe
         private static string DescribeCanal(Canal canal)
         {
             if (!canal.IsDug) return $"[E] Đào mương — {Percent(canal.DigProgress)}";
+            if (canal.IsPumped) return $"Mương có nước guồng bơm (cách guồng {canal.Distance} ô) — tưới nhanh ruộng sát bên";
             return canal.IsFlowing
                 ? $"Mương có nước (cách ao {canal.Distance} ô) — tưới ruộng sát bên"
                 : $"Mương khô — phải nối liền tới ao (nước tự chảy tối đa {CanalNetwork.GravityReach} ô)";

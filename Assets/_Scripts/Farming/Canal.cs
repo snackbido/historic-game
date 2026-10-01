@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 namespace PrehistoricTribe
@@ -28,6 +29,10 @@ namespace PrehistoricTribe
         public float DigProgress => digWorkNeeded > 0 ? (float)DigProgressCount / digWorkNeeded : 1f;
         public bool IsDug => DigProgressCount >= digWorkNeeded;
         public bool IsFlowing { get; private set; }
+        /// <summary>Nước do guồng nước bơm tới (đi xa hơn, tưới nhanh hơn).</summary>
+        public bool IsPumped { get; private set; }
+        /// <summary>Ruộng sát mương này được tưới bao nhiêu mỗi giây.</summary>
+        public float IrrigationRate => !IsFlowing ? 0f : CanalNetwork.IrrigationPerSecond * (IsPumped ? CanalNetwork.PumpedIrrigationFactor : 1f);
         /// <summary>Số ô tính từ ao (1 = sát ao), 0 = không có nước.</summary>
         public int Distance { get; private set; }
 
@@ -95,9 +100,10 @@ namespace PrehistoricTribe
             else InteractableRegistry.Register(this);
         }
 
-        internal void SetFlow(int distance, bool[] openArms)
+        internal void SetFlow(int distance, bool pumped, bool[] openArms)
         {
             Distance = distance;
+            IsPumped = pumped;
             IsFlowing = distance > 0;
             if (waterSource != null) waterSource.enabled = IsFlowing;
             UpdateVisual(openArms);
@@ -131,8 +137,12 @@ namespace PrehistoricTribe
     {
         /// <summary>Nước tự chảy được bao nhiêu ô tính từ ao.</summary>
         public static int GravityReach = 8;
+        /// <summary>Guồng nước bơm vào mương thì nước đi được bao nhiêu ô tính từ guồng.</summary>
+        public static int PumpedReach = 20;
         /// <summary>Ruộng sát mương có nước được tưới bao nhiêu mỗi giây (đầy ruộng sau ~12s).</summary>
         public static float IrrigationPerSecond = 1f / 12f;
+        /// <summary>Mương có guồng bơm tưới nhanh gấp mấy lần.</summary>
+        public const float PumpedIrrigationFactor = 2f;
         /// <summary>Mương cách mép ao chừng này (m) thì nối được vào ao.</summary>
         public const float FeedRange = 1.2f;
 
@@ -170,47 +180,66 @@ namespace PrehistoricTribe
                 if (BuildingPlacer.Instance != null) plotsByCell[BuildingPlacer.Instance.WorldToCell(plot.transform.position)] = plot;
             }
 
-            // Loang từ các mương sát ao.
-            var distance = new Dictionary<Vector3Int, int>();
-            var queue = new Queue<Vector3Int>();
-            foreach (var pair in byCell)
+            var wheelsByCell = new Dictionary<Vector3Int, WaterWheel>();
+            foreach (var wheel in WaterWheel.All)
+                if (wheel != null) wheelsByCell[wheel.Cell] = wheel;
+
+            // Nước tự chảy từ các mương sát ao; guồng nước bơm vào mương sát guồng, đẩy đi xa hơn.
+            var gravity = Spread(byCell, byCell.Where(p => p.Value.IsDug && TouchesOpenWater(p.Value)).Select(p => p.Key), GravityReach);
+            var pumped = Spread(byCell, byCell.Where(p => p.Value.IsDug && Neighbours(p.Key).Any(wheelsByCell.ContainsKey)).Select(p => p.Key), PumpedReach);
+            foreach (var pair in wheelsByCell)
             {
-                if (!pair.Value.IsDug || !TouchesOpenWater(pair.Value)) continue;
-                distance[pair.Key] = 1;
-                queue.Enqueue(pair.Key);
-            }
-            while (queue.Count > 0)
-            {
-                Vector3Int cell = queue.Dequeue();
-                int d = distance[cell];
-                if (d >= GravityReach) continue;
-                foreach (var dir in Directions)
-                {
-                    Vector3Int next = cell + dir;
-                    if (distance.ContainsKey(next) || !byCell.TryGetValue(next, out var canal) || !canal.IsDug) continue;
-                    distance[next] = d + 1;
-                    queue.Enqueue(next);
-                }
+                Vector3Int[] fed = Neighbours(pair.Key).Where(c => byCell.TryGetValue(c, out var canal) && canal.IsDug).ToArray();
+                pair.Value.SetTurning(fed.Length > 0, fed.Length > 0 ? fed[0] - pair.Key : default);
             }
 
             foreach (var pair in byCell)
             {
                 Canal canal = pair.Value;
-                distance.TryGetValue(pair.Key, out int d);
+                gravity.TryGetValue(pair.Key, out int byGravity);
+                bool isPumped = pumped.TryGetValue(pair.Key, out int byPump);
+                int d = byGravity > 0 && (!isPumped || byGravity < byPump) ? byGravity : byPump;
                 var arms = new bool[4];
                 for (int i = 0; i < 4; i++)
                 {
                     Vector3Int next = pair.Key + Directions[i];
-                    arms[i] = byCell.TryGetValue(next, out var other) && other.IsDug || plotsByCell.ContainsKey(next);
+                    arms[i] = byCell.TryGetValue(next, out var other) && other.IsDug || plotsByCell.ContainsKey(next) || wheelsByCell.ContainsKey(next);
                     if (d > 0 && plotsByCell.TryGetValue(next, out var plot)) plot.IrrigatedBy = canal;
                 }
-                if (d == 1) arms[ArmTowardOpenWater(canal)] = true; // nhánh nối ra ao
-                canal.SetFlow(d, arms);
+                if (byGravity == 1) arms[ArmTowardOpenWater(canal)] = true; // nhánh nối ra ao
+                canal.SetFlow(d, isPumped, arms);
             }
         }
 
+        private static IEnumerable<Vector3Int> Neighbours(Vector3Int cell) => Directions.Select(d => cell + d);
+
+        /// <summary>Loang theo chiều rộng qua các mương đã đào: ô nguồn = 1, tới tối đa <paramref name="reach"/> ô.</summary>
+        private static Dictionary<Vector3Int, int> Spread(Dictionary<Vector3Int, Canal> byCell, IEnumerable<Vector3Int> sources, int reach)
+        {
+            var distance = new Dictionary<Vector3Int, int>();
+            var queue = new Queue<Vector3Int>();
+            foreach (var cell in sources)
+            {
+                distance[cell] = 1;
+                queue.Enqueue(cell);
+            }
+            while (queue.Count > 0)
+            {
+                Vector3Int cell = queue.Dequeue();
+                int d = distance[cell];
+                if (d >= reach) continue;
+                foreach (var next in Neighbours(cell))
+                {
+                    if (distance.ContainsKey(next) || !byCell.TryGetValue(next, out var canal) || !canal.IsDug) continue;
+                    distance[next] = d + 1;
+                    queue.Enqueue(next);
+                }
+            }
+            return distance;
+        }
+
         /// <summary>Nguồn nước tự nhiên (ao) — không tính mương khác hay giếng.</summary>
-        private static bool IsOpenWater(WaterSource source) => source.FeedsPaddies && source.GetComponent<Canal>() == null;
+        private static bool IsOpenWater(WaterSource source) => source.FeedsPaddies && source.IsNatural;
 
         private static bool TouchesOpenWater(Canal canal)
         {

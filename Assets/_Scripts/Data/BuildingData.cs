@@ -32,6 +32,8 @@ namespace PrehistoricTribe
 
         [Tooltip("> 0: phải đặt cách nguồn nước (ao, mương…) không quá chừng này mét — vd ruộng nước")]
         public float requiresWaterWithin;
+        [Tooltip("Chỉ tính nguồn nước tự nhiên (ao) — vd guồng nước phải dựng bên ao, không dựng bên mương")]
+        public bool requiresOpenWater;
 
         [Tooltip("Mô tả chức năng hiện trên bảng thông tin công trình")]
         public string functionDescription;
