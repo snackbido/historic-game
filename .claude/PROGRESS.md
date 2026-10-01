@@ -104,7 +104,7 @@ Quyết định user: công trình nâng cấp **5 cấp** (click công trình �
 Quyết định user: một ngày **20 phút** thời gian thật (~14 phút ngày, ~6 phút đêm); **chỉ thể hiện bằng ánh sáng, không có chữ/đồng hồ**; ban đêm: **dân làng về lều ngủ** (người chưa có nhà ngủ quanh đống lửa; ra lệnh vẫn đánh thức được; cặp đôi sinh con về đêm tại lều), **sói rời hang lùng sục rộng hơn**, **cây trồng ngừng lớn**, **đống lửa trại chiếu sáng** (sói không dám lại gần lửa).
 - [x] N1 Chu kỳ ngày/đêm: mặt trời quay, đổi màu/độ sáng, trời tối; cây ngừng lớn ban đêm; đống lửa trại tự cháy khi tối; lưu/tải giờ trong ngày — 2026-10-01
 - [x] N2 Ngủ: tối về lều (ẩn vào trong) / ngủ quanh đống lửa, sáng thức dậy, ngủ thì hồi máu, ra lệnh đánh thức; sinh con về đêm tại lều
-- [ ] N3 Sói ban đêm: lùng sục rộng, mò vào trại, né đống lửa; sáng về hang; người ngủ trong lều an toàn
+- [x] N3 Sói ban đêm: lùng sục rộng, mò vào trại, né đống lửa; sáng về hang; người ngủ trong lều an toàn
 
 ## Milestone 6 — Thiên tai
 - [ ] DisasterManager: hệ thống sự kiện ngẫu nhiên
@@ -296,6 +296,13 @@ Quyết định user: một ngày **20 phút** thời gian thật (~14 phút ng�
 - Sinh con chỉ về đêm: `NpcManager.TryNightBirth()` — cặp đủ điều kiện mà cả hai đang ngủ trong lều chung → em bé ra đời (bỏ `TryStartBirth` + hẹn về lều ban ngày).
 - Người ngủ trong lều: không chọn được bằng chuột (click/kéo khung), sói không nhắm tới (`PredatorAI.IsValidTarget`).
 - Test: 6 test mới `Milestone5cSleepTests.cs`; viết lại test sinh con trong `Milestone5bHomeTests`/`Milestone5PopulationTests` theo ban đêm; test đói đặt đầy máu trước khi đo 30s (máu tối đa tùy nghề). **90/90 test PlayMode pass** (batch mode).
+
+## Nhật ký phiên làm việc 2026-10-01 (phần 7 — M5c/N3 sói ban đêm) → Milestone 5c xong
+- `PredatorData`: thêm `nightPatrolRadius` 14, `nightAggroRange` 7, `nightLeashRange` 26 (ngày vẫn 2 / 4,5 / 12). `PredatorAI.PatrolRadius/AggroRange/LeashRange` đổi theo ngày/đêm; ban đêm nghỉ giữa các chặng ngắn hơn (1–3s).
+- Né lửa: điểm đi tuần nằm trong vùng sáng của đống lửa đang cháy bị bỏ qua; người đứng trong vùng sáng không bị nhắm/đuổi (`Campfire.IsProtected`); sói lọt vào vùng sáng thì lùi ra ngoài `SafeRadius + 2`.
+- Trời sáng: sói đang lùng sục quay thẳng về hang. Người ngủ trong lều đã an toàn từ N2.
+- Test: 4 test mới `Milestone5cWolfNightTests.cs`. **94/94 test PlayMode pass** (batch mode).
+- Lưu ý cân bằng: đống lửa (0,-2) bán kính 6 che luôn lều đầu tiên ở (1.5,-5.5) → làng nhỏ ban đêm gần như an toàn; nguy hiểm chủ yếu với người được ra lệnh làm việc xa trại về đêm. Cần chơi thử để xem có nên thu nhỏ vùng an toàn không.
 
 ## Vấn đề đang tồn đọng (Known issues / Open questions)
 - [x] Chế độ combat: lai (2026-09-26) + chi tiết chỉ huy NPC theo nghề (2026-09-30)

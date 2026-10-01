@@ -22,6 +22,12 @@ namespace PrehistoricTribe
         [Tooltip("Bán kính đi tuần quanh hang (m)")]
         public float patrolRadius = 2f;
 
+        [Header("Ban đêm (Milestone 5c): đi săn rộng, mò tới gần trại")]
+        [Tooltip("Bán kính lùng sục quanh hang ban đêm (m)")]
+        public float nightPatrolRadius = 14f;
+        public float nightAggroRange = 7f;
+        public float nightLeashRange = 26f;
+
         public float attackDamage = 8f;
         public float attackRange = 1.2f;
         public float attackInterval = 1.2f;

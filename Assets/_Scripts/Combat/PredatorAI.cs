@@ -52,6 +52,13 @@ namespace PrehistoricTribe
         public Vector3 Den => den;
         public PredatorState State { get; private set; } = PredatorState.Patrol;
 
+        // Ban đêm sói lùng sục rộng hơn, nhìn xa hơn, đuổi xa hơn; sáng ra thì về lại quanh hang.
+        private static bool IsNight => DayNightCycle.Instance != null && DayNightCycle.Instance.IsNight;
+        public float PatrolRadius => IsNight ? data.nightPatrolRadius : data.patrolRadius;
+        public float AggroRange => IsNight ? data.nightAggroRange : data.aggroRange;
+        public float LeashRange => IsNight ? data.nightLeashRange : data.leashRange;
+        private bool patrollingAtNight;
+
         private void Awake()
         {
             agent = GetComponent<NavMeshAgent>();
@@ -129,15 +136,51 @@ namespace PrehistoricTribe
                 agent.SetDestination(den); // bỏ cuộc → quay về hang
             }
 
+            bool night = IsNight;
+            if (night != patrollingAtNight)
+            {
+                patrollingAtNight = night;
+                if (!night) agent.SetDestination(den); // trời sáng → về hang
+            }
+
+            // Lửa trại vừa nhóm mà đang đứng trong vùng sáng → lùi ra ngoài.
+            if (Campfire.IsProtected(transform.position))
+            {
+                RetreatFromFire();
+                return;
+            }
+
             if (agent.pathPending || agent.remainingDistance > agent.stoppingDistance + 0.1f) return;
 
             patrolPause -= Time.deltaTime;
             if (patrolPause > 0f) return;
-            patrolPause = Random.Range(2f, 5f);
+            patrolPause = night ? Random.Range(1f, 3f) : Random.Range(2f, 5f);
 
-            Vector2 offset = Random.insideUnitCircle * data.patrolRadius;
-            if (NavMesh.SamplePosition(den + new Vector3(offset.x, 0f, offset.y), out NavMeshHit hit, 1.5f, NavMesh.AllAreas))
+            // Thử vài điểm, bỏ qua điểm nằm trong vùng sáng của lửa trại.
+            for (int attempt = 0; attempt < 5; attempt++)
+            {
+                Vector2 offset = Random.insideUnitCircle * PatrolRadius;
+                if (!NavMesh.SamplePosition(den + new Vector3(offset.x, 0f, offset.y), out NavMeshHit hit, 1.5f, NavMesh.AllAreas)) continue;
+                if (Campfire.IsProtected(hit.position)) continue;
                 agent.SetDestination(hit.position);
+                return;
+            }
+        }
+
+        private void RetreatFromFire()
+        {
+            foreach (var fire in Campfire.All)
+            {
+                if (!fire.IsLit) continue;
+                Vector3 away = transform.position - fire.transform.position;
+                away.y = 0f;
+                if (away.magnitude > fire.SafeRadius) continue;
+                if (away.sqrMagnitude < 0.01f) away = den - fire.transform.position;
+                Vector3 outside = fire.transform.position + away.normalized * (fire.SafeRadius + 2f);
+                if (NavMesh.SamplePosition(outside, out NavMeshHit hit, 2f, NavMesh.AllAreas))
+                    agent.SetDestination(hit.position);
+                return;
+            }
         }
 
         /// <summary>Người đang ngủ trong lều thì thú dữ không với tới.</summary>
@@ -150,7 +193,7 @@ namespace PrehistoricTribe
         private HealthComponent FindTarget()
         {
             HealthComponent best = null;
-            float bestDistance = data.aggroRange;
+            float bestDistance = AggroRange;
 
             void Consider(HealthComponent candidate)
             {
@@ -169,7 +212,8 @@ namespace PrehistoricTribe
         private bool IsValidTarget(HealthComponent candidate) =>
             candidate != null && candidate.isActiveAndEnabled && !candidate.IsDead &&
             !IsInsideHut(candidate) &&
-            InteractableRegistry.GroundDistance(den, candidate.transform.position) <= data.leashRange;
+            !Campfire.IsProtected(candidate.transform.position) && // không dám lại gần lửa trại đang cháy
+            InteractableRegistry.GroundDistance(den, candidate.transform.position) <= LeashRange;
 
         private void HandleDamaged(HealthComponent _, GameObject source)
         {
