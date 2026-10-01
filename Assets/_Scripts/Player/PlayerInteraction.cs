@@ -34,6 +34,9 @@ namespace PrehistoricTribe
                 case AnimalController animal:
                     TamingSystem.Instance.TryInteract(animal);
                     break;
+                case BuildingInstance building:
+                    if (!building.DoRepairWork()) EventBus.RaiseNotification(building.RepairBlocker());
+                    break;
                 case Canal canal:
                     canal.DoDigWork();
                     break;

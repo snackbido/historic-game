@@ -13,6 +13,8 @@ namespace PrehistoricTribe
         public int cellZ;
         // Save cũ chưa có field này → đọc ra 0 → coi như cấp 1.
         public int level;
+        // M6: máu đã mất (save cũ = 0 → nguyên vẹn).
+        public float damage;
     }
 
     public class BuildingPlacer : MonoBehaviour
@@ -199,7 +201,8 @@ namespace PrehistoricTribe
                     cellX = building.GridPosition.x,
                     cellY = building.GridPosition.y,
                     cellZ = building.GridPosition.z,
-                    level = building.Level
+                    level = building.Level,
+                    damage = building.MissingHealth
                 });
             }
             return data;
@@ -220,7 +223,9 @@ namespace PrehistoricTribe
 
                 Vector3Int cell = new Vector3Int(entry.cellX, entry.cellY, entry.cellZ);
                 BuildingInstance placed = PlaceBuilding(buildingData, cell, spendResources: false);
-                if (placed != null) placed.SetLevel(Mathf.Max(1, entry.level));
+                if (placed == null) continue;
+                placed.SetLevel(Mathf.Max(1, entry.level));
+                placed.SetMissingHealth(entry.damage);
             }
         }
     }

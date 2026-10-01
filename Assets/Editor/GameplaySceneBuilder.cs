@@ -150,6 +150,8 @@ namespace PrehistoricTribe.EditorTools
             SetPrivateField(cycle, "sun", sun);
             SetPrivateField(cycle, "sceneCamera", mainCamera);
             CreateCampfire(new Vector3(0f, 0f, -2f));
+            // Milestone 6: lịch thiên tai (các loại thiên tai gắn thêm vào object này ở D2–D5).
+            new GameObject("DisasterManager").AddComponent<DisasterManager>();
 
             var resources = new GameObject("ResourceNodes").transform;
             for (int i = 0; i < TreePositions.Length; i++)
@@ -524,6 +526,7 @@ namespace PrehistoricTribe.EditorTools
             CreateCropSelectionPanel(canvasGO.transform, buttonPrefab, crops);
             CreateTechTreePanel(canvasGO.transform, buttonPrefab, techs);
             CreateNotificationLabel(canvasGO.transform);
+            CreateDisasterBanner(canvasGO.transform);
             CreateInteractionPrompt(canvasGO.transform, interaction);
             CreateSelectionPanel(canvasGO.transform, buttonPrefab);
             CreateBuildingInfoPanel(canvasGO.transform, buttonPrefab);
@@ -732,6 +735,24 @@ namespace PrehistoricTribe.EditorTools
             tmp.text = string.Empty;
             var notificationUI = labelGO.AddComponent<NotificationUI>();
             SetPrivateField(notificationUI, "label", tmp);
+        }
+
+        private static void CreateDisasterBanner(Transform canvasTransform)
+        {
+            var labelGO = new GameObject("DisasterBanner");
+            labelGO.transform.SetParent(canvasTransform, false);
+            var rect = labelGO.AddComponent<RectTransform>();
+            rect.anchorMin = new Vector2(0.5f, 1f);
+            rect.anchorMax = new Vector2(0.5f, 1f);
+            rect.pivot = new Vector2(0.5f, 1f);
+            rect.anchoredPosition = new Vector2(0f, -62f);
+            rect.sizeDelta = new Vector2(900f, 34f);
+            var tmp = labelGO.AddComponent<TextMeshProUGUI>();
+            tmp.fontSize = 22f;
+            tmp.fontStyle = FontStyles.Bold;
+            tmp.alignment = TextAlignmentOptions.Center;
+            tmp.text = string.Empty;
+            SetPrivateField(labelGO.AddComponent<DisasterBannerUI>(), "label", tmp);
         }
 
         private static Transform CreatePanelContainer(Transform canvasTransform, string name, Vector2 anchoredPosition)

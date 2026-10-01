@@ -45,6 +45,9 @@ namespace PrehistoricTribe
                 case RiceMortar mortar when profession.Can(NpcCapability.Farm):
                     return new MortarJob(mortar);
 
+                case BuildingInstance building when building.IsDamaged && profession.Can(NpcCapability.Build):
+                    return new RepairJob(building);
+
                 case Canal canal when !canal.IsDug && profession.Can(NpcCapability.Farm):
                     return new DigCanalJob(canal);
 
@@ -80,6 +83,14 @@ namespace PrehistoricTribe
                     if (InteractableRegistry.GroundDistance(position, predator.transform.position) <= GuardRadius)
                         return new AttackJob(predator, profession);
                 }
+            }
+
+            // Sửa nhà cửa hư hại sau thiên tai (nếu kho còn vật liệu).
+            if ((profession.autoWork & NpcCapability.Build) != 0)
+            {
+                BuildingInstance damaged = Nearest(InteractableRegistry.All<BuildingInstance>(), position, radius,
+                    b => b.IsDamaged && b.RepairBlocker() == null);
+                if (damaged != null) return new RepairJob(damaged);
             }
 
             if ((profession.autoWork & NpcCapability.Farm) != 0)
@@ -367,6 +378,27 @@ namespace PrehistoricTribe
             lastTask = mortar.NextTask;
             if (!mortar.DoWork()) return false;
             return mortar.HasWork;
+        }
+    }
+
+    /// <summary>Sửa công trình hư hại (M6): mỗi lượt tốn 1 gỗ, sửa tới khi lành hẳn hoặc hết gỗ.</summary>
+    public class RepairJob : NpcJob
+    {
+        private readonly BuildingInstance building;
+
+        public RepairJob(BuildingInstance building) => this.building = building;
+
+        public override MonoBehaviour Target => building;
+        public override string Description => "sửa nhà";
+        public override float WorkRange => 1.5f;
+        public override bool IsValid => base.IsValid && building.IsDamaged;
+
+        public override bool DoWork(NpcController npc)
+        {
+            if (building.DoRepairWork()) return building.IsDamaged;
+            string blocker = building.RepairBlocker();
+            if (blocker != null && building.IsDamaged) EventBus.RaiseNotification($"{npc.NpcName}: {blocker}");
+            return false;
         }
     }
 

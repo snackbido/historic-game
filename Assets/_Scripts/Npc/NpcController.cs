@@ -283,11 +283,14 @@ namespace PrehistoricTribe
         }
 
         /// <summary>Trời tối và đang rảnh (không giữ lệnh, không bị chọn) → về lều ngủ, chưa có lều thì ngủ cạnh đống lửa.</summary>
+        /// <summary>Có lều và lều chưa sập (lều sập thì ra đống lửa ngủ).</summary>
+        private bool HasLivableHome => Home != null && !Home.IsCollapsed;
+
         private bool TrySleep()
         {
             if (!IsNightNow || IsSelected || holdPosition) return false;
 
-            if (Home != null)
+            if (HasLivableHome)
             {
                 AssignJob(new SleepJob(Home), fromPlayer: false);
                 return true;
@@ -390,7 +393,7 @@ namespace PrehistoricTribe
             }
 
             // Trời sáng thì dậy; đang nằm cạnh đống lửa mà vừa được chia lều thì về lều ngủ.
-            if (job is SleepJob sleep && (!IsNightNow || (!sleep.InsideHut && Home != null)))
+            if (job is SleepJob sleep && (!IsNightNow || (!sleep.InsideHut && HasLivableHome) || (sleep.InsideHut && !HasLivableHome)))
             {
                 EndJob();
                 return;

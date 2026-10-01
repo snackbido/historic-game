@@ -38,6 +38,8 @@ namespace PrehistoricTribe
         public List<RiceMortarSaveData> riceMortars = new List<RiceMortarSaveData>();
         // M5d/F6 (save cũ thiếu → mương chưa đào)
         public List<CanalSaveData> canals = new List<CanalSaveData>();
+        // M6 (save cũ thiếu → saved = false → hẹn thiên tai đầu tiên như game mới)
+        public DisasterSaveData disaster = new DisasterSaveData();
     }
 
     public static class SaveSystem

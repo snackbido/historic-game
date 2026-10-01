@@ -254,7 +254,25 @@ namespace PrehistoricTribe.EditorTools
             col.size = size;
             root.AddComponent<BuildingInstance>();
             SetPrivateField(root.AddComponent<HealthComponent>(), "maxHealth", maxHealth);
+            BuildHealthBar(root, center.y + size.y * 0.5f + 0.45f); // hiện khi công trình hư hại (M6)
+            BuildRubble(root, size);
             AddObstacle(root, NavMeshObstacleShape.Box, center, size);
+        }
+
+        /// <summary>Đống đổ nát khi công trình sập (M6): khúc gỗ gãy nằm ngổn ngang + đá vụn, ẩn sẵn.</summary>
+        private static void BuildRubble(GameObject root, Vector3 size)
+        {
+            var rubble = new GameObject("Rubble").transform;
+            rubble.SetParent(root.transform, false);
+            float rx = size.x * 0.5f, rz = size.z * 0.5f;
+            var charred = Mat("CharredWood", Palette.Hex(0x3a2a1c));
+            Part(rubble, "Log", PrimitiveType.Cylinder, new Vector3(-rx * 0.6f, 0.04f, rz * 0.4f), new Vector3(0.07f, rx * 0.7f, 0.07f), Palette.Wood, new Vector3(90f, 35f, 0f));
+            Part(rubble, "Log", PrimitiveType.Cylinder, new Vector3(rx * 0.5f, 0.05f, -rz * 0.3f), new Vector3(0.08f, rx * 0.8f, 0.08f), charred, new Vector3(90f, -50f, 0f));
+            Part(rubble, "Log", PrimitiveType.Cylinder, new Vector3(rx * 0.1f, 0.12f, rz * 0.6f), new Vector3(0.06f, rx * 0.6f, 0.06f), Palette.Wood, new Vector3(70f, 100f, 0f));
+            Part(rubble, "Stone", PrimitiveType.Sphere, new Vector3(-rx * 0.4f, 0.04f, -rz * 0.6f), new Vector3(0.14f, 0.08f, 0.12f), Palette.Stone);
+            Part(rubble, "Stone", PrimitiveType.Sphere, new Vector3(rx * 0.7f, 0.03f, rz * 0.5f), new Vector3(0.1f, 0.06f, 0.1f), Palette.Stone);
+            rubble.gameObject.SetActive(false);
+            SetPrivateField(root.GetComponent<BuildingInstance>(), "rubble", rubble.gameObject);
         }
 
         private static void AddObstacle(GameObject root, NavMeshObstacleShape shape, Vector3 center, Vector3 size)
@@ -929,7 +947,7 @@ namespace PrehistoricTribe.EditorTools
         private static ProfessionData[] BuildProfessions() => new[]
         {
             SaveProfession("villager", "Dân làng", 0x8a5a2b, speed: 3f, health: 100f, damage: 5f, range: 1.2f, vision: 8f,
-                NpcCapability.Gather | NpcCapability.Build | NpcCapability.Fight, NpcCapability.Gather),
+                NpcCapability.Gather | NpcCapability.Build | NpcCapability.Fight, NpcCapability.Gather | NpcCapability.Build),
             SaveProfession("farmer", "Nông dân", 0x7a9a3a, speed: 2.6f, health: 90f, damage: 3f, range: 1.2f, vision: 7f,
                 NpcCapability.Farm | NpcCapability.TendAnimals | NpcCapability.Gather, NpcCapability.Farm | NpcCapability.TendAnimals),
             SaveProfession("hunter", "Thợ săn", 0x5a4030, speed: 3.2f, health: 110f, damage: 14f, range: 5f, vision: 10f,

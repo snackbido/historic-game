@@ -116,11 +116,12 @@ Quyết định user: quy trình **vừa phải** (lúa ~6 bước: làm đất 
 - [x] F6 Mương dẫn nước (tech Thủy lợi): đào mương từ ao, ruộng cạnh mương tự có nước
 - [x] F7 Guồng nước (tech): đặt bên ao/đầu mương, bơm nước mạnh → ruộng nối mương luôn đầy nước
 
-## Milestone 6 — Thiên tai
-- [ ] DisasterManager: hệ thống sự kiện ngẫu nhiên
-- [ ] Base class DisasterEvent, tạo 1-2 loại thiên tai đầu tiên (VD: cháy rừng, lũ lụt)
-- [ ] Cảnh báo trước khi thiên tai xảy ra
-- [ ] Hiệu ứng ảnh hưởng lên Building/Resource/Animal/Farming
+## Milestone 6 — Thiên tai (chốt với user 2026-10-01: cả 4 loại, tần suất vừa phải, thiệt hại sửa được)
+- [x] D1 Khung: `DisasterManager` (ngày đầu an toàn, sau đó 2–3 ngày/lần, báo trước nửa ngày) + `DisasterEvent` base + băng cảnh báo + công trình hư hại/sập → dân làng sửa (tốn gỗ) + lưu/tải
+- [ ] D2 Hạn hán: ruộng bốc hơi nhanh, ao cạn dần (ít cá, mương/guồng yếu) — chống bằng giếng, mương, guồng
+- [ ] D3 Lũ lụt: mưa lớn, ao tràn — ruộng/công trình gần ao ngập (cây chết úng, nhà hư) — chống bằng Đê (công trình mới)
+- [ ] D4 Cháy rừng: sét/lửa lan qua cây và lều — dân gánh nước dập lửa
+- [ ] D5 Bầy sói đột kích: đêm cả bầy tràn vào trại theo đợt — chống bằng hàng rào, lính gác, đuốc
 
 ## Milestone 7 — Polish & mở rộng
 - [ ] Âm thanh (SFX + nhạc nền)
@@ -372,6 +373,14 @@ Quyết định user: quy trình **vừa phải** (lúa ~6 bước: làm đất 
 - Hình: bánh xe tre 8 cánh + ống múc, trục trên 2 cột, máng tre trên đỉnh.
 - Bảng hạt giống dời xuống -350, công nghệ -560 (menu xây 9 nút, công nghệ 4 mục).
 - Test: 6 test mới `Milestone5dWaterWheelTests.cs`. **141/141 test PlayMode pass**.
+
+## Nhật ký phiên làm việc 2026-10-01 (phần 15 — M6/D1 khung thiên tai)
+- User chốt M6: làm cả 4 loại (hạn hán, lũ lụt, cháy rừng, sói đột kích), tần suất vừa phải, thiệt hại "hư hại, sửa được".
+- `Disaster/DisasterEvent.cs` (base MonoBehaviour: id, tên, điềm báo, mô tả, thời lượng theo ngày game, trọng số; `CanHappen`/`OnWarning`/`OnBegin`/`OnTick(dt, progress)`/`OnEnd`/`IsFinishedEarly`). `Disaster/DisasterManager.cs`: thiên tai đầu tiên sau 1,5 ngày, sau đó mỗi 2–3 ngày chọn ngẫu nhiên theo trọng số trong các `DisasterEvent` gắn trên cùng object; báo trước 0,5 ngày → diễn ra → kết thúc. Đếm bằng giây game (chạy cả khi ngày/đêm đứng yên). `RandomEnabled` tắt trong `PlayModeTestBase`. Lưu/tải giai đoạn + thời gian còn lại (`SaveData.disaster`; đang diễn ra thì OnEnd rồi OnBegin lại).
+- `UI/DisasterBannerUI.cs`: băng chữ giữa mép trên (dưới dòng thông báo) — vàng "Điềm báo: … sắp tới (còn khoảng N giờ)", đỏ "TÊN: … (còn …)".
+- Công trình hư hại: `BuildingInstance.Damage(amount, cause)`, `IsDamaged`, `IsCollapsed` (hết máu: model đổ nghiêng + đống gỗ gãy/đá, kho không chứa, lều không ở → cả nhà ra đống lửa ngủ, cối/giếng/guồng tắt). Sửa: mỗi lượt 1 gỗ hồi 25% máu (`DoRepairWork`); công trình hư hại đăng ký vào `InteractableRegistry` → người chơi bấm E, ra lệnh chuột phải (`RepairJob`, nghề có Build), dân làng tự sửa khi rảnh (autoWork thêm Build). Thanh máu trên công trình hư hại. Lưu máu đã mất (`PlacedBuildingData.damage`).
+- Sửa lỗi: kiểm tra sập trong `Start` thay vì `OnEnable` (lúc đó HealthComponent chưa Awake, máu = 0 → tưởng sập, tắt cả cối/giếng/guồng).
+- Test: 7 test mới `Milestone6FrameworkTests.cs` (thiên tai giả `TestDisaster`). **148/148 test PlayMode pass**.
 
 ## Vấn đề đang tồn đọng (Known issues / Open questions)
 - [x] Chế độ combat: lai (2026-09-26) + chi tiết chỉ huy NPC theo nghề (2026-09-30)

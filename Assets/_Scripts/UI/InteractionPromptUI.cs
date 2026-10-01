@@ -52,6 +52,8 @@ namespace PrehistoricTribe
                     return DescribeMortar(mortar);
                 case Canal canal:
                     return DescribeCanal(canal);
+                case BuildingInstance building:
+                    return DescribeDamage(building);
                 default:
                     return null;
             }
@@ -92,6 +94,16 @@ namespace PrehistoricTribe
                 default:
                     return null;
             }
+        }
+
+        public static string DescribeDamage(BuildingInstance building)
+        {
+            if (!building.IsDamaged) return null;
+            string state = building.IsCollapsed ? "ĐÃ SẬP" : $"hư hại, còn {Percent(building.HealthFraction)}";
+            ResourceAmount cost = building.RepairCost;
+            string price = cost.type != null ? $" (-{cost.amount} {cost.type.displayName}/lượt)" : "";
+            string blocker = building.RepairBlocker();
+            return blocker == null ? $"[E] Sửa {building.LevelName}{price} — {state}" : $"{building.LevelName} {state} — {blocker}";
         }
 
         private static string DescribeCanal(Canal canal)

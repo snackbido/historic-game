@@ -35,6 +35,7 @@ namespace PrehistoricTribe
                 farmPlots = InteractableRegistry.All<FarmPlot>().ConvertAll(p => p.GetSaveData()),
                 riceMortars = InteractableRegistry.All<RiceMortar>().ConvertAll(m => m.GetSaveData()),
                 canals = Canal.All.Select(c => c.GetSaveData()).ToList(),
+                disaster = DisasterManager.Instance != null ? DisasterManager.Instance.GetSaveData() : new DisasterSaveData(),
                 animals = InteractableRegistry.All<AnimalController>().ConvertAll(a => a.GetSaveData()),
                 npcs = NpcManager.Instance != null ? NpcManager.Instance.GetSaveData() : new List<NpcSaveData>(),
                 predators = PredatorManager.Instance != null ? PredatorManager.Instance.GetSaveData() : new List<PredatorSaveData>(),
@@ -83,6 +84,9 @@ namespace PrehistoricTribe
 
             if (data.saveVersion >= 5 && DayNightCycle.Instance != null)
                 DayNightCycle.Instance.SetTime(data.timeOfDay, data.day);
+
+            if (DisasterManager.Instance != null)
+                DisasterManager.Instance.LoadFromSaveData(data.disaster);
 
             EventBus.RaiseGameLoaded();
             EventBus.RaiseNotification("Đã tải game");
