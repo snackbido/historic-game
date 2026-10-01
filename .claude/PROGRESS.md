@@ -98,7 +98,7 @@ Quyết định user: công trình nâng cấp **5 cấp** (click công trình �
 - [x] E2 Lều là nhà: gán cặp đôi vào lều, cặp đôi về lều để sinh con, cấp lều → thêm chỗ cho con + sinh nhanh hơn — 2026-10-01
 - [x] E3 Nhiều loại lương thực + nguồn mới (lúa, rau = cây trồng mới; cá = đánh cá; sữa = vật nuôi mới; thịt = săn/vật nuôi); chi phí "thức ăn" nhận loại nào cũng được — 2026-10-01
 - [x] E4 Kho: giới hạn lưu trữ theo loại (không kho ~20/loại, kho + cấp kho tăng), thịt ngoài kho hỏng dần — 2026-10-01
-- [ ] E5 Dân làng ăn hằng ngày: thiếu ăn → đói, yếu, không sinh con
+- [x] E5 Dân làng ăn hằng ngày: thiếu ăn → đói, yếu, không sinh con — 2026-10-01 (**Milestone 5b hoàn tất**)
 
 ## Milestone 6 — Thiên tai
 - [ ] DisasterManager: hệ thống sự kiện ngẫu nhiên
@@ -270,6 +270,11 @@ Quyết định user: công trình nâng cấp **5 cấp** (click công trình �
 - Hư hỏng: đồ `perishable` (thịt, cá, sữa) — phần vượt quá `StoredFoodCapacity` là "để ngoài kho"; cứ `spoilInterval` 15s mất `spoilFraction` 25% phần đó (ít nhất 1) + thông báo. Phần trong kho không hỏng; lúa gạo, quả mọng, rau không bao giờ hỏng.
 - `FoodBreakdownUI`: "Sức chứa: 50/loại · Thịt 12 (hỏng dần) · …", làm mới khi xây/nâng cấp công trình.
 - Test: `PlayModeTestBase` tắt `ResourceManager.SpoilageEnabled` mặc định (test cũ không bị lệch số), test E4 tự bật. **72/72 test PlayMode pass** (5 test mới `Milestone5bStorageTests.cs`: không kho giữ tối đa 20/loại, phần dư phí; kho cộng sức chứa theo cấp; thịt ngoài kho hỏng; thịt trong kho + lúa không hỏng; chỉ phần vượt sức chứa kho hỏng, hỏng tới đúng mức kho bảo quản thì dừng).
+
+## Nhật ký phiên làm việc 2026-10-01 (phần 4 — M5b/E5 ăn uống) — **Milestone 5b hoàn tất**
+- `NpcController.Fullness` (độ no 0–100, lưu trong save; save cũ = no đủ), `IsStarving` (= 0) → đi chậm ×0,6. `NpcManager.UpdateHunger(dt)`: người lớn mất 0,67 độ no/giây (trẻ con ×0,5); dưới 60 thì ăn 1 bữa (`mealCost` = 1 Thức ăn gộp → loại nào cũng được, đồ dễ hỏng trước) +40 → mỗi người lớn ~1 bữa/phút. Đói: mất 1 máu / 3s (có thể chết), không sinh con (`BirthBlocker` "Đang đói"), thông báo "Làng đang thiếu ăn! N người đói" mỗi 20s. UI: nhãn dân số "… · ĐANG ĐÓI: N", bảng "Đang chọn" đánh dấu "(đói)".
+- Test: `PlayModeTestBase` tắt `NpcManager.HungerEnabled` mặc định; test E5 gọi thẳng `UpdateHunger(giây)` để kết quả chắc chắn. **79/79 test PlayMode pass** (7 test mới `Milestone5bHungerTests.cs`).
+- **Rủi ro cân bằng chưa xử lý**: game bắt đầu với 0 thức ăn → sau ~2,5 phút cả làng đói, ~4,5 phút sau bắt đầu chết nếu người chơi chưa kiếm được thức ăn (đánh cá ở ao, săn heo, mở Nông nghiệp để trồng). Cân nhắc cho kho ban đầu một ít lương thực (vd 20 quả mọng) — cần chơi thử để quyết.
 
 ## Vấn đề đang tồn đọng (Known issues / Open questions)
 - [x] Chế độ combat: lai (2026-09-26) + chi tiết chỉ huy NPC theo nghề (2026-09-30)

@@ -28,7 +28,9 @@ namespace PrehistoricTribe
             string text = $"Dân số: {manager.Population}";
             if (children > 0) text += $" ({children} trẻ em)";
             var (couples, housed) = manager.CoupleStats();
-            return couples > 0 ? $"{text} · Nhà: {housed}/{couples} cặp" : text;
+            if (couples > 0) text += $" · Nhà: {housed}/{couples} cặp";
+            int starving = manager.StarvingCount;
+            return starving > 0 ? $"{text} · ĐANG ĐÓI: {starving}" : text;
         }
     }
 }

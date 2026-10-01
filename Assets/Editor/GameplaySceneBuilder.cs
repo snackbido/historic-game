@@ -181,6 +181,7 @@ namespace PrehistoricTribe.EditorTools
             SetPrivateField(npcManager, "npcPrefab", villagerPrefab);
             SetPrivateField(npcManager, "knownProfessions", professions);
             SetPrivateField(npcManager, "birthCost", new List<ResourceAmount> { new ResourceAmount { type = food, amount = 5 } });
+            SetPrivateField(npcManager, "mealCost", new List<ResourceAmount> { new ResourceAmount { type = food, amount = 1 } });
             SetPrivateField(npcManager, "adultProfession", professions.Find(p => p.id == "villager"));
             SetPrivateField(npcManager, "maleNames", new List<string> { "Bờm", "Tùng", "Sấm", "Lửa", "Núi", "Gió", "Cọ", "Hổ" });
             SetPrivateField(npcManager, "femaleNames", new List<string> { "Hoa", "Sương", "Trăng", "Mưa", "Lá", "Nắng", "Mơ", "Sao" });

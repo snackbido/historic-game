@@ -50,6 +50,8 @@ namespace PrehistoricTribe
         public bool hasHome;
         public int homeCellX;
         public int homeCellY;
+        // Độ no (E5). Save cũ chưa có field này → giữ giá trị mặc định -1 → khi tải coi như no đủ.
+        public float fullness = -1f;
     }
 
     /// <summary>
@@ -137,6 +139,17 @@ namespace PrehistoricTribe
         /// <summary>Ô grid của lều đã lưu — NpcManager dùng để nối lại sau khi tải game.</summary>
         public Vector3Int? PendingHomeCell { get; private set; }
 
+        // ─── Ăn uống (E5) ────────────────────────────────────────────────────
+        public const float MaxFullness = 100f;
+        private const float StarvingSpeedFactor = 0.6f;
+        private float baseSpeed = 3f;
+
+        /// <summary>Độ no 0–100. NpcManager giảm dần theo thời gian và cho ăn từ kho chung.</summary>
+        public float Fullness { get; set; } = MaxFullness;
+        /// <summary>Đói (độ no về 0): đi chậm, không sinh con, mất máu dần.</summary>
+        public bool IsStarving => Fullness <= 0f;
+        public bool IsHungry => Fullness < 30f;
+
         private void Awake()
         {
             agent = GetComponent<NavMeshAgent>();
@@ -195,6 +208,7 @@ namespace PrehistoricTribe
         private void Update()
         {
             UpdateAge();
+            agent.speed = baseSpeed * (IsStarving ? StarvingSpeedFactor : 1f);
             if (!agent.isOnNavMesh) return;
 
             switch (State)
@@ -441,11 +455,13 @@ namespace PrehistoricTribe
                 // Trẻ con: chưa có nghề, không cầm dụng cụ, đi chậm.
                 foreach (var entry in tools)
                     if (entry.tool != null) entry.tool.SetActive(false);
-                if (agent != null) agent.speed = age == AgeStage.Baby ? 1.2f : 1.8f;
+                baseSpeed = age == AgeStage.Baby ? 1.2f : 1.8f;
+                if (agent != null) agent.speed = baseSpeed;
                 return;
             }
 
-            if (agent != null) agent.speed = profession.moveSpeed;
+            baseSpeed = profession.moveSpeed;
+            if (agent != null) agent.speed = baseSpeed;
             if (health != null) health.SetMax(profession.maxHealth, refill: false);
 
             if (tunicRenderer != null)
@@ -490,7 +506,8 @@ namespace PrehistoricTribe
             partnerName = Partner != null ? Partner.NpcName : null,
             hasHome = Home != null,
             homeCellX = Home != null ? Home.GridPosition.x : 0,
-            homeCellY = Home != null ? Home.GridPosition.y : 0
+            homeCellY = Home != null ? Home.GridPosition.y : 0,
+            fullness = Fullness
         };
 
         /// <summary>Khôi phục thông tin (vị trí do nơi gọi đặt lúc Instantiate).</summary>
@@ -502,6 +519,7 @@ namespace PrehistoricTribe
             ageSeconds = saved.ageSeconds;
             pendingPartnerName = saved.partnerName; // NpcManager nối lại sau khi tạo đủ mọi người
             PendingHomeCell = saved.hasHome ? new Vector3Int(saved.homeCellX, saved.homeCellY, 0) : (Vector3Int?)null;
+            Fullness = saved.fullness >= 0f ? saved.fullness : MaxFullness; // save cũ (chưa có độ no, = -1) → no đủ
             name = $"Npc_{npcName}";
             profession = savedProfession;
             ApplyProfession();

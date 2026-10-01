@@ -21,6 +21,7 @@ namespace PrehistoricTribe.Tests
             NpcController.AutoWorkEnabled = false;
             NpcManager.BirthsEnabled = false;
             ResourceManager.SpoilageEnabled = false;
+            NpcManager.HungerEnabled = false;
 #if UNITY_EDITOR
             yield return EditorSceneManager.LoadSceneInPlayMode(ScenePath, new LoadSceneParameters(LoadSceneMode.Single));
 #endif
@@ -35,6 +36,7 @@ namespace PrehistoricTribe.Tests
             NpcController.AutoWorkEnabled = true;
             NpcManager.BirthsEnabled = true;
             ResourceManager.SpoilageEnabled = true;
+            NpcManager.HungerEnabled = true;
             yield return null;
         }
     }

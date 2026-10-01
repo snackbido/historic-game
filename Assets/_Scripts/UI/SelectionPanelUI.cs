@@ -61,6 +61,7 @@ namespace PrehistoricTribe
             {
                 if (sb.Length > 0) sb.Append("   ");
                 sb.Append(npc.NpcName).Append(npc.Gender == Gender.Male ? " (nam)" : " (nữ)");
+                if (npc.IsStarving) sb.Append(" (đói)");
             }
             return sb.ToString();
         }
