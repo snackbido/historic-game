@@ -33,6 +33,9 @@ namespace PrehistoricTribe
         // Từ saveVersion 5 (ngày & đêm)
         public float timeOfDay;
         public int day;
+
+        // M5d/F5 (save cũ thiếu → cối giã để trống)
+        public List<RiceMortarSaveData> riceMortars = new List<RiceMortarSaveData>();
     }
 
     public static class SaveSystem

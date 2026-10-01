@@ -51,14 +51,13 @@ namespace PrehistoricTribe.Tests
         }
 
         [Test]
-        public void RiceHarvest_LeavesSeedGrain_SeedbedYieldsSeedlingBundles()
+        public void RiceHarvest_GivesSheaves_SeedbedYieldsSeedlingBundles()
         {
             Assert.AreEqual(FieldType.Seedbed, SeedlingCrop.fieldType);
             Assert.AreSame(SeedGrain, SeedlingCrop.plantCost.Single().type, "Seedlings are sown from seed grain");
             Assert.AreEqual(3, SeedlingCrop.harvestYield.Single(y => y.type == Seedlings).amount, "One seedbed gives 3 bundles");
             Assert.AreSame(Seedlings, Rice.plantCost.Single().type, "Rice is transplanted from seedlings");
-            Assert.AreEqual(2, Rice.harvestYield.Single(y => y.type == SeedGrain).amount, "Each rice harvest keeps 2 seed grain");
-            Assert.AreEqual(6, Rice.harvestYield.Single(y => y.type == Res("Rice")).amount);
+            Assert.AreEqual(4, Rice.harvestYield.Single(y => y.type == Res("RiceSheaf")).amount, "Rice is reaped as sheaves; seed grain comes from threshing (F5)");
         }
 
         [UnityTest]
@@ -79,7 +78,7 @@ namespace PrehistoricTribe.Tests
             var bed = Place(Seedbed, SeedbedCell);
             Assert.AreEqual(FieldType.Seedbed, bed.FieldType);
             ReadyAndFlooded(bed);
-            StringAssert.Contains("Thóc giống", bed.PlantBlocker(SeedlingCrop), "No seed grain → nothing to sow");
+            StringAssert.Contains("Thóc", bed.PlantBlocker(SeedlingCrop), "No seed grain → nothing to sow");
 
             Rm.AddResource(SeedGrain, 2);
             Assert.IsTrue(bed.Plant(SeedlingCrop));

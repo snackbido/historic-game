@@ -42,6 +42,9 @@ namespace PrehistoricTribe
                 case FarmPlot plot when profession.Can(NpcCapability.Farm):
                     return new FarmJob(plot);
 
+                case RiceMortar mortar when profession.Can(NpcCapability.Farm):
+                    return new MortarJob(mortar);
+
                 case AnimalController animal when animal.State == AnimalState.Wild && profession.Can(NpcCapability.Hunt):
                     return new HuntJob(animal, profession);
 
@@ -85,6 +88,10 @@ namespace PrehistoricTribe
                     p.NeedsWeeding || (p.CanFertilize && farm != null && farm.HasFertilizer) ||
                     (p.State == FarmPlotState.Empty && farm != null && FarmPlot.HasSeedFor(farm.CropFor(p))));
                 if (plot != null) return new FarmJob(plot, continuous: false);
+
+                // Ruộng ổn rồi thì ra cối: phơi, tuốt lúa, giã gạo.
+                RiceMortar mortar = Nearest(InteractableRegistry.All<RiceMortar>(), position, radius, m => m.HasWork);
+                if (mortar != null) return new MortarJob(mortar);
             }
 
             if ((profession.autoWork & NpcCapability.TendAnimals) != 0)
@@ -334,6 +341,26 @@ namespace PrehistoricTribe
             }
             fetching = true;
             return true;
+        }
+    }
+
+    /// <summary>Làm ở cối giã (F5): phơi bó lúa, tuốt lấy thóc, giã gạo — làm tới khi hết việc (phơi thì chờ nắng).</summary>
+    public class MortarJob : NpcJob
+    {
+        private readonly RiceMortar mortar;
+        private string lastTask;
+
+        public MortarJob(RiceMortar mortar) => this.mortar = mortar;
+
+        public override MonoBehaviour Target => mortar;
+        public override string Description => (lastTask ?? mortar.NextTask ?? "giã gạo").ToLowerInvariant();
+        public override float WorkRange => 1.2f;
+
+        public override bool DoWork(NpcController npc)
+        {
+            lastTask = mortar.NextTask;
+            if (!mortar.DoWork()) return false;
+            return mortar.HasWork;
         }
     }
 

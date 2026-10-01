@@ -48,6 +48,8 @@ namespace PrehistoricTribe
                     return DescribePlot(plot);
                 case AnimalController animal:
                     return DescribeAnimal(animal);
+                case RiceMortar mortar:
+                    return DescribeMortar(mortar);
                 default:
                     return null;
             }
@@ -87,6 +89,14 @@ namespace PrehistoricTribe
                 default:
                     return null;
             }
+        }
+
+        private static string DescribeMortar(RiceMortar mortar)
+        {
+            string rack = $"giàn phơi {mortar.SheavesOnRack}/{mortar.RackCapacity} (khô {mortar.DrySheaves})";
+            string task = mortar.NextTask;
+            if (task == "Giã gạo" && mortar.PoundProgress > 0) task += $" {Percent(mortar.PoundFraction)}";
+            return task != null ? $"[E] {task} · {rack}" : $"{mortar.IdleReason()} · {rack}";
         }
 
         private static string DescribeAnimal(AnimalController animal)

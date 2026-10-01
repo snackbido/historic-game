@@ -42,14 +42,14 @@ namespace PrehistoricTribe.Tests
             Rm.AddResource(Pool, 3);
             Assert.AreEqual(7, Rm.GetAmount(Res("Berries")), "Adding generic food goes into berries");
             StringAssert.Contains("Thịt 0", FoodBreakdownUI.Describe(Rm));
-            StringAssert.Contains("Lúa gạo 4", FoodBreakdownUI.Describe(Rm));
+            StringAssert.Contains("Gạo 4", FoodBreakdownUI.Describe(Rm));
         }
 
         [Test]
         public void EverySourceProducesItsOwnFoodType()
         {
             Assert.AreSame(Res("Berries"), Asset<CropData>("Assets/_Data/CropData_Berry.asset").harvestYield[0].type);
-            Assert.AreSame(Res("Rice"), Asset<CropData>("Assets/_Data/CropData_Rice.asset").harvestYield[0].type);
+            Assert.AreSame(Res("RiceSheaf"), Asset<CropData>("Assets/_Data/CropData_Rice.asset").harvestYield[0].type, "Rice comes home as sheaves (F5)");
             Assert.AreSame(Res("Vegetables"), Asset<CropData>("Assets/_Data/CropData_Vegetable.asset").harvestYield[0].type);
 
             var boar = Asset<AnimalData>("Assets/_Data/AnimalData_WildBoar.asset");
@@ -84,7 +84,7 @@ namespace PrehistoricTribe.Tests
         }
 
         [UnityTest]
-        public IEnumerator RicePlot_GrowsAndHarvestsRice()
+        public IEnumerator RicePlot_GrowsAndHarvestsSheaves()
         {
             yield return null;
             var rice = Asset<CropData>("Assets/_Data/CropData_Rice.asset");
@@ -101,7 +101,7 @@ namespace PrehistoricTribe.Tests
 
             yield return WaitUntil(() => plot.State == FarmPlotState.ReadyToHarvest, rice.timeToSprout + rice.timeToMature + 5f);
             Assert.IsTrue(FarmManager.Instance.TryInteract(plot));
-            Assert.AreEqual(6, Rm.GetAmount(Res("Rice")), "Rice gives 6 rice per harvest");
+            Assert.AreEqual(4, Rm.GetAmount(Res("RiceSheaf")), "Rice gives 4 sheaves per harvest");
         }
 
         [UnityTest]

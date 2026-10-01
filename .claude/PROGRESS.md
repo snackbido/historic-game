@@ -112,7 +112,7 @@ Quyết định user: quy trình **vừa phải** (lúa ~6 bước: làm đất 
 - [x] F2 Làm đất + nước: cày/xới trước mỗi vụ; ruộng có mức nước (bốc hơi dần, ruộng nước cần ngập mới cấy/lớn, ruộng cạn thiếu nước thì ngừng lớn rồi héo); việc mới "gánh nước" từ ao; công trình Giếng
 - [x] F3 Gieo mạ & cấy: ô ươm mạ (gieo thóc giống → mạ), nhổ mạ, cấy vào ruộng nước đã cày + ngập; giữ thóc giống sau gặt
 - [x] F4 Chăm sóc: cỏ dại mọc giảm năng suất → làm cỏ; bón phân (phân từ vật nuôi) tăng năng suất
-- [ ] F5 Sau gặt: lúa gặt về là bó lúa → phơi/tuốt/giã ở công trình Cối giã → gạo ăn được
+- [x] F5 Sau gặt: lúa gặt về là bó lúa → phơi/tuốt/giã ở công trình Cối giã → gạo ăn được
 - [ ] F6 Mương dẫn nước (tech Thủy lợi): đào mương từ ao, ruộng cạnh mương tự có nước
 - [ ] F7 Guồng nước (tech): đặt bên ao/đầu mương, bơm nước mạnh → ruộng nối mương luôn đầy nước
 
@@ -345,6 +345,14 @@ Quyết định user: quy trình **vừa phải** (lúa ~6 bước: làm đất 
 - Nông dân: sau gánh nước → làm cỏ khi cỏ ≥ 40% (làm đến sạch) → bón phân nếu kho có; tự làm khi rảnh. Người chơi bấm E: có cỏ thì làm cỏ, sạch cỏ thì bón phân. Gợi ý hiện % cỏ / "đã bón phân".
 - `FarmPlot.WeedsEnabled` tắt trong `PlayModeTestBase` (test cũ đếm sản lượng chính xác), test F4 tự bật. Lưu/tải cỏ + đã bón.
 - Test: 7 test mới `Milestone5dCareTests.cs`. **120/120 test PlayMode pass**.
+
+## Nhật ký phiên làm việc 2026-10-01 (phần 12 — M5d/F5 sau gặt)
+- Gặt lúa giờ ra **Lúa bó** (`rice_sheaf`, vật tư, 4 bó/vụ trước hệ số cỏ/phân) thay vì gạo + thóc giống. Đổi tên: "Lúa gạo" → **Gạo**, "Thóc giống" → **Thóc** (thóc vừa để giã vừa làm giống).
+- Công trình mới **Cối giã** (`rice_mortar`, 6 gỗ, mở cùng tech Trồng lúa) — `Farming/RiceMortar.cs`: giàn phơi 4 chỗ; mỗi lượt công làm 1 việc theo thứ tự: tuốt bó đã khô (+2 thóc) → treo bó mới lên giàn → giã thóc (2 lượt/mẻ, 2 thóc → 2 gạo). Bó lúa khô sau 30s nắng, ban đêm không khô. Luôn chừa 4 thóc làm giống (chỉ giã phần dư). Hình: cối gỗ + chày, giàn tre với bó lúa xanh (ướt) → vàng (khô), thóc trong lòng cối khi giã dở.
+- Nông dân: `MortarJob` (ra lệnh được; tự làm khi rảnh sau việc ruộng). Người chơi bấm E làm 1 lượt; gợi ý hiện việc kế tiếp + giàn phơi "N/4 (khô M)". Lưu/tải giàn phơi + mẻ giã dở (`SaveData.riceMortars`, khớp theo tên công trình).
+- HUD: thêm nhãn "Lúa bó"; bảng hạt giống dời xuống -290, công nghệ -500 (menu xây giờ 7 nút).
+- Test: 7 test mới `Milestone5dMortarTests.cs`, sửa test lúa cũ (ra bó lúa). **127/127 test PlayMode pass**.
+- Lưu ý cân bằng: 1 vụ lúa = 4 bó → 8 thóc → giã được ~4–8 gạo (tùy thóc giống còn) — ít hơn trước (6 gạo + 2 thóc); cần chơi thử.
 
 ## Vấn đề đang tồn đọng (Known issues / Open questions)
 - [x] Chế độ combat: lai (2026-09-26) + chi tiết chỉ huy NPC theo nghề (2026-09-30)

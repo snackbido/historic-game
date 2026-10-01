@@ -32,6 +32,7 @@ namespace PrehistoricTribe
                 buildings = buildingPlacer.GetSaveData(),
                 unlockedTechIds = TechManager.Instance != null ? TechManager.Instance.GetSaveData() : new List<string>(),
                 farmPlots = InteractableRegistry.All<FarmPlot>().ConvertAll(p => p.GetSaveData()),
+                riceMortars = InteractableRegistry.All<RiceMortar>().ConvertAll(m => m.GetSaveData()),
                 animals = InteractableRegistry.All<AnimalController>().ConvertAll(a => a.GetSaveData()),
                 npcs = NpcManager.Instance != null ? NpcManager.Instance.GetSaveData() : new List<NpcSaveData>(),
                 predators = PredatorManager.Instance != null ? PredatorManager.Instance.GetSaveData() : new List<PredatorSaveData>(),
@@ -64,6 +65,8 @@ namespace PrehistoricTribe
             {
                 LoadFarmPlots(data.farmPlots);
                 LoadAnimals(data.animals);
+                foreach (var mortar in InteractableRegistry.All<RiceMortar>())
+                    mortar.LoadFromSaveData(data.riceMortars?.Find(s => s.objectName == mortar.name));
             }
 
             // Save cũ hơn (chưa có dân làng) giữ nguyên NPC đang có trong scene.
