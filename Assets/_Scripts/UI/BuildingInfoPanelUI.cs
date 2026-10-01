@@ -87,9 +87,12 @@ namespace PrehistoricTribe
         {
             var sb = new StringBuilder();
             if (!string.IsNullOrEmpty(building.Data.functionDescription)) sb.Append(building.Data.functionDescription);
-            if (level != null && level.housing > 0) sb.Append(sb.Length > 0 ? " · " : "").Append($"Chỗ ở: {level.housing} người");
+            if (level != null && level.housing > 0) sb.Append(sb.Length > 0 ? " · " : "").Append($"Chỗ cho con: {level.housing}");
             if (level != null && level.storageCapacity > 0)
                 sb.Append(sb.Length > 0 ? " · " : "").Append($"Chứa: {level.storageCapacity} mỗi loại lương thực");
+
+            string family = NpcManager.DescribeFamily(building);
+            if (family != null) sb.Append('\n').Append(family);
             return sb.ToString();
         }
 
@@ -100,7 +103,7 @@ namespace PrehistoricTribe
             BuildingLevel next = building.NextLevel;
             BuildingLevel current = building.CurrentLevel;
             var gains = new List<string>();
-            if (next.housing > (current?.housing ?? 0)) gains.Add($"chỗ ở {next.housing}");
+            if (next.housing > (current?.housing ?? 0)) gains.Add($"{next.housing} chỗ cho con, sinh nhanh hơn");
             if (next.storageCapacity > (current?.storageCapacity ?? 0)) gains.Add($"chứa {next.storageCapacity}/loại");
 
             string text = $"Lên {next.displayName}: {string.Join(", ", gains)} — Chi phí: {FormatCost(next.upgradeCost)}";

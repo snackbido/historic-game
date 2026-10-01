@@ -455,6 +455,7 @@ namespace PrehistoricTribe.EditorTools
 
             TMP_Text title = CreateLayoutLabel(content.transform, "Title", 22f, FontStyles.Bold);
             TMP_Text function = CreateLayoutLabel(content.transform, "Function", 18f, FontStyles.Normal);
+            function.GetComponent<LayoutElement>().preferredHeight = 48f; // chức năng + dòng gia đình
             TMP_Text next = CreateLayoutLabel(content.transform, "NextLevel", 16f, FontStyles.Italic);
             next.GetComponent<LayoutElement>().preferredHeight = 44f; // có thể 2 dòng (kèm lý do chưa nâng được)
             Transform row = CreateButtonRow(content.transform, "Actions");

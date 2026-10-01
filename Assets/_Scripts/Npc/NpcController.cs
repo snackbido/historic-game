@@ -46,6 +46,10 @@ namespace PrehistoricTribe
         public bool holdPosition;
         public float ageSeconds;
         public string partnerName;
+        // Nhà (lều) — lưu theo ô grid của công trình.
+        public bool hasHome;
+        public int homeCellX;
+        public int homeCellY;
     }
 
     /// <summary>
@@ -128,6 +132,10 @@ namespace PrehistoricTribe
         /// <summary>Lần sinh con gần nhất (Time.time) — NpcManager dùng để giãn cách giữa các lần sinh.</summary>
         public float LastBirthTime { get; set; } = float.NegativeInfinity;
         public string PendingPartnerName => pendingPartnerName;
+        /// <summary>Lều của gia đình (cặp đôi + con nhỏ). Null = chưa có nhà.</summary>
+        public BuildingInstance Home { get; set; }
+        /// <summary>Ô grid của lều đã lưu — NpcManager dùng để nối lại sau khi tải game.</summary>
+        public Vector3Int? PendingHomeCell { get; private set; }
 
         private void Awake()
         {
@@ -352,6 +360,7 @@ namespace PrehistoricTribe
             if (age == AgeStage.Adult)
             {
                 SetProfession(manager.AdultProfession);
+                Home = null; // trưởng thành thì ra ở riêng, lập gia đình mới cần lều mới
                 EventBus.RaiseNotification($"{npcName} đã trưởng thành — có thể giao nghề!");
             }
             RefreshVisuals();
@@ -393,10 +402,11 @@ namespace PrehistoricTribe
 
         private void TryWander()
         {
-            // Trẻ con chơi quanh quẩn gần nhà.
+            // Trẻ con chơi quanh quẩn gần lều nhà mình.
             float radius = IsAdult ? wanderRadius : wanderRadius * 0.5f;
+            Vector3 center = !IsAdult && Home != null ? Home.transform.position : home;
             Vector2 offset = Random.insideUnitCircle * radius;
-            Vector3 target = home + new Vector3(offset.x, 0f, offset.y);
+            Vector3 target = center + new Vector3(offset.x, 0f, offset.y);
             if (NavMesh.SamplePosition(target, out NavMeshHit hit, 1.5f, NavMesh.AllAreas))
             {
                 agent.SetDestination(hit.position);
@@ -477,7 +487,10 @@ namespace PrehistoricTribe
             health = health.Current,
             holdPosition = holdPosition,
             ageSeconds = ageSeconds,
-            partnerName = Partner != null ? Partner.NpcName : null
+            partnerName = Partner != null ? Partner.NpcName : null,
+            hasHome = Home != null,
+            homeCellX = Home != null ? Home.GridPosition.x : 0,
+            homeCellY = Home != null ? Home.GridPosition.y : 0
         };
 
         /// <summary>Khôi phục thông tin (vị trí do nơi gọi đặt lúc Instantiate).</summary>
@@ -488,6 +501,7 @@ namespace PrehistoricTribe
             age = saved.age;
             ageSeconds = saved.ageSeconds;
             pendingPartnerName = saved.partnerName; // NpcManager nối lại sau khi tạo đủ mọi người
+            PendingHomeCell = saved.hasHome ? new Vector3Int(saved.homeCellX, saved.homeCellY, 0) : (Vector3Int?)null;
             name = $"Npc_{npcName}";
             profession = savedProfession;
             ApplyProfession();

@@ -5,8 +5,9 @@ using UnityEngine.AI;
 namespace PrehistoricTribe
 {
     /// <summary>
-    /// Quản lý dân làng: tra nghề theo id, lưu/tải, và dân số (quyết định M5, 2026-09-30):
-    /// cặp nam + nữ trưởng thành cố định; còn chỗ ở + đủ thức ăn thì sinh em bé; em bé lớn dần thành người lớn.
+    /// Quản lý dân làng: tra nghề theo id, lưu/tải, và dân số (quyết định M5 + M5b/E2, 2026-09-30):
+    /// cặp nam + nữ trưởng thành cố định; mỗi cặp được một lều làm nhà; chỉ sinh con tại lều khi lều còn
+    /// chỗ cho con (theo cấp lều) và đủ thức ăn; em bé lớn dần thành người lớn rồi ra ở riêng.
     /// </summary>
     public class NpcManager : MonoBehaviour
     {
@@ -20,10 +21,8 @@ namespace PrehistoricTribe
         [SerializeField] private List<ProfessionData> knownProfessions = new List<ProfessionData>();
 
         [Header("Dân số")]
-        [Tooltip("Chỗ ở sẵn có khi chưa xây lều (hang/đống lửa ban đầu)")]
-        [SerializeField] private int baseHousing = 4;
         [SerializeField] private float birthCheckInterval = 40f;
-        [Tooltip("Một cặp phải chờ bao lâu (giây) giữa hai lần sinh")]
+        [Tooltip("Một cặp ở lều cấp 1 phải chờ bao lâu (giây) giữa hai lần sinh; mỗi cấp lều rút ngắn 10%")]
         [SerializeField] private float coupleBirthCooldown = 180f;
         [SerializeField] private List<ResourceAmount> birthCost = new List<ResourceAmount>();
         [Tooltip("Nghề mặc định khi trẻ trưởng thành")]
@@ -41,15 +40,17 @@ namespace PrehistoricTribe
         public float ChildDuration => childDuration;
         public int Population => NpcController.All.Count;
 
-        /// <summary>Sức chứa = chỗ ở ban đầu + chỗ ở của mọi công trình theo cấp (lều cấp 1 = +2 … cấp 5 = +6).</summary>
-        public int Capacity
+        /// <summary>Số cặp đôi (người lớn) và số cặp đã có lều.</summary>
+        public (int couples, int housed) CoupleStats()
         {
-            get
+            int couples = 0, housed = 0;
+            foreach (var npc in NpcController.All)
             {
-                int capacity = baseHousing;
-                foreach (var building in BuildingInstance.All) capacity += building.Housing;
-                return capacity;
+                if (npc.Gender != Gender.Female || !npc.IsAdult || npc.Partner == null) continue;
+                couples++;
+                if (npc.Home != null) housed++;
             }
+            return (couples, housed);
         }
 
         private void Awake()
@@ -63,7 +64,17 @@ namespace PrehistoricTribe
             birthTimer = birthCheckInterval;
         }
 
-        private void Start() => PairCouples();
+        private void OnEnable() => EventBus.OnBuildingPlaced += HandleBuildingPlaced;
+        private void OnDisable() => EventBus.OnBuildingPlaced -= HandleBuildingPlaced;
+
+        private void Start()
+        {
+            PairCouples();
+            AssignHomes();
+        }
+
+        // Vừa xây lều → gán ngay cho cặp chưa có nhà (không phải chờ lượt kiểm tra).
+        private void HandleBuildingPlaced(BuildingInstance _) => AssignHomes();
 
         private void Update()
         {
@@ -72,7 +83,8 @@ namespace PrehistoricTribe
             birthTimer = birthCheckInterval;
 
             PairCouples();
-            if (BirthsEnabled) TryBirth();
+            AssignHomes();
+            if (BirthsEnabled) TryStartBirth();
         }
 
         public ProfessionData FindProfession(string id) =>
@@ -94,40 +106,124 @@ namespace PrehistoricTribe
             }
         }
 
-        /// <summary>Thử cho một cặp sinh con. Trả về em bé, hoặc null nếu hết chỗ ở / thiếu thức ăn / chưa cặp nào sẵn sàng.</summary>
-        public NpcController TryBirth()
+        // ─── Nhà (lều) ───────────────────────────────────────────────────────
+        /// <summary>Mỗi cặp chưa có nhà được một lều chưa có chủ (lều = công trình có chỗ cho con).</summary>
+        public void AssignHomes()
         {
-            if (Population >= Capacity) return null;
-            if (!ResourceManager.Instance.CanAfford(birthCost)) return null;
-
             foreach (var mother in NpcController.All)
             {
                 NpcController father = mother.Partner;
-                if (mother.Gender != Gender.Female || !mother.IsAdult || father == null || !father.IsAdult) continue;
-                if (Time.time - mother.LastBirthTime < coupleBirthCooldown) continue;
+                if (mother.Gender != Gender.Female || !mother.IsAdult || father == null) continue;
 
-                ResourceManager.Instance.SpendAll(birthCost);
-                return SpawnBaby(mother, father);
+                // Một người đã có nhà (vd tái hôn) → người kia về ở cùng.
+                BuildingInstance home = mother.Home != null ? mother.Home : father.Home;
+                if (home == null) home = FindFreeHut();
+                if (home == null) continue;
+                mother.Home = home;
+                father.Home = home;
+            }
+        }
+
+        private static BuildingInstance FindFreeHut()
+        {
+            foreach (var building in BuildingInstance.All)
+            {
+                if (building.Housing <= 0) continue;
+                bool owned = false;
+                foreach (var npc in NpcController.All)
+                    if (npc.IsAdult && npc.Home == building) { owned = true; break; }
+                if (!owned) return building;
             }
             return null;
         }
 
-        public NpcController SpawnBaby(NpcController mother, NpcController father)
+        /// <summary>Số con nhỏ (chưa trưởng thành) đang ở lều này.</summary>
+        public static int ChildrenIn(BuildingInstance hut)
+        {
+            int count = 0;
+            foreach (var npc in NpcController.All)
+                if (!npc.IsAdult && npc.Home == hut) count++;
+            return count;
+        }
+
+        /// <summary>Thời gian nghỉ giữa hai lần sinh: lều cấp càng cao càng ngắn (mỗi cấp -10%).</summary>
+        public float BirthCooldownFor(BuildingInstance hut) =>
+            coupleBirthCooldown * (1f - 0.1f * ((hut != null ? hut.Level : 1) - 1));
+
+        /// <summary>Lý do cặp đôi này chưa sinh con được (null = sinh được).</summary>
+        public string BirthBlocker(NpcController mother)
+        {
+            NpcController father = mother.Partner;
+            if (mother.Gender != Gender.Female || !mother.IsAdult || father == null || !father.IsAdult) return "Chưa có cặp";
+            if (mother.Home == null) return "Chưa có lều";
+            if (ChildrenIn(mother.Home) >= mother.Home.Housing) return "Lều đã đủ con — nâng cấp lều để có thêm chỗ";
+            if (Time.time - mother.LastBirthTime < BirthCooldownFor(mother.Home)) return "Vừa mới sinh";
+            if (!ResourceManager.Instance.CanAfford(birthCost)) return "Thiếu thức ăn";
+            return null;
+        }
+
+        private static bool IsFree(NpcController npc) =>
+            !npc.IsSelected && !npc.IsHoldingPosition &&
+            !(npc.CurrentJob is AttackJob) && !(npc.CurrentJob is HomeVisitJob);
+
+        /// <summary>
+        /// Chọn một cặp đủ điều kiện và đang rảnh → cả hai về lều (em bé ra đời khi cả hai ở nhà đủ lâu).
+        /// Trả về true nếu đã có cặp lên đường.
+        /// </summary>
+        public bool TryStartBirth()
+        {
+            foreach (var mother in NpcController.All)
+            {
+                if (BirthBlocker(mother) != null) continue;
+                NpcController father = mother.Partner;
+                if (!IsFree(mother) || !IsFree(father)) continue;
+
+                mother.AssignJob(new HomeVisitJob(mother.Home), fromPlayer: false);
+                father.AssignJob(new HomeVisitJob(mother.Home), fromPlayer: false);
+                return true;
+            }
+            return false;
+        }
+
+        /// <summary>Gọi khi cặp đôi đã ở lều đủ lâu: trừ thức ăn và em bé ra đời trước cửa lều.</summary>
+        public NpcController CompleteBirth(NpcController mother, NpcController father, BuildingInstance hut)
+        {
+            if (BirthBlocker(mother) != null || !ResourceManager.Instance.SpendAll(birthCost)) return null;
+            return SpawnBaby(mother, father, hut);
+        }
+
+        public NpcController SpawnBaby(NpcController mother, NpcController father, BuildingInstance home = null)
         {
             Gender gender = Random.value < 0.5f ? Gender.Male : Gender.Female;
             string babyName = UniqueName(gender);
 
-            Vector2 offset = Random.insideUnitCircle.normalized * 0.7f;
-            Vector3 position = mother.transform.position + new Vector3(offset.x, 0f, offset.y);
+            // Ra đời trước cửa lều (cửa quay về phía camera = -Z); không có lều thì cạnh người mẹ.
+            Vector3 position = home != null
+                ? home.transform.position + new Vector3(Random.Range(-0.3f, 0.3f), 0f, -0.9f)
+                : mother.transform.position + new Vector3(Random.Range(-0.7f, 0.7f), 0f, -0.7f);
             if (NavMesh.SamplePosition(position, out NavMeshHit hit, 2f, NavMesh.AllAreas)) position = hit.position;
 
             NpcController baby = Instantiate(npcPrefab, position, Quaternion.identity);
             baby.InitializeAsBaby(babyName, gender);
+            baby.Home = home;
             mother.LastBirthTime = Time.time;
 
             string kind = gender == Gender.Male ? "bé trai" : "bé gái";
             EventBus.RaiseNotification($"{father.NpcName} và {mother.NpcName} có con: {kind} {babyName}!");
             return baby;
+        }
+
+        /// <summary>Dòng mô tả gia đình ở lều cho bảng thông tin công trình.</summary>
+        public static string DescribeFamily(BuildingInstance hut)
+        {
+            if (hut == null || hut.Housing <= 0) return null;
+            foreach (var npc in NpcController.All)
+            {
+                if (npc.Gender != Gender.Female || !npc.IsAdult || npc.Home != hut) continue;
+                string father = npc.Partner != null ? npc.Partner.NpcName : "?";
+                return $"Gia đình: {father} & {npc.NpcName} — {ChildrenIn(hut)}/{hut.Housing} con";
+            }
+            return "Lều trống — chờ một cặp đôi dọn vào";
         }
 
         private string UniqueName(Gender gender)
@@ -179,6 +275,19 @@ namespace PrehistoricTribe
                 if (string.IsNullOrEmpty(npc.PendingPartnerName) || npc.Partner != null) continue;
                 NpcController partner = loaded.Find(n => n.NpcName == npc.PendingPartnerName);
                 if (partner != null) npc.SetPartner(partner);
+            }
+
+            // Nối lại nhà theo ô grid (công trình được tải trước NPC trong GameManager).
+            foreach (var npc in loaded)
+            {
+                if (npc.PendingHomeCell == null) continue;
+                Vector3Int cell = npc.PendingHomeCell.Value;
+                foreach (var building in BuildingInstance.All)
+                {
+                    if (building.GridPosition.x != cell.x || building.GridPosition.y != cell.y) continue;
+                    npc.Home = building;
+                    break;
+                }
             }
         }
     }

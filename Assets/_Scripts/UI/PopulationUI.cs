@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace PrehistoricTribe
 {
-    /// <summary>Nhãn "Dân số: 5/6 (1 trẻ em)" — cập nhật vài lần mỗi giây.</summary>
+    /// <summary>Nhãn "Dân số: 5 (1 trẻ em) · Nhà: 1/2 cặp" — cập nhật vài lần mỗi giây.</summary>
     public class PopulationUI : MonoBehaviour
     {
         [SerializeField] private TMP_Text label;
@@ -25,8 +25,10 @@ namespace PrehistoricTribe
             foreach (var npc in NpcController.All)
                 if (!npc.IsAdult) children++;
 
-            string text = $"Dân số: {manager.Population}/{manager.Capacity}";
-            return children > 0 ? $"{text} ({children} trẻ em)" : text;
+            string text = $"Dân số: {manager.Population}";
+            if (children > 0) text += $" ({children} trẻ em)";
+            var (couples, housed) = manager.CoupleStats();
+            return couples > 0 ? $"{text} · Nhà: {housed}/{couples} cặp" : text;
         }
     }
 }

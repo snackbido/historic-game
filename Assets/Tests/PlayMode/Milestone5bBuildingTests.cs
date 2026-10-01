@@ -38,8 +38,7 @@ namespace PrehistoricTribe.Tests
             var hut = Place(Hut, -5, 1);
             Assert.AreEqual(1, hut.Level);
             Assert.AreEqual("Lều da", hut.LevelName);
-            Assert.AreEqual(2, hut.Housing);
-            Assert.AreEqual(6, NpcManager.Instance.Capacity, "Base 4 + level-1 hut 2");
+            Assert.AreEqual(2, hut.Housing, "Level-1 hut has room for 2 children");
             Assert.AreEqual(1, ActiveModelLevel(hut));
 
             ResourceManager.Instance.AddResource(Wood, 200);
@@ -48,8 +47,7 @@ namespace PrehistoricTribe.Tests
 
             Assert.AreEqual(5, hut.Level);
             Assert.AreEqual("Nhà dài", hut.LevelName);
-            Assert.AreEqual(6, hut.Housing);
-            Assert.AreEqual(10, NpcManager.Instance.Capacity, "Base 4 + level-5 hut 6");
+            Assert.AreEqual(6, hut.Housing, "Level-5 longhouse has room for 6 children");
             Assert.AreEqual(5, ActiveModelLevel(hut), "Model changes with the level");
             Assert.AreEqual(200 - (15 + 25 + 40 + 60), ResourceManager.Instance.GetAmount(Wood), "Each upgrade costs wood");
             Assert.IsTrue(hut.IsMaxLevel);

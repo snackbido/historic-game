@@ -127,6 +127,50 @@ namespace PrehistoricTribe
             profession != null && (profession.Can(NpcCapability.Fight) || profession.Can(NpcCapability.Hunt));
     }
 
+    /// <summary>
+    /// Cặp đôi cùng về lều nhà mình; khi cả hai đã ở lều đủ lâu thì em bé ra đời (người mẹ kích hoạt).
+    /// Bỏ cuộc nếu chờ quá lâu (vd người kia bị gọi đi làm việc khác).
+    /// </summary>
+    public class HomeVisitJob : NpcJob
+    {
+        private const float StayDuration = 4f;
+        private const float GiveUpAfter = 45f;
+
+        private readonly BuildingInstance hut;
+        private float waited;
+        private float together;
+
+        public HomeVisitJob(BuildingInstance hut) => this.hut = hut;
+
+        public BuildingInstance Hut => hut;
+        public override MonoBehaviour Target => hut;
+        public override string Description => "về nhà";
+        public override float WorkRange => 1.2f;
+        public override float Interval => 1f;
+
+        public bool IsAtHome(NpcController npc) =>
+            npc.CurrentJob == this && InteractableRegistry.GroundDistance(npc.transform.position, hut.transform.position) <= WorkRange + 0.3f;
+
+        public override bool DoWork(NpcController npc)
+        {
+            waited += Interval;
+            if (waited > GiveUpAfter) return false;
+
+            NpcController partner = npc.Partner;
+            if (partner == null || !(partner.CurrentJob is HomeVisitJob partnerJob) || partnerJob.Hut != hut)
+                return false; // người kia không còn về nhà nữa → thôi
+
+            if (npc.Gender != Gender.Female) return true; // người bố chờ; người mẹ quyết định lúc sinh
+            if (!partnerJob.IsAtHome(partner)) return true;
+
+            together += Interval;
+            if (together < StayDuration) return true;
+
+            NpcManager.Instance.CompleteBirth(npc, partner, hut);
+            return false;
+        }
+    }
+
     /// <summary>Đánh thú dữ trong tầm đánh của nghề cho đến khi nó chết.</summary>
     public class AttackJob : NpcJob
     {

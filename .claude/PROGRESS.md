@@ -95,7 +95,7 @@
 ## Milestone 5b — Công trình nâng cấp + kinh tế lương thực (thêm 2026-09-30, trước Thiên tai)
 Quyết định user: công trình nâng cấp **5 cấp** (click công trình → bảng thông tin + nút Nâng cấp); **lều là nhà riêng của từng cặp đôi**, chỉ sinh con tại lều; lương thực tách **nhiều loại** (Thịt, Lúa gạo, Quả mọng, Sữa, Cá, Rau…); kho có **giới hạn lưu trữ**, **thịt để ngoài kho bị hỏng**, **dân làng ăn hằng ngày**.
 - [x] E1 Hệ thống nâng cấp 5 cấp cho Lều + Kho (chi phí, model đổi theo cấp, bảng thông tin khi click công trình, lưu/tải cấp) — 2026-09-30
-- [ ] E2 Lều là nhà: gán cặp đôi vào lều, cặp đôi về lều để sinh con, cấp lều → thêm chỗ cho con + sinh nhanh hơn
+- [x] E2 Lều là nhà: gán cặp đôi vào lều, cặp đôi về lều để sinh con, cấp lều → thêm chỗ cho con + sinh nhanh hơn — 2026-10-01
 - [ ] E3 Nhiều loại lương thực + nguồn mới (lúa, rau = cây trồng mới; cá = đánh cá; sữa = vật nuôi mới; thịt = săn/vật nuôi); chi phí "thức ăn" nhận loại nào cũng được
 - [ ] E4 Kho: giới hạn lưu trữ theo loại (không kho ~20/loại, kho + cấp kho tăng), thịt ngoài kho hỏng dần
 - [ ] E5 Dân làng ăn hằng ngày: thiếu ăn → đói, yếu, không sinh con
@@ -249,6 +249,14 @@ Quyết định user: công trình nâng cấp **5 cấp** (click công trình �
 - Chọn công trình: `SelectionManager.SelectAt` không trúng người → raycast vật lý (BoxCollider của công trình) → `SelectBuilding`; chọn người thì bỏ chọn công trình và ngược lại; click chỗ trống bỏ chọn cả hai. Mới `UI/BuildingInfoPanelUI.cs` (tên + cấp, chức năng, lợi ích/chi phí cấp kế, lý do chưa nâng được, nút Nâng cấp — tự bật/tắt theo tài nguyên), cùng chỗ với bảng "Đang chọn". `EventBus.OnBuildingSelected/OnBuildingUpgraded`.
 - Bẫy lặp lại: sau khi bake NavMesh (tạo asset), **mọi** tham chiếu component-prefab nạp trước đó mất hiệu lực (lần này là `Button.prefab`) → nạp lại ngay trước khi dùng.
 - **Đã xác nhận**: **53/53 test PlayMode pass** (4 test mới `Milestone5bBuildingTests.cs`); ảnh render 5 cấp lều + 5 cấp kho phân biệt rõ.
+
+## Nhật ký phiên làm việc 2026-10-01 (M5b/E2 lều là nhà)
+- Bỏ "sức chứa dân số" chung (4 + chỗ ở). Giờ **mỗi lều = nhà của một cặp đôi**: `NpcManager.AssignHomes()` gán lều chưa có chủ cho cặp chưa có nhà (chạy khi xây lều — `EventBus.OnBuildingPlaced` — và mỗi lượt xét sinh con); người tái hôn mang người kia về lều cũ của mình. `BuildingLevel.housing` đổi nghĩa: **số con nhỏ tối đa** gia đình nuôi được (lều cấp 1 = 2 … cấp 5 = 6).
+- Sinh con chỉ tại lều: `TryStartBirth()` chọn cặp đủ điều kiện (`BirthBlocker`: có cặp, có lều, lều còn chỗ cho con, hết thời gian nghỉ, đủ thức ăn) và **đang rảnh** (không được chọn, không giữ vị trí theo lệnh, không đánh nhau) → cả hai nhận `HomeVisitJob` về lều; ở cùng nhau 4s thì `CompleteBirth` trừ 5 thức ăn và em bé ra đời trước cửa lều, thuộc về lều đó (`NpcController.Home`). Bỏ cuộc nếu chờ quá 45s. Thời gian nghỉ giữa hai lần sinh giảm 10% mỗi cấp lều (180s → 108s ở cấp 5).
+- Trẻ con chơi quanh lều nhà mình; trưởng thành thì `Home = null` (ra ở riêng, lập gia đình mới cần lều mới). Lưu/tải nhà theo ô grid của lều (`NpcSaveData.hasHome/homeCellX/homeCellY`, nối lại sau khi tải công trình).
+- UI: nhãn dân số "Dân số: 5 (1 trẻ em) · Nhà: 1/2 cặp"; bảng công trình lều hiện "Chỗ cho con: N" + "Gia đình: Ka & Mây — 1/2 con" (hoặc "Lều trống").
+- **Sự cố**: Unity crash lúc chạy test nhóm NPC qua MCP (bộ nhớ ~0,5GB) và **ghi hỏng `LiberationSans SDF - Fallback.asset`** (toàn ký tự rỗng → test lỗi "File is either empty or corrupted"). Đã khôi phục bản trong git (chỉ là bộ đệm ký tự font, Unity tự thêm lại) → file này hết bị "modified" luôn.
+- **Đã xác nhận**: **59/59 test PlayMode pass** (chạy batch mode khi Editor đã tắt, 4,9GB trống); 6 test mới `Milestone5bHomeTests.cs` (xây lều → một cặp có nhà; cặp đôi về lều, em bé ra đời ở cửa lều; lều đủ con chặn sinh tới khi nâng cấp; lều cấp 5 nghỉ ngắn hơn; con trưởng thành ra ở riêng; lưu/tải giữ nhà).
 
 ## Vấn đề đang tồn đọng (Known issues / Open questions)
 - [x] Chế độ combat: lai (2026-09-26) + chi tiết chỉ huy NPC theo nghề (2026-09-30)

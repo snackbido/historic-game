@@ -10,7 +10,7 @@ namespace PrehistoricTribe
         public string displayName;
         [Tooltip("Chi phí nâng LÊN cấp này (cấp 1 dùng BuildingData.costs lúc xây)")]
         public List<ResourceAmount> upgradeCost = new List<ResourceAmount>();
-        [Tooltip("Số chỗ ở cấp này thêm vào sức chứa dân số")]
+        [Tooltip("Lều: số con nhỏ tối đa gia đình (cặp đôi) sống ở đây nuôi được. >0 = công trình là nhà ở")]
         public int housing;
         [Tooltip("Sức chứa lương thực mỗi loại mà cấp này thêm vào (dùng ở bước kho E4)")]
         public int storageCapacity;

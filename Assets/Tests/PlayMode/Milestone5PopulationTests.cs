@@ -109,33 +109,29 @@ namespace PrehistoricTribe.Tests
                 Assert.AreNotEqual(npc.Gender, npc.Partner.Gender, "Couples are one man and one woman");
                 Assert.AreSame(npc, npc.Partner.Partner, "Partnership is mutual");
             }
-            Assert.AreEqual("Dân số: 4/4", PopulationUI.Describe(NpcManager.Instance));
+            Assert.AreEqual("Dân số: 4 · Nhà: 0/2 cặp", PopulationUI.Describe(NpcManager.Instance));
         }
 
         [UnityTest]
-        public IEnumerator Birth_NeedsFreeHousingAndFood()
+        public IEnumerator Birth_NeedsAHutAndFood()
         {
             yield return null;
             var food = Asset<ResourceTypeData>("Assets/_Data/ResourceType_Food.asset");
             var manager = NpcManager.Instance;
 
-            Assert.IsNull(manager.TryBirth(), "No birth without food");
             ResourceManager.Instance.AddResource(food, 20);
-            Assert.IsNull(manager.TryBirth(), "No birth while every home is full (4/4)");
+            Assert.IsFalse(manager.TryStartBirth(), "No hut → no birth, even with food (M5b/E2)");
 
             PlaceHut();
-            yield return null;
-            Assert.AreEqual(6, manager.Capacity, "Each hut adds two homes");
+            manager.AssignHomes();
+            var (couples, housed) = manager.CoupleStats();
+            Assert.AreEqual(2, couples);
+            Assert.AreEqual(1, housed, "One hut = one family");
 
-            var baby = manager.TryBirth();
-            Assert.IsNotNull(baby, "Free home + food → a couple has a baby");
-            Assert.AreEqual(AgeStage.Baby, baby.Age);
-            Assert.IsFalse(baby.IsAdult);
+            Assert.IsTrue(manager.TryStartBirth(), "Housed couple with food heads home to have a baby");
+            yield return WaitUntil(() => manager.Population == 5, 60f);
+            Assert.AreEqual(5, manager.Population);
             Assert.AreEqual(15, ResourceManager.Instance.GetAmount(food), "A birth costs 5 food");
-
-            Assert.IsNotNull(manager.TryBirth(), "The other couple can also have a baby");
-            Assert.AreEqual(6, manager.Population);
-            Assert.IsNull(manager.TryBirth(), "Homes are full again (6/6)");
         }
 
         [UnityTest]
