@@ -50,6 +50,8 @@ namespace PrehistoricTribe
                     return DescribeAnimal(animal);
                 case RiceMortar mortar:
                     return DescribeMortar(mortar);
+                case Canal canal:
+                    return DescribeCanal(canal);
                 default:
                     return null;
             }
@@ -89,6 +91,14 @@ namespace PrehistoricTribe
                 default:
                     return null;
             }
+        }
+
+        private static string DescribeCanal(Canal canal)
+        {
+            if (!canal.IsDug) return $"[E] Đào mương — {Percent(canal.DigProgress)}";
+            return canal.IsFlowing
+                ? $"Mương có nước (cách ao {canal.Distance} ô) — tưới ruộng sát bên"
+                : $"Mương khô — phải nối liền tới ao (nước tự chảy tối đa {CanalNetwork.GravityReach} ô)";
         }
 
         private static string DescribeMortar(RiceMortar mortar)

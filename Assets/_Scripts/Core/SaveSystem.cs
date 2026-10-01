@@ -36,6 +36,8 @@ namespace PrehistoricTribe
 
         // M5d/F5 (save cũ thiếu → cối giã để trống)
         public List<RiceMortarSaveData> riceMortars = new List<RiceMortarSaveData>();
+        // M5d/F6 (save cũ thiếu → mương chưa đào)
+        public List<CanalSaveData> canals = new List<CanalSaveData>();
     }
 
     public static class SaveSystem

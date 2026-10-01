@@ -68,6 +68,9 @@ namespace PrehistoricTribe.EditorTools
         public const string SeedlingDataPath = "Assets/_Data/CropData_RiceSeedling.asset";
         private const string WellPrefabPath = "Assets/Prefabs/Buildings/Well.prefab";
         public const string MortarDataPath = "Assets/_Data/BuildingData_RiceMortar.asset";
+        public const string CanalDataPath = "Assets/_Data/BuildingData_Canal.asset";
+        private const string CanalPrefabPath = "Assets/Prefabs/Buildings/Canal.prefab";
+        public const string TechIrrigationPath = "Assets/_Data/TechNode_Irrigation.asset";
         private const string MortarPrefabPath = "Assets/Prefabs/Buildings/RiceMortar.prefab";
 
         private const string HutPrefabPath = "Assets/Prefabs/Buildings/Hut.prefab";
@@ -89,7 +92,7 @@ namespace PrehistoricTribe.EditorTools
             if (!ConfirmOverwrite("Tạo lại prefab placeholder?",
                     "Prefab lều/kho/cây/heo rừng đã tồn tại. Tạo lại sẽ ghi đè mọi chỉnh sửa hoặc model thật bạn đã thay vào.",
                     HutPrefabPath, StoragePrefabPath, BoarPrefabPath, TreePrefabPath, VillagerPrefabPath, WolfPrefabPath,
-                    GoatPrefabPath, PondPrefabPath, DryFieldPrefabPath, PaddyFieldPrefabPath, WellPrefabPath, SeedbedPrefabPath, MortarPrefabPath))
+                    GoatPrefabPath, PondPrefabPath, DryFieldPrefabPath, PaddyFieldPrefabPath, WellPrefabPath, SeedbedPrefabPath, MortarPrefabPath, CanalPrefabPath))
                 return;
 
             Foods foods = EnsureResourceTypes(out var wood, out var knowledge);
@@ -125,6 +128,10 @@ namespace PrehistoricTribe.EditorTools
             SaveSingleLevelBuilding(MortarDataPath, "rice_mortar", "Cối giã", SavePrefab(BuildRiceMortar(sheaf, riceSeed, foods.rice), MortarPrefabPath),
                 "Phơi bó lúa trên giàn cho khô, tuốt lấy thóc, giã thóc thành gạo. Luôn chừa thóc làm giống",
                 unlockedByDefault: false, waterWithin: 0f, Cost(wood, 6));
+            // M5d/F6: mương dẫn nước từ ao tới ruộng (công nghệ Thủy lợi).
+            SaveSingleLevelBuilding(CanalDataPath, "canal", "Mương", SavePrefab(BuildCanal(), CanalPrefabPath),
+                "Đào nối liền từ ao: nước tự chảy theo mương (tối đa 8 ô), ruộng sát mương tự được tưới",
+                unlockedByDefault: false, waterWithin: 0f, Cost(wood, 1));
             BuildCropModels(foods, riceSeed, seedling, sheaf);
             BuildTechs(knowledge, riceSeed);
             ProfessionData[] professions = BuildProfessions();
@@ -493,6 +500,81 @@ namespace PrehistoricTribe.EditorTools
             SetPrivateField(mortar, "wetSheafMaterial", wetMat);
             SetPrivateField(mortar, "drySheafMaterial", dryMat);
             SetPrivateField(mortar, "grainInMortar", grainPile);
+            return root;
+        }
+
+        /// <summary>
+        /// Một ô mương (M5d/F6): chưa đào là 4 cọc + dây căng; đào xong là lòng mương đất sẫm ở giữa + nhánh
+        /// nối sang ô bên cạnh (mương khác, ruộng, ao); có nước chảy thì mặt nước xanh hiện trong lòng mương.
+        /// </summary>
+        private static GameObject BuildCanal()
+        {
+            var root = new GameObject("Canal");
+            var col = root.AddComponent<BoxCollider>();
+            col.isTrigger = true; // đi xuyên được, chỉ để click chọn
+            col.center = new Vector3(0f, 0.05f, 0f);
+            col.size = new Vector3(0.96f, 0.1f, 0.96f);
+            root.AddComponent<BuildingInstance>();
+            AttachLevelModels(root, _ => { });
+            var t = root.transform;
+
+            var marked = new GameObject("Marked").transform;
+            marked.SetParent(t, false);
+            foreach (var corner in new[] { new Vector2(-0.22f, -0.22f), new Vector2(0.22f, -0.22f), new Vector2(0.22f, 0.22f), new Vector2(-0.22f, 0.22f) })
+                Part(marked, "Stake", PrimitiveType.Cylinder, new Vector3(corner.x, 0.08f, corner.y), new Vector3(0.025f, 0.08f, 0.025f), Palette.Wood);
+            foreach (var (pos, size) in new[] {
+                         (new Vector3(0f, 0.13f, 0.22f), new Vector3(0.44f, 0.006f, 0.006f)), (new Vector3(0f, 0.13f, -0.22f), new Vector3(0.44f, 0.006f, 0.006f)),
+                         (new Vector3(0.22f, 0.13f, 0f), new Vector3(0.006f, 0.006f, 0.44f)), (new Vector3(-0.22f, 0.13f, 0f), new Vector3(0.006f, 0.006f, 0.44f)) })
+                Part(marked, "String", PrimitiveType.Cube, pos, size, Palette.Rope);
+
+            var bed = Mat("CanalBed", Palette.Hex(0x3d2a17));
+            var bank = Mat("CanalBank", Palette.Hex(0x6b4a2a));
+            var water = Mat("CanalWater", Palette.Hex(0x3f7f95), emission: 0.08f);
+            const float width = 0.4f;
+
+            GameObject Segment(string name, Vector3 center, Vector3 size, out GameObject waterSurface)
+            {
+                var seg = new GameObject(name).transform;
+                seg.SetParent(t, false);
+                Part(seg, "Bed", PrimitiveType.Cube, center + new Vector3(0f, 0.004f, 0f), new Vector3(size.x, 0.008f, size.z), bed);
+                waterSurface = Part(t, $"{name}Water", PrimitiveType.Cube, center + new Vector3(0f, 0.018f, 0f), new Vector3(size.x, 0.006f, size.z), water);
+                waterSurface.GetComponent<Renderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                waterSurface.SetActive(false);
+                seg.gameObject.SetActive(false);
+                return seg.gameObject;
+            }
+
+            var waters = new GameObject[5];
+            var center = Segment("Center", Vector3.zero, new Vector3(width, 0f, width), out waters[0]);
+            // Bờ đất đắp 4 góc giữa các nhánh.
+            foreach (var c in new[] { new Vector2(-1, -1), new Vector2(1, -1), new Vector2(1, 1), new Vector2(-1, 1) })
+                Part(center.transform, "Bank", PrimitiveType.Cube, new Vector3(c.x * 0.24f, 0.025f, c.y * 0.24f), new Vector3(0.08f, 0.05f, 0.08f), bank);
+            var arms = new GameObject[4];
+            Vector3[] dirs = { Vector3.forward, Vector3.right, Vector3.back, Vector3.left };
+            string[] names = { "ArmN", "ArmE", "ArmS", "ArmW" };
+            for (int i = 0; i < 4; i++)
+            {
+                Vector3 d = dirs[i];
+                Vector3 size = new Vector3(Mathf.Abs(d.x) > 0f ? 0.3f : width, 0f, Mathf.Abs(d.z) > 0f ? 0.3f : width);
+                arms[i] = Segment(names[i], d * 0.35f, size, out waters[i + 1]);
+                Vector3 side = new Vector3(d.z, 0f, d.x); // vuông góc với nhánh
+                Part(arms[i].transform, "Bank", PrimitiveType.Cube, d * 0.35f + side * 0.24f + new Vector3(0f, 0.025f, 0f),
+                    new Vector3(Mathf.Abs(d.x) > 0f ? 0.3f : 0.08f, 0.05f, Mathf.Abs(d.z) > 0f ? 0.3f : 0.08f), bank);
+                Part(arms[i].transform, "Bank", PrimitiveType.Cube, d * 0.35f - side * 0.24f + new Vector3(0f, 0.025f, 0f),
+                    new Vector3(Mathf.Abs(d.x) > 0f ? 0.3f : 0.08f, 0.05f, Mathf.Abs(d.z) > 0f ? 0.3f : 0.08f), bank);
+            }
+
+            var source = root.AddComponent<WaterSource>();
+            SetPrivateField(source, "radius", 0.2f);
+            SetPrivateField(source, "feedsPaddies", true);
+            source.enabled = false; // chỉ là nguồn nước khi có nước chảy
+
+            var canal = root.AddComponent<Canal>();
+            SetPrivateField(canal, "markedVisual", marked.gameObject);
+            SetPrivateField(canal, "centerTrench", center);
+            SetPrivateField(canal, "armTrenches", arms);
+            SetPrivateField(canal, "waterSurfaces", waters);
+            SetPrivateField(canal, "waterSource", source);
             return root;
         }
 
@@ -1017,6 +1099,19 @@ namespace PrehistoricTribe.EditorTools
             rice.grantOnUnlock = Amounts(riceSeed, 4); // ít thóc giống để bắt đầu vụ đầu tiên
             if (isNew) AssetDatabase.CreateAsset(rice, TechRicePath);
             else EditorUtility.SetDirty(rice);
+
+            var irrigation = AssetDatabase.LoadAssetAtPath<TechNode>(TechIrrigationPath);
+            isNew = irrigation == null;
+            if (isNew) irrigation = ScriptableObject.CreateInstance<TechNode>();
+            irrigation.id = "tech_irrigation";
+            irrigation.displayName = "Thủy lợi";
+            irrigation.cost = Amounts(knowledge, 15);
+            irrigation.prerequisites = new List<TechNode> { rice };
+            irrigation.unlockedBuildingIds = new List<string> { "canal" };
+            irrigation.unlockedCropIds = new List<string>();
+            irrigation.grantOnUnlock = new List<ResourceAmount>();
+            if (isNew) AssetDatabase.CreateAsset(irrigation, TechIrrigationPath);
+            else EditorUtility.SetDirty(irrigation);
         }
 
         // ─── Ao cá ───────────────────────────────────────────────────────────

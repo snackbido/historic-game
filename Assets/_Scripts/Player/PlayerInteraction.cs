@@ -34,6 +34,9 @@ namespace PrehistoricTribe
                 case AnimalController animal:
                     TamingSystem.Instance.TryInteract(animal);
                     break;
+                case Canal canal:
+                    canal.DoDigWork();
+                    break;
                 case RiceMortar mortar:
                     if (!mortar.DoWork()) EventBus.RaiseNotification(mortar.IdleReason());
                     break;

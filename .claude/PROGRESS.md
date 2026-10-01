@@ -113,7 +113,7 @@ Quyết định user: quy trình **vừa phải** (lúa ~6 bước: làm đất 
 - [x] F3 Gieo mạ & cấy: ô ươm mạ (gieo thóc giống → mạ), nhổ mạ, cấy vào ruộng nước đã cày + ngập; giữ thóc giống sau gặt
 - [x] F4 Chăm sóc: cỏ dại mọc giảm năng suất → làm cỏ; bón phân (phân từ vật nuôi) tăng năng suất
 - [x] F5 Sau gặt: lúa gặt về là bó lúa → phơi/tuốt/giã ở công trình Cối giã → gạo ăn được
-- [ ] F6 Mương dẫn nước (tech Thủy lợi): đào mương từ ao, ruộng cạnh mương tự có nước
+- [x] F6 Mương dẫn nước (tech Thủy lợi): đào mương từ ao, ruộng cạnh mương tự có nước
 - [ ] F7 Guồng nước (tech): đặt bên ao/đầu mương, bơm nước mạnh → ruộng nối mương luôn đầy nước
 
 ## Milestone 6 — Thiên tai
@@ -353,6 +353,17 @@ Quyết định user: quy trình **vừa phải** (lúa ~6 bước: làm đất 
 - HUD: thêm nhãn "Lúa bó"; bảng hạt giống dời xuống -290, công nghệ -500 (menu xây giờ 7 nút).
 - Test: 7 test mới `Milestone5dMortarTests.cs`, sửa test lúa cũ (ra bó lúa). **127/127 test PlayMode pass**.
 - Lưu ý cân bằng: 1 vụ lúa = 4 bó → 8 thóc → giã được ~4–8 gạo (tùy thóc giống còn) — ít hơn trước (6 gạo + 2 thóc); cần chơi thử.
+
+## Nhật ký phiên làm việc 2026-10-01 (phần 13 — M5d/F6 mương)
+- Công nghệ mới **Thủy lợi** (`tech_irrigation`, 15 tri thức, cần Trồng lúa) mở công trình **Mương** (`canal`, 1 gỗ, 1 ô, đi xuyên được).
+- `Farming/Canal.cs`: mới đặt là cọc + dây đánh dấu → đào 4 lượt (nông dân được ra lệnh / tự làm khi rảnh, người chơi bấm E). Đào xong thì nhường phím E cho ruộng bên cạnh (bỏ khỏi `InteractableRegistry`).
+- `CanalNetwork`: mương đã đào cách mép ao ≤ 1,2m là đầu nguồn; nước loang sang mương liền kề 4 hướng tới tối đa `GravityReach` = 8 ô (F7 guồng nước sẽ đẩy xa hơn). Đoạn chưa đào chặn dòng. Tính lại khi đặt công trình / đào xong / tải game (cờ dirty, chạy trong `Update` của mương).
+- Mương có nước: bật `WaterSource` (bán kính 0,2) → xây được ruộng nước gần mương, gánh nước từ mương; ruộng nằm sát (4 hướng) tự được tưới `IrrigationPerSecond` 1/12 (đầy sau ~12s) và không còn `IsThirsty` → nông dân khỏi gánh.
+- Hình: lòng mương đất sẫm + bờ đắp, nhánh nối sang mương/ruộng/ao bên cạnh, mặt nước xanh khi có nước. Gợi ý: "[E] Đào mương — N%". Lưu/tải tiến độ đào (`SaveData.canals`).
+- Sửa lỗi teardown: mương cuối cùng bị hủy chỉ xóa cờ tưới, không tính lại (Grid đã bị hủy).
+- Bảng hạt giống dời xuống -320, công nghệ -530 (menu xây 8 nút, công nghệ 3 mục).
+- Test: 8 test mới `Milestone5dCanalTests.cs`. **135/135 test PlayMode pass**.
+- Lưu ý: cây trang trí trong scene không chặn đặt công trình (mương/ruộng có thể đè lên gốc cây) — vấn đề có sẵn từ trước.
 
 ## Vấn đề đang tồn đọng (Known issues / Open questions)
 - [x] Chế độ combat: lai (2026-09-26) + chi tiết chỉ huy NPC theo nghề (2026-09-30)

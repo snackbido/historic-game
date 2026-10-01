@@ -114,6 +114,9 @@ namespace PrehistoricTribe
             return true;
         }
 
+        /// <summary>Ô lưới chứa điểm này (vd tìm ruộng nằm sát mương).</summary>
+        public Vector3Int WorldToCell(Vector3 position) => grid.WorldToCell(position);
+
         /// <summary>Tâm ô trên mặt đất (y = 0), không phụ thuộc cellSize trục đứng của Grid.</summary>
         private Vector3 CellToGround(Vector3Int cell)
         {
@@ -138,7 +141,7 @@ namespace PrehistoricTribe
             if (WaterSource.IsOnWater(center, WaterClearance)) return "Không xây đè lên mặt nước";
             // Cần nguồn nước lớn (ao, mương) — giếng không đủ nước cho ruộng ngập.
             if (data.requiresWaterWithin > 0f && !WaterSource.AnyWithin(center, data.requiresWaterWithin, forPaddy: true))
-                return $"{data.displayName} phải ở gần nguồn nước lớn (ao)";
+                return $"{data.displayName} phải ở gần nguồn nước lớn (ao, mương có nước)";
 
             if (!ResourceManager.Instance.CanAfford(data.costs)) return "Chưa đủ tài nguyên";
             return null;

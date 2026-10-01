@@ -45,6 +45,9 @@ namespace PrehistoricTribe
                 case RiceMortar mortar when profession.Can(NpcCapability.Farm):
                     return new MortarJob(mortar);
 
+                case Canal canal when !canal.IsDug && profession.Can(NpcCapability.Farm):
+                    return new DigCanalJob(canal);
+
                 case AnimalController animal when animal.State == AnimalState.Wild && profession.Can(NpcCapability.Hunt):
                     return new HuntJob(animal, profession);
 
@@ -88,6 +91,9 @@ namespace PrehistoricTribe
                     p.NeedsWeeding || (p.CanFertilize && farm != null && farm.HasFertilizer) ||
                     (p.State == FarmPlotState.Empty && farm != null && FarmPlot.HasSeedFor(farm.CropFor(p))));
                 if (plot != null) return new FarmJob(plot, continuous: false);
+
+                Canal canal = Nearest(InteractableRegistry.All<Canal>(), position, radius, c => !c.IsDug);
+                if (canal != null) return new DigCanalJob(canal);
 
                 // Ruộng ổn rồi thì ra cối: phơi, tuốt lúa, giã gạo.
                 RiceMortar mortar = Nearest(InteractableRegistry.All<RiceMortar>(), position, radius, m => m.HasWork);
@@ -362,6 +368,20 @@ namespace PrehistoricTribe
             if (!mortar.DoWork()) return false;
             return mortar.HasWork;
         }
+    }
+
+    /// <summary>Đào mương (F6): đào tới khi xong đoạn mương.</summary>
+    public class DigCanalJob : NpcJob
+    {
+        private readonly Canal canal;
+
+        public DigCanalJob(Canal canal) => this.canal = canal;
+
+        public override MonoBehaviour Target => canal;
+        public override string Description => "đào mương";
+        public override bool IsValid => base.IsValid && !canal.IsDug;
+
+        public override bool DoWork(NpcController npc) => !canal.DoDigWork();
     }
 
     /// <summary>Săn thú hoang: đánh từ xa trong tầm đánh của nghề cho đến khi thú chết.</summary>

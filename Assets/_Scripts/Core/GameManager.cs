@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 namespace PrehistoricTribe
@@ -33,6 +34,7 @@ namespace PrehistoricTribe
                 unlockedTechIds = TechManager.Instance != null ? TechManager.Instance.GetSaveData() : new List<string>(),
                 farmPlots = InteractableRegistry.All<FarmPlot>().ConvertAll(p => p.GetSaveData()),
                 riceMortars = InteractableRegistry.All<RiceMortar>().ConvertAll(m => m.GetSaveData()),
+                canals = Canal.All.Select(c => c.GetSaveData()).ToList(),
                 animals = InteractableRegistry.All<AnimalController>().ConvertAll(a => a.GetSaveData()),
                 npcs = NpcManager.Instance != null ? NpcManager.Instance.GetSaveData() : new List<NpcSaveData>(),
                 predators = PredatorManager.Instance != null ? PredatorManager.Instance.GetSaveData() : new List<PredatorSaveData>(),
@@ -67,6 +69,8 @@ namespace PrehistoricTribe
                 LoadAnimals(data.animals);
                 foreach (var mortar in InteractableRegistry.All<RiceMortar>())
                     mortar.LoadFromSaveData(data.riceMortars?.Find(s => s.objectName == mortar.name));
+                foreach (var canal in Canal.All)
+                    canal.SetDigProgress(data.canals?.Find(s => s.objectName == canal.name)?.digWork ?? 0);
             }
 
             // Save cũ hơn (chưa có dân làng) giữ nguyên NPC đang có trong scene.

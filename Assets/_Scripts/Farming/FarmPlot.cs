@@ -157,8 +157,12 @@ namespace PrehistoricTribe
         /// <summary>Cây đang có đủ nước để lớn không.</summary>
         public bool HasEnoughWater => crop == null || Water >= crop.minWater;
 
+        /// <summary>Mương có nước chảy sát ruộng này (F6) — tự được tưới, không cần gánh.</summary>
+        public Canal IrrigatedBy { get; internal set; }
+        public bool IsIrrigated => IrrigatedBy != null && IrrigatedBy.IsFlowing;
+
         /// <summary>Đang thiếu nước (có cây mà khô, hoặc ruộng nước chưa ngập để cấy).</summary>
-        public bool IsThirsty => State switch
+        public bool IsThirsty => !IsIrrigated && State switch
         {
             FarmPlotState.Growing => Water < RefillBelow,
             FarmPlotState.Empty => IsWetField && Water < FloodedLevel,
@@ -217,6 +221,8 @@ namespace PrehistoricTribe
         {
             bool night = DayNightCycle.Instance != null && DayNightCycle.Instance.IsNight;
             Evaporate(Time.deltaTime * (night ? NightEvaporationFactor : 1f));
+            if (IsIrrigated && State != FarmPlotState.Wild && Water < 1f)
+                AddWater(CanalNetwork.IrrigationPerSecond * Time.deltaTime);
 
             // Cây chỉ lớn khi có nắng (Milestone 5c) — ban đêm đứng yên, kể cả không héo thêm.
             if (night) return;
