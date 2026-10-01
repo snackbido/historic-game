@@ -32,7 +32,8 @@ namespace PrehistoricTribe
         /// <summary>Nước do guồng nước bơm tới (đi xa hơn, tưới nhanh hơn).</summary>
         public bool IsPumped { get; private set; }
         /// <summary>Ruộng sát mương này được tưới bao nhiêu mỗi giây.</summary>
-        public float IrrigationRate => !IsFlowing ? 0f : CanalNetwork.IrrigationPerSecond * (IsPumped ? CanalNetwork.PumpedIrrigationFactor : 1f);
+        public float IrrigationRate => !IsFlowing ? 0f : CanalNetwork.IrrigationPerSecond *
+            (IsPumped ? CanalNetwork.PumpedIrrigationFactor : CanalNetwork.LowWater ? CanalNetwork.DroughtGravityIrrigationFactor : 1f);
         /// <summary>Số ô tính từ ao (1 = sát ao), 0 = không có nước.</summary>
         public int Distance { get; private set; }
 
@@ -139,6 +140,21 @@ namespace PrehistoricTribe
         public static int GravityReach = 8;
         /// <summary>Guồng nước bơm vào mương thì nước đi được bao nhiêu ô tính từ guồng.</summary>
         public static int PumpedReach = 20;
+        /// <summary>Ao cạn (hạn hán): nước tự chảy chỉ tới chừng này ô, tưới chậm hơn. Guồng nước không bị ảnh hưởng.</summary>
+        public const int DroughtGravityReach = 3;
+        public const float DroughtGravityIrrigationFactor = 0.5f;
+        private static bool lowWater;
+        public static bool LowWater
+        {
+            get => lowWater;
+            set
+            {
+                if (lowWater == value) return;
+                lowWater = value;
+                MarkDirty();
+            }
+        }
+        public static int CurrentGravityReach => LowWater ? Mathf.Min(GravityReach, DroughtGravityReach) : GravityReach;
         /// <summary>Ruộng sát mương có nước được tưới bao nhiêu mỗi giây (đầy ruộng sau ~12s).</summary>
         public static float IrrigationPerSecond = 1f / 12f;
         /// <summary>Mương có guồng bơm tưới nhanh gấp mấy lần.</summary>
@@ -185,7 +201,7 @@ namespace PrehistoricTribe
                 if (wheel != null) wheelsByCell[wheel.Cell] = wheel;
 
             // Nước tự chảy từ các mương sát ao; guồng nước bơm vào mương sát guồng, đẩy đi xa hơn.
-            var gravity = Spread(byCell, byCell.Where(p => p.Value.IsDug && TouchesOpenWater(p.Value)).Select(p => p.Key), GravityReach);
+            var gravity = Spread(byCell, byCell.Where(p => p.Value.IsDug && TouchesOpenWater(p.Value)).Select(p => p.Key), CurrentGravityReach);
             var pumped = Spread(byCell, byCell.Where(p => p.Value.IsDug && Neighbours(p.Key).Any(wheelsByCell.ContainsKey)).Select(p => p.Key), PumpedReach);
             foreach (var pair in wheelsByCell)
             {

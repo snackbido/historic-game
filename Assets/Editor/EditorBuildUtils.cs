@@ -180,7 +180,10 @@ namespace PrehistoricTribe.EditorTools
 
         public static void SetPrivateField(object target, string fieldName, object value)
         {
-            var field = target.GetType().GetField(fieldName, BindingFlags.NonPublic | BindingFlags.Instance);
+            // Dò cả lớp cha (vd field private của DisasterEvent khi cấu hình DroughtDisaster).
+            FieldInfo field = null;
+            for (var type = target.GetType(); type != null && field == null; type = type.BaseType)
+                field = type.GetField(fieldName, BindingFlags.NonPublic | BindingFlags.Instance);
             if (field == null)
             {
                 Debug.LogError($"[EditorBuildUtils] Khong tim thay field '{fieldName}' tren {target.GetType()}");

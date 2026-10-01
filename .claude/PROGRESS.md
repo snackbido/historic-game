@@ -118,7 +118,7 @@ Quyết định user: quy trình **vừa phải** (lúa ~6 bước: làm đất 
 
 ## Milestone 6 — Thiên tai (chốt với user 2026-10-01: cả 4 loại, tần suất vừa phải, thiệt hại sửa được)
 - [x] D1 Khung: `DisasterManager` (ngày đầu an toàn, sau đó 2–3 ngày/lần, báo trước nửa ngày) + `DisasterEvent` base + băng cảnh báo + công trình hư hại/sập → dân làng sửa (tốn gỗ) + lưu/tải
-- [ ] D2 Hạn hán: ruộng bốc hơi nhanh, ao cạn dần (ít cá, mương/guồng yếu) — chống bằng giếng, mương, guồng
+- [x] D2 Hạn hán: ruộng bốc hơi nhanh, ao cạn dần (ít cá, mương/guồng yếu) — chống bằng giếng, mương, guồng
 - [ ] D3 Lũ lụt: mưa lớn, ao tràn — ruộng/công trình gần ao ngập (cây chết úng, nhà hư) — chống bằng Đê (công trình mới)
 - [ ] D4 Cháy rừng: sét/lửa lan qua cây và lều — dân gánh nước dập lửa
 - [ ] D5 Bầy sói đột kích: đêm cả bầy tràn vào trại theo đợt — chống bằng hàng rào, lính gác, đuốc
@@ -381,6 +381,12 @@ Quyết định user: quy trình **vừa phải** (lúa ~6 bước: làm đất 
 - Công trình hư hại: `BuildingInstance.Damage(amount, cause)`, `IsDamaged`, `IsCollapsed` (hết máu: model đổ nghiêng + đống gỗ gãy/đá, kho không chứa, lều không ở → cả nhà ra đống lửa ngủ, cối/giếng/guồng tắt). Sửa: mỗi lượt 1 gỗ hồi 25% máu (`DoRepairWork`); công trình hư hại đăng ký vào `InteractableRegistry` → người chơi bấm E, ra lệnh chuột phải (`RepairJob`, nghề có Build), dân làng tự sửa khi rảnh (autoWork thêm Build). Thanh máu trên công trình hư hại. Lưu máu đã mất (`PlacedBuildingData.damage`).
 - Sửa lỗi: kiểm tra sập trong `Start` thay vì `OnEnable` (lúc đó HealthComponent chưa Awake, máu = 0 → tưởng sập, tắt cả cối/giếng/guồng).
 - Test: 7 test mới `Milestone6FrameworkTests.cs` (thiên tai giả `TestDisaster`). **148/148 test PlayMode pass**.
+
+## Nhật ký phiên làm việc 2026-10-01 (phần 16 — M6/D2 hạn hán)
+- `Disaster/DroughtDisaster.cs` (1 ngày game, trọng số 1): ruộng bốc hơi ×3 (`FarmPlot.EvaporationMultiplier`); ao tự nhiên (WaterSource natural + feedsPaddies) co mặt nước dần còn 55% (20% đầu cạn dần, 20% cuối đầy lại — lộ bãi cát quanh ao), cá ngừng sinh sôi (`ResourceNode.RegenPaused`); mương tự chảy chỉ tới 3 ô và tưới ×0,5 (`CanalNetwork.LowWater`). Giếng và guồng nước không bị ảnh hưởng → cách chống hạn. Gỡ hết khi kết thúc / scene đóng (OnDisable); tải game giữa đợt hạn không làm ao co vĩnh viễn.
+- Điềm báo "trời oi bức, nắng gắt không một gợn mây"; băng đỏ "HẠN HÁN: ruộng khô nhanh gấp 3, ao cạn dần — dùng giếng, guồng nước".
+- `EditorBuildUtils.SetPrivateField` giờ dò cả field private của lớp cha (cấu hình `DisasterEvent` trong scene builder qua `ConfigureDisaster`).
+- Test: 5 test mới `Milestone6DroughtTests.cs`; test lịch ngẫu nhiên chỉ kiểm tra "có thiên tai được chọn" (giờ có nhiều loại). **153/153 test PlayMode pass**.
 
 ## Vấn đề đang tồn đọng (Known issues / Open questions)
 - [x] Chế độ combat: lai (2026-09-26) + chi tiết chỉ huy NPC theo nghề (2026-09-30)

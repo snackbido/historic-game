@@ -99,6 +99,8 @@ namespace PrehistoricTribe
         /// <summary>Ruộng nước phải ngập ít nhất mức này mới cấy được lúa.</summary>
         public const float FloodedLevel = 0.6f;
         private const float NightEvaporationFactor = 0.3f;
+        /// <summary>Hệ số bốc hơi toàn cục (hạn hán M6/D2 đặt 3).</summary>
+        public static float EvaporationMultiplier { get; set; } = 1f;
 
         private GameObject cropVisual;
         private CropData crop;
@@ -255,7 +257,7 @@ namespace PrehistoricTribe
         private void Evaporate(float seconds)
         {
             if (Water <= 0f || State == FarmPlotState.Wild) return;
-            SetWater(Water - evaporationPerSecond * seconds);
+            SetWater(Water - evaporationPerSecond * EvaporationMultiplier * seconds);
         }
 
         public void AddWater(float amount) => SetWater(Water + amount);

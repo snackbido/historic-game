@@ -92,7 +92,7 @@ namespace PrehistoricTribe.Tests
             Manager.ScheduleIn(2f);
             yield return WaitUntil(() => Manager.Phase != DisasterPhase.None, 10f);
             Assert.AreEqual(DisasterPhase.Warning, Manager.Phase, "It always comes with a warning");
-            Assert.AreSame(disaster, Manager.Current);
+            Assert.IsNotNull(Manager.Current, "One of the disasters was picked");
         }
 
         [UnityTest]

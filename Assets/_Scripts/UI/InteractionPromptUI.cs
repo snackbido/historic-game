@@ -112,7 +112,7 @@ namespace PrehistoricTribe
             if (canal.IsPumped) return $"Mương có nước guồng bơm (cách guồng {canal.Distance} ô) — tưới nhanh ruộng sát bên";
             return canal.IsFlowing
                 ? $"Mương có nước (cách ao {canal.Distance} ô) — tưới ruộng sát bên"
-                : $"Mương khô — phải nối liền tới ao (nước tự chảy tối đa {CanalNetwork.GravityReach} ô)";
+                : $"Mương khô — phải nối liền tới ao (nước tự chảy tối đa {CanalNetwork.CurrentGravityReach} ô)";
         }
 
         private static string DescribeMortar(RiceMortar mortar)

@@ -151,7 +151,12 @@ namespace PrehistoricTribe.EditorTools
             SetPrivateField(cycle, "sceneCamera", mainCamera);
             CreateCampfire(new Vector3(0f, 0f, -2f));
             // Milestone 6: lịch thiên tai (các loại thiên tai gắn thêm vào object này ở D2–D5).
-            new GameObject("DisasterManager").AddComponent<DisasterManager>();
+            var disasters = new GameObject("DisasterManager");
+            disasters.AddComponent<DisasterManager>();
+            ConfigureDisaster(disasters.AddComponent<DroughtDisaster>(), "drought", "Hạn hán",
+                "trời oi bức, nắng gắt không một gợn mây",
+                "ruộng khô nhanh gấp 3, ao cạn dần — dùng giếng, guồng nước",
+                "Hạn hán đã qua — trời dịu mát, ao đầy nước trở lại", durationDays: 1f);
 
             var resources = new GameObject("ResourceNodes").transform;
             for (int i = 0; i < TreePositions.Length; i++)
@@ -735,6 +740,18 @@ namespace PrehistoricTribe.EditorTools
             tmp.text = string.Empty;
             var notificationUI = labelGO.AddComponent<NotificationUI>();
             SetPrivateField(notificationUI, "label", tmp);
+        }
+
+        private static void ConfigureDisaster(DisasterEvent disaster, string id, string displayName, string warning,
+            string active, string end, float durationDays, float weight = 1f)
+        {
+            SetPrivateField(disaster, "id", id);
+            SetPrivateField(disaster, "displayName", displayName);
+            SetPrivateField(disaster, "warningMessage", warning);
+            SetPrivateField(disaster, "activeMessage", active);
+            SetPrivateField(disaster, "endMessage", end);
+            SetPrivateField(disaster, "durationDays", durationDays);
+            SetPrivateField(disaster, "weight", weight);
         }
 
         private static void CreateDisasterBanner(Transform canvasTransform)

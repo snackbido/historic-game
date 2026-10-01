@@ -29,13 +29,15 @@ namespace PrehistoricTribe
         public float WorkRange => workRange;
         public bool Regenerates => regenInterval > 0f;
         public bool IsDepleted => amountRemaining <= 0;
+        /// <summary>Tạm ngừng sinh sôi lại (vd ao cạn khi hạn hán).</summary>
+        public bool RegenPaused { get; set; }
 
         private void OnEnable() => InteractableRegistry.Register(this);
         private void OnDisable() => InteractableRegistry.Unregister(this);
 
         private void Update()
         {
-            if (!Regenerates || amountRemaining >= maxAmount) return;
+            if (!Regenerates || RegenPaused || amountRemaining >= maxAmount) return;
 
             regenTimer += Time.deltaTime;
             if (regenTimer < regenInterval) return;
