@@ -3,11 +3,12 @@ using UnityEngine;
 
 namespace PrehistoricTribe
 {
-    /// <summary>Loại ruộng (Milestone 5d): ruộng cạn cho rau/quả, ruộng nước cho lúa.</summary>
+    /// <summary>Loại ruộng (Milestone 5d): ruộng cạn cho rau/quả, ruộng nước cấy lúa, ruộng mạ ươm mạ.</summary>
     public enum FieldType
     {
         Dry,
-        Paddy
+        Paddy,
+        Seedbed
     }
 
     [CreateAssetMenu(fileName = "NewCropData", menuName = "PrehistoricTribe/Crop Data")]
@@ -24,6 +25,12 @@ namespace PrehistoricTribe
 
         [Tooltip("Mức nước tối thiểu (0..1) của ruộng để cây còn lớn; thấp hơn là khô hạn (lúa cần ruộng còn ngập)")]
         [Range(0f, 1f)] public float minWater = 0.01f;
+
+        [Tooltip("Giống tốn khi gieo/cấy (vd mạ: 1 thóc giống; lúa: 1 bó mạ). Trống = không tốn")]
+        public List<ResourceAmount> plantCost = new List<ResourceAmount>();
+
+        [Tooltip("Động từ khi thu hoạch hiện trên gợi ý, vd \"Thu hoạch\", \"Nhổ\"")]
+        public string harvestVerb = "Thu hoạch";
 
         [Tooltip("Thời gian (giây) từ khi gieo hạt đến khi nảy mầm")]
         public float timeToSprout = 10f;

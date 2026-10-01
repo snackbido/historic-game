@@ -16,5 +16,8 @@ namespace PrehistoricTribe
 
         [Tooltip("id của các CropData được mở khóa khi tech này hoàn thành")]
         public List<string> unlockedCropIds = new List<string>();
+
+        [Tooltip("Tặng ngay khi nghiên cứu xong (vd Trồng lúa → ít thóc giống để bắt đầu)")]
+        public List<ResourceAmount> grantOnUnlock = new List<ResourceAmount>();
     }
 }

@@ -57,6 +57,8 @@ namespace PrehistoricTribe
             if (!ResourceManager.Instance.SpendAll(tech.cost)) return false;
 
             ApplyUnlock(tech);
+            foreach (var grant in tech.grantOnUnlock)
+                if (grant.type != null) ResourceManager.Instance.AddResource(grant.type, grant.amount);
             EventBus.RaiseTechUnlocked(tech);
             return true;
         }

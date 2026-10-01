@@ -83,6 +83,7 @@ namespace PrehistoricTribe.Tests
             Assert.AreEqual(FieldType.Paddy, paddy.FieldType);
             ReadyToPlant(paddy);
             Assert.IsFalse(paddy.Plant(Berry), "Berries don't grow in a flooded paddy");
+            ResourceManager.Instance.AddResource(Res("Seedling"), 1); // F3: cấy lúa cần mạ
             Assert.IsTrue(paddy.Plant(Rice));
         }
 
@@ -141,6 +142,7 @@ namespace PrehistoricTribe.Tests
                 for (int i = 0; i < 3; i++) dry.DoClearWork();
                 var paddy = Place(PaddyField, PondSideCell);
                 ReadyToPlant(paddy);
+                ResourceManager.Instance.AddResource(Res("Seedling"), 1);
                 Assert.IsTrue(paddy.Plant(Rice));
                 float progress = dry.ClearProgress;
 

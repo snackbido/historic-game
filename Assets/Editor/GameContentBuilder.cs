@@ -63,6 +63,9 @@ namespace PrehistoricTribe.EditorTools
         private const string DryFieldPrefabPath = "Assets/Prefabs/Buildings/DryField.prefab";
         private const string PaddyFieldPrefabPath = "Assets/Prefabs/Buildings/PaddyField.prefab";
         public const string WellDataPath = "Assets/_Data/BuildingData_Well.asset";
+        public const string SeedbedDataPath = "Assets/_Data/BuildingData_Seedbed.asset";
+        private const string SeedbedPrefabPath = "Assets/Prefabs/Buildings/Seedbed.prefab";
+        public const string SeedlingDataPath = "Assets/_Data/CropData_RiceSeedling.asset";
         private const string WellPrefabPath = "Assets/Prefabs/Buildings/Well.prefab";
 
         private const string HutPrefabPath = "Assets/Prefabs/Buildings/Hut.prefab";
@@ -84,7 +87,7 @@ namespace PrehistoricTribe.EditorTools
             if (!ConfirmOverwrite("Tạo lại prefab placeholder?",
                     "Prefab lều/kho/cây/heo rừng đã tồn tại. Tạo lại sẽ ghi đè mọi chỉnh sửa hoặc model thật bạn đã thay vào.",
                     HutPrefabPath, StoragePrefabPath, BoarPrefabPath, TreePrefabPath, VillagerPrefabPath, WolfPrefabPath,
-                    GoatPrefabPath, PondPrefabPath, DryFieldPrefabPath, PaddyFieldPrefabPath, WellPrefabPath))
+                    GoatPrefabPath, PondPrefabPath, DryFieldPrefabPath, PaddyFieldPrefabPath, WellPrefabPath, SeedbedPrefabPath))
                 return;
 
             Foods foods = EnsureResourceTypes(out var wood, out var knowledge);
@@ -107,8 +110,14 @@ namespace PrehistoricTribe.EditorTools
             SavePrefab(BuildPond(foods.fish), PondPrefabPath);
             BuildWildBoarContent(foods);
             BuildGoatContent(foods);
-            BuildCropModels(foods);
-            BuildTechs(knowledge);
+            // M5d/F3: thóc giống (gieo mạ) và mạ (cấy lúa) — vật tư nông nghiệp, không ăn được.
+            var riceSeed = SaveResourceType("RiceSeed", "rice_seed", "Thóc giống", ResourceCategory.Material);
+            var seedling = SaveResourceType("Seedling", "rice_seedling", "Mạ", ResourceCategory.Material);
+            SaveSingleLevelBuilding(SeedbedDataPath, "seedbed", "Ruộng mạ", SavePrefab(BuildField(FieldType.Seedbed), SeedbedPrefabPath),
+                "Ươm mạ: gieo thóc giống trên đất ngập nước, mạ lên thì nhổ đem cấy sang ruộng nước",
+                unlockedByDefault: false, waterWithin: 0f, Cost(wood, 2));
+            BuildCropModels(foods, riceSeed, seedling);
+            BuildTechs(knowledge, riceSeed);
             ProfessionData[] professions = BuildProfessions();
             SavePrefab(BuildVillager(professions), VillagerPrefabPath);
             BuildWolfContent(foods.meat);
@@ -293,8 +302,8 @@ namespace PrehistoricTribe.EditorTools
         /// </summary>
         private static GameObject BuildField(FieldType type)
         {
-            bool paddy = type == FieldType.Paddy;
-            var root = new GameObject(paddy ? "PaddyField" : "DryField");
+            bool paddy = type != FieldType.Dry; // ruộng nước + ruộng mạ: đất ngập, có bờ
+            var root = new GameObject(type == FieldType.Paddy ? "PaddyField" : type == FieldType.Seedbed ? "Seedbed" : "DryField");
             var col = root.AddComponent<BoxCollider>();
             col.isTrigger = true; // không chặn đường, chỉ để click chọn
             col.center = new Vector3(0f, 0.05f, 0f);
@@ -304,8 +313,8 @@ namespace PrehistoricTribe.EditorTools
 
             var plot = root.AddComponent<FarmPlot>();
             SetupFieldPlot(plot, type, startsWild: true);
-            SetPrivateField(plot, "clearWorkNeeded", paddy ? 12 : 8); // đắp bờ lâu hơn
-            SetPrivateField(plot, "plowWorkNeeded", paddy ? 4 : 3);
+            SetPrivateField(plot, "clearWorkNeeded", type == FieldType.Paddy ? 12 : type == FieldType.Seedbed ? 4 : 8); // đắp bờ lâu hơn
+            SetPrivateField(plot, "plowWorkNeeded", type == FieldType.Seedbed ? 2 : paddy ? 4 : 3);
             return root;
         }
 
@@ -315,7 +324,7 @@ namespace PrehistoricTribe.EditorTools
         /// </summary>
         public static void SetupFieldPlot(FarmPlot plot, FieldType type, bool startsWild, float startWater = 0f)
         {
-            bool paddy = type == FieldType.Paddy;
+            bool paddy = type != FieldType.Dry;
             var t = plot.transform;
 
             GameObject wild = null;
@@ -906,7 +915,7 @@ namespace PrehistoricTribe.EditorTools
 
         // ─── Công nghệ ───────────────────────────────────────────────────────
         /// <summary>Nông nghiệp mở thêm Rau; công nghệ mới "Trồng lúa" (cần Nông nghiệp) mở cây Lúa.</summary>
-        private static void BuildTechs(ResourceTypeData knowledge)
+        private static void BuildTechs(ResourceTypeData knowledge, ResourceTypeData riceSeed)
         {
             var farming = AssetDatabase.LoadAssetAtPath<TechNode>(TechFarmingPath);
             if (farming == null)
@@ -926,8 +935,9 @@ namespace PrehistoricTribe.EditorTools
             rice.displayName = "Trồng lúa";
             rice.cost = Amounts(knowledge, 10);
             rice.prerequisites = new List<TechNode> { farming };
-            rice.unlockedBuildingIds = new List<string> { "paddy_field" };
-            rice.unlockedCropIds = new List<string> { "rice" };
+            rice.unlockedBuildingIds = new List<string> { "paddy_field", "seedbed" };
+            rice.unlockedCropIds = new List<string> { "rice", "rice_seedling" };
+            rice.grantOnUnlock = Amounts(riceSeed, 4); // ít thóc giống để bắt đầu vụ đầu tiên
             if (isNew) AssetDatabase.CreateAsset(rice, TechRicePath);
             else EditorUtility.SetDirty(rice);
         }
@@ -987,25 +997,76 @@ namespace PrehistoricTribe.EditorTools
             return crop;
         }
 
-        private static void BuildCropModels(Foods foods)
+        private static void BuildCropModels(Foods foods, ResourceTypeData riceSeed, ResourceTypeData seedling)
         {
             BuildBerryCrop(foods.berries);
-            BuildRiceCrop(foods.rice);
+            BuildRiceCrop(foods.rice, riceSeed, seedling);
+            BuildSeedlingCrop(riceSeed, seedling);
             BuildVegetableCrop(foods.vegetables);
         }
 
-        /// <summary>Lúa (E3): lâu lớn nhất, thu nhiều nhất — mở bằng công nghệ "Trồng lúa".</summary>
-        private static void BuildRiceCrop(ResourceTypeData rice)
+        /// <summary>
+        /// Mạ (F3): gieo thóc giống trên ruộng mạ ngập nước → mạ lên dày → nhổ được 3 bó mạ. Mạ già quá thì hỏng.
+        /// </summary>
+        private static void BuildSeedlingCrop(ResourceTypeData riceSeed, ResourceTypeData seedling)
+        {
+            var crop = SaveCropData(SeedlingDataPath, "rice_seedling", "Mạ", false, sprout: 10f, mature: 20f, wither: 60f,
+                seedling, 3, FieldType.Seedbed);
+            crop.minWater = 0.3f;
+            crop.plantCost = Amounts(riceSeed, 1);
+            crop.harvestVerb = "Nhổ";
+            var grainMat = Mat("SoakedSeed", Palette.Hex(0xd8c9a0));
+            var shootMat = Mat("SeedlingShoot", Palette.Hex(0x9ed65a));
+            var deadMat = Mat("SeedlingOld", Palette.Hex(0xb5a65a));
+
+            // Thóc rải dày khắp ô (không theo hàng như cây trồng khác).
+            crop.seedModel = SaveCropStage("Seedling_Seed", (t, p) =>
+            {
+                for (int i = 0; i < 3; i++)
+                    Part(t, "Grain", PrimitiveType.Sphere, p + new Vector3((i - 1) * 0.07f, 0.05f, (i % 2) * 0.05f), Vector3.one * 0.035f, grainMat);
+            });
+            crop.sproutModel = SaveCropStage("Seedling_Sprout", (t, p) =>
+            {
+                for (int i = 0; i < 4; i++)
+                    Part(t, "Shoot", PrimitiveType.Cylinder, p + new Vector3((i - 1.5f) * 0.05f, 0.07f, (i % 2) * 0.04f), new Vector3(0.01f, 0.04f, 0.01f), shootMat);
+            });
+            // Mạ lên dày như thảm (khác hẳn khóm lúa cấy thưa theo hàng).
+            crop.matureModel = SaveCropStage("Seedling_Mature", (t, p) =>
+            {
+                for (int i = 0; i < 12; i++)
+                    Part(t, "Shoot", PrimitiveType.Cylinder, p + new Vector3((i % 4 - 1.5f) * 0.05f, 0.1f, (i / 4 - 1) * 0.06f),
+                        new Vector3(0.012f, 0.065f, 0.012f), shootMat, new Vector3((i / 4 - 1) * 6f, 0f, (i % 4 - 1.5f) * 6f));
+            });
+            crop.witheredModel = SaveCropStage("Seedling_Old", (t, p) =>
+            {
+                for (int i = 0; i < 12; i++)
+                    Part(t, "Old", PrimitiveType.Cylinder, p + new Vector3((i % 4 - 1.5f) * 0.05f, 0.09f, (i / 4 - 1) * 0.06f),
+                        new Vector3(0.012f, 0.065f, 0.012f), deadMat, new Vector3(0f, 0f, 25f));
+            });
+            EditorUtility.SetDirty(crop);
+        }
+
+        /// <summary>
+        /// Lúa: cấy bằng mạ (1 bó mạ / ruộng), lâu lớn nhất, thu nhiều nhất + để lại thóc giống cho vụ sau.
+        /// </summary>
+        private static void BuildRiceCrop(ResourceTypeData rice, ResourceTypeData riceSeed, ResourceTypeData seedling)
         {
             var crop = SaveCropData(RiceDataPath, "rice", "Lúa", false, sprout: 20f, mature: 40f, wither: 60f, rice, 6, FieldType.Paddy);
             crop.minWater = 0.3f; // lúa cần ruộng còn ngập nước mới lớn
-            var seedMat = Mat("RiceSeed", Palette.Hex(0xd8c9a0));
+            crop.plantCost = Amounts(seedling, 1);
+            crop.harvestYield.Add(new ResourceAmount { type = riceSeed, amount = 2 }); // giữ thóc giống
+            crop.harvestVerb = "Gặt";
             var stalkMat = Mat("RiceStalk", Palette.Hex(0x7fb24a));
+            var youngMat = Mat("SeedlingShoot", Palette.Hex(0x9ed65a));
             var grainMat = Mat("RiceGrain", Palette.Hex(0xe2c25a), emission: 0.1f);
             var deadMat = Mat("RiceWithered", Palette.Hex(0x8a7a5a));
 
+            // Vừa cấy: từng khóm mạ nhỏ cắm theo hàng.
             crop.seedModel = SaveCropStage("Rice_Seed", (t, p) =>
-                Part(t, "Seed", PrimitiveType.Sphere, p + new Vector3(0f, 0.02f, 0f), Vector3.one * 0.06f, seedMat));
+            {
+                for (int i = -1; i <= 1; i += 2)
+                    Part(t, "Seedling", PrimitiveType.Cylinder, p + new Vector3(i * 0.015f, 0.08f, 0f), new Vector3(0.01f, 0.045f, 0.01f), youngMat, new Vector3(0f, 0f, i * 10f));
+            });
             crop.sproutModel = SaveCropStage("Rice_Sprout", (t, p) =>
             {
                 for (int i = -1; i <= 1; i++)

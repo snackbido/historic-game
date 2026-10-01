@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace PrehistoricTribe
@@ -89,7 +90,10 @@ namespace PrehistoricTribe
         public FarmPlotState State { get; private set; } = FarmPlotState.Empty;
         public CropData Crop => crop;
         public FieldType FieldType => fieldType;
-        public string FieldName => fieldType == FieldType.Paddy ? "ruộng nước" : "ruộng cạn";
+        public string FieldName => fieldType switch { FieldType.Paddy => "ruộng nước", FieldType.Seedbed => "ruộng mạ", _ => "ruộng cạn" };
+
+        /// <summary>Ruộng nước / ruộng mạ: phải giữ ngập nước.</summary>
+        public bool IsWetField => fieldType != FieldType.Dry;
 
         /// <summary>0..1 từ lúc gieo tới lúc chín — dùng cho gợi ý trên UI.</summary>
         public float GrowthProgress
@@ -124,15 +128,15 @@ namespace PrehistoricTribe
         public bool IsThirsty => State switch
         {
             FarmPlotState.Growing => Water < RefillBelow,
-            FarmPlotState.Empty => fieldType == FieldType.Paddy && Water < FloodedLevel,
+            FarmPlotState.Empty => IsWetField && Water < FloodedLevel,
             _ => false
         };
 
         /// <summary>Đang có cây mà nước xuống dưới mức này thì nên đi gánh nước thêm.</summary>
-        private float RefillBelow => fieldType == FieldType.Paddy ? FloodedLevel : 0.35f;
+        private float RefillBelow => IsWetField ? FloodedLevel : 0.35f;
 
         /// <summary>Một chuyến gánh nước đổ vào được bao nhiêu (ruộng nước cần nhiều chuyến mới ngập).</summary>
-        public float WaterPerTrip => fieldType == FieldType.Paddy ? 0.25f : 0.4f;
+        public float WaterPerTrip => fieldType switch { FieldType.Paddy => 0.25f, FieldType.Seedbed => 0.35f, _ => 0.4f };
 
         /// <summary>Cây này trồng được trên ruộng này không (lúa cần ruộng nước).</summary>
         public bool Accepts(CropData data) => data != null && data.fieldType == fieldType;
@@ -145,8 +149,24 @@ namespace PrehistoricTribe
             if (State == FarmPlotState.Wild) return "Phải khai hoang trước";
             if (State == FarmPlotState.Unplowed) return "Phải cày/xới đất trước";
             if (State != FarmPlotState.Empty) return "Ruộng đang có cây";
-            if (fieldType == FieldType.Paddy && Water < FloodedLevel) return "Ruộng chưa ngập nước — phải dẫn nước vào trước khi cấy";
+            if (IsWetField && Water < FloodedLevel) return "Ruộng chưa ngập nước — phải dẫn nước vào trước khi cấy";
+            if (!HasSeedFor(data)) return MissingSeedMessage(data);
             return null;
+        }
+
+        /// <summary>Kho có đủ giống (thóc giống / mạ) để gieo cây này không.</summary>
+        public static bool HasSeedFor(CropData data) =>
+            data != null && (data.plantCost.Count == 0 || ResourceManager.Instance.CanAfford(data.plantCost));
+
+        private static string MissingSeedMessage(CropData data)
+        {
+            var names = new List<string>();
+            foreach (var cost in data.plantCost)
+                if (cost.type != null) names.Add(cost.type.displayName);
+            string missing = string.Join(", ", names);
+            return data.fieldType == FieldType.Paddy
+                ? $"Thiếu {missing} để cấy — gieo mạ ở ruộng mạ rồi nhổ mạ"
+                : $"Thiếu {missing} để gieo";
         }
 
         private void Awake()
@@ -206,6 +226,7 @@ namespace PrehistoricTribe
         public bool Plant(CropData data)
         {
             if (PlantBlocker(data) != null) return false;
+            if (data.plantCost.Count > 0 && !ResourceManager.Instance.SpendAll(data.plantCost)) return false;
 
             crop = data;
             stage = CropStage.Seed;
@@ -401,7 +422,7 @@ namespace PrehistoricTribe
 
             // Nước dâng dần trong bờ ruộng; ruộng cạn: vệt đất ướt rộng dần.
             Vector3 p = waterVisual.localPosition;
-            if (fieldType == FieldType.Paddy)
+            if (IsWetField)
                 waterVisual.localPosition = new Vector3(p.x, Mathf.Lerp(0.035f, 0.09f, Water), p.z);
             else
                 waterVisual.localScale = new Vector3(Mathf.Lerp(0.5f, 0.94f, Water), waterVisual.localScale.y, Mathf.Lerp(0.5f, 0.94f, Water));

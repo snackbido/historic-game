@@ -77,7 +77,7 @@ namespace PrehistoricTribe
                     string water = plot.HasEnoughWater ? $"nước {Percent(plot.Water)}" : "THIẾU NƯỚC — cây ngừng lớn!";
                     return $"{plot.Crop.displayName} đang lớn — {Percent(plot.GrowthProgress)} · {water}";
                 case FarmPlotState.ReadyToHarvest:
-                    return $"[E] Thu hoạch {plot.Crop.displayName} ({FormatAmounts(plot.Crop.harvestYield, "+")})";
+                    return $"[E] {plot.Crop.harvestVerb} {plot.Crop.displayName.ToLowerInvariant()} ({FormatAmounts(plot.Crop.harvestYield, "+")})";
                 case FarmPlotState.Withered:
                     return "[E] Dọn cây héo";
                 default:

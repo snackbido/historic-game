@@ -110,7 +110,7 @@ Quyết định user: một ngày **20 phút** thời gian thật (~14 phút ng�
 Quyết định user: quy trình **vừa phải** (lúa ~6 bước: làm đất → dẫn nước → gieo mạ → cấy → chăm → gặt + giã); **người chơi tự đặt ruộng** qua menu xây dựng; nước **đủ 3 giai đoạn** (gánh nước → mương → guồng nước, mở dần theo tech); **nông dân tự làm bước kế tiếp**, người chơi vẫn ra lệnh được.
 - [x] F1 Xây ruộng: "Ruộng cạn" + "Ruộng nước" trong menu xây; ruộng mới là đất hoang → nông dân khai hoang/đắp bờ; ruộng nước phải gần nguồn nước; lúa chỉ trồng ruộng nước, rau/quả mọng ruộng cạn. 2 ô vườn có sẵn giữ lại (đã khai hoang)
 - [x] F2 Làm đất + nước: cày/xới trước mỗi vụ; ruộng có mức nước (bốc hơi dần, ruộng nước cần ngập mới cấy/lớn, ruộng cạn thiếu nước thì ngừng lớn rồi héo); việc mới "gánh nước" từ ao; công trình Giếng
-- [ ] F3 Gieo mạ & cấy: ô ươm mạ (gieo thóc giống → mạ), nhổ mạ, cấy vào ruộng nước đã cày + ngập; giữ thóc giống sau gặt
+- [x] F3 Gieo mạ & cấy: ô ươm mạ (gieo thóc giống → mạ), nhổ mạ, cấy vào ruộng nước đã cày + ngập; giữ thóc giống sau gặt
 - [ ] F4 Chăm sóc: cỏ dại mọc giảm năng suất → làm cỏ; bón phân (phân từ vật nuôi) tăng năng suất
 - [ ] F5 Sau gặt: lúa gặt về là bó lúa → phơi/tuốt/giã ở công trình Cối giã → gạo ăn được
 - [ ] F6 Mương dẫn nước (tech Thủy lợi): đào mương từ ao, ruộng cạnh mương tự có nước
@@ -329,6 +329,14 @@ Quyết định user: quy trình **vừa phải** (lúa ~6 bước: làm đất 
 - Công trình mới **Giếng** (`well`, 8 gỗ, mở cùng tech Nông nghiệp): nguồn nước để gánh, nhưng `feedsPaddies = false` → không cho xây ruộng nước cạnh giếng (cần ao/mương).
 - Hình: đất chưa cày (phẳng, nhạt), đã cày (luống / bùn có rãnh), mặt nước đục dâng trong bờ ruộng nước, vệt đất ướt trên ruộng cạn; hàm dùng chung `GameContentBuilder.SetupFieldPlot` cho cả ruộng xây và ô vườn. Gợi ý [E] hiện % cày và mức nước, cảnh báo THIẾU NƯỚC.
 - Test: 7 test mới `Milestone5dWaterTests.cs`; cập nhật test cũ (sau thu hoạch là `Unplowed`, chờ cày lại trước khi gieo). **107/107 test PlayMode pass**. Ảnh render xác nhận các trạng thái đất, nước, giếng, người cầm gàu.
+
+## Nhật ký phiên làm việc 2026-10-01 (phần 10 — M5d/F3 gieo mạ & cấy)
+- Tài nguyên mới (vật tư, không ăn được): **Thóc giống** (`rice_seed`), **Mạ** (`rice_seedling`); nhãn hiển thị dưới dòng dân số.
+- `FieldType.Seedbed` + công trình **Ruộng mạ** (`seedbed`, 2 gỗ, mở cùng tech Trồng lúa; khai hoang 4, cày 2 lượt; như ruộng nước: phải ngập mới gieo, đặt được ở đâu cũng được — gánh nước tới). Cây **Mạ** (`CropData_RiceSeedling`): gieo tốn 1 thóc giống, 10+20s, nhổ được 3 bó mạ; để quá 60s mạ già hỏng. `FarmPlot.IsWetField` gom luật nước cho ruộng nước + ruộng mạ.
+- `CropData.plantCost` (giống tốn khi gieo/cấy) + `harvestVerb` ("Nhổ" mạ, "Gặt" lúa). Lúa: cấy tốn 1 bó mạ; gặt được 6 lúa gạo + 2 thóc giống (giữ giống cho vụ sau). `PlantBlocker` báo thiếu giống ("Thiếu Mạ để cấy — gieo mạ ở ruộng mạ rồi nhổ mạ"); nông dân tự làm chỉ gieo khi kho có giống.
+- `TechNode.grantOnUnlock`: nghiên cứu Trồng lúa tặng 4 thóc giống để bắt đầu. Ruộng nước/ruộng mạ chỉ có 1 loại cây → `FarmManager.CropFor` tự chọn (không cần bấm hạt giống); ruộng cạn vẫn theo lựa chọn.
+- Hình: thóc ngâm rải trên ruộng mạ → mạ mọc dày như thảm; lúa vừa cấy là từng khóm mạ nhỏ theo hàng.
+- Test: 6 test mới `Milestone5dSeedlingTests.cs` (gồm chuỗi đầy đủ: nông dân làm ruộng mạ → nhổ mạ → cấy sang ruộng nước); test cũ có cấy lúa được cấp mạ; nới sai số mức nước trong test lưu/tải (frame tải dài khi test chạy tăng tốc). **113/113 test PlayMode pass**.
 
 ## Vấn đề đang tồn đọng (Known issues / Open questions)
 - [x] Chế độ combat: lai (2026-09-26) + chi tiết chỉ huy NPC theo nghề (2026-09-30)

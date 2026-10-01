@@ -96,6 +96,7 @@ namespace PrehistoricTribe.Tests
             while (plot.State == FarmPlotState.Unplowed) plot.DoPlowWork();
             plot.SetWater(1f); // ngập nước mới cấy được
             FarmManager.Instance.SelectCrop(rice);
+            Rm.AddResource(Res("Seedling"), 1); // F3: cấy lúa cần mạ
             Assert.IsTrue(FarmManager.Instance.TryInteract(plot));
 
             yield return WaitUntil(() => plot.State == FarmPlotState.ReadyToHarvest, rice.timeToSprout + rice.timeToMature + 5f);

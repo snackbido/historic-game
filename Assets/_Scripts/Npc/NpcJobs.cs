@@ -82,7 +82,7 @@ namespace PrehistoricTribe
                 FarmPlot plot = Nearest(InteractableRegistry.All<FarmPlot>(), position, radius, p =>
                     p.State == FarmPlotState.ReadyToHarvest || p.State == FarmPlotState.Withered ||
                     p.State == FarmPlotState.Wild || p.State == FarmPlotState.Unplowed || p.IsThirsty ||
-                    (p.State == FarmPlotState.Empty && farm != null && farm.CropFor(p) != null));
+                    (p.State == FarmPlotState.Empty && farm != null && FarmPlot.HasSeedFor(farm.CropFor(p))));
                 if (plot != null) return new FarmJob(plot, continuous: false);
             }
 
@@ -277,8 +277,10 @@ namespace PrehistoricTribe
                     return !plot.DoPlowWork() || continuous;
 
                 case FarmPlotState.ReadyToHarvest:
+                    string verb = plot.Crop != null ? plot.Crop.harvestVerb.ToLowerInvariant() : "thu hoạch";
+                    string what = plot.Crop != null ? plot.Crop.displayName.ToLowerInvariant() : "ruộng";
                     FarmManager.Instance.TryInteract(plot);
-                    EventBus.RaiseNotification($"{npc.NpcName} thu hoạch ruộng");
+                    EventBus.RaiseNotification($"{npc.NpcName} {verb} {what}");
                     return continuous;
 
                 case FarmPlotState.Withered:
