@@ -107,7 +107,7 @@ namespace PrehistoricTribe.EditorTools
 
             var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
 
-            SetupLighting();
+            Light sun = SetupLighting();
             var environment = new GameObject("Environment").transform;
             CreateGround(environment);
             CreateDecorForest(environment);
@@ -120,7 +120,13 @@ namespace PrehistoricTribe.EditorTools
             SetPrivateField(rm, "knownResourceTypes", knownTypes);
 
             var player = CreatePlayer();
-            CreateCamera(player.transform);
+            Camera mainCamera = CreateCamera(player.transform);
+
+            // Milestone 5c: ngày/đêm điều khiển mặt trời + màu trời; đống lửa trại giữa trại.
+            var cycle = new GameObject("DayNightCycle").AddComponent<DayNightCycle>();
+            SetPrivateField(cycle, "sun", sun);
+            SetPrivateField(cycle, "sceneCamera", mainCamera);
+            CreateCampfire(new Vector3(0f, 0f, -2f));
 
             var resources = new GameObject("ResourceNodes").transform;
             for (int i = 0; i < TreePositions.Length; i++)
@@ -211,7 +217,7 @@ namespace PrehistoricTribe.EditorTools
         }
 
         // ─── World ───────────────────────────────────────────────────────────
-        private static void SetupLighting()
+        private static Light SetupLighting()
         {
             RenderSettings.ambientMode = AmbientMode.Flat;
             RenderSettings.ambientLight = new Color(0.42f, 0.42f, 0.4f);
@@ -228,6 +234,55 @@ namespace PrehistoricTribe.EditorTools
             sun.intensity = 1f;
             sun.shadows = LightShadows.Soft;
             sunGO.transform.rotation = Quaternion.Euler(50f, -30f, 0f);
+            return sun;
+        }
+
+        /// <summary>Đống lửa trại: vòng đá + củi + ngọn lửa phát sáng + đèn điểm màu cam (chỉ bật khi tối).</summary>
+        private static void CreateCampfire(Vector3 position)
+        {
+            var root = new GameObject("Campfire");
+            root.transform.position = position;
+            var t = root.transform;
+
+            for (int i = 0; i < 8; i++)
+            {
+                float a = i * 45f * Mathf.Deg2Rad;
+                Part(t, $"Stone{i}", PrimitiveType.Sphere, new Vector3(Mathf.Cos(a) * 0.32f, 0.05f, Mathf.Sin(a) * 0.32f),
+                    new Vector3(0.16f, 0.1f, 0.14f), Palette.Stone);
+            }
+            Part(t, "LogA", PrimitiveType.Cylinder, new Vector3(0f, 0.06f, 0f), new Vector3(0.08f, 0.22f, 0.08f), Palette.Wood, new Vector3(90f, 30f, 0f));
+            Part(t, "LogB", PrimitiveType.Cylinder, new Vector3(0f, 0.08f, 0f), new Vector3(0.08f, 0.22f, 0.08f), Palette.Wood, new Vector3(90f, -50f, 0f));
+
+            var flames = new GameObject("Flames");
+            flames.transform.SetParent(t, false);
+            var flameMat = Mat("Flame", Palette.Hex(0xff8a2a), emission: 1.5f);
+            var coreMat = Mat("FlameCore", Palette.Hex(0xffd36a), emission: 1.5f);
+            foreach (var renderer in new[]
+            {
+                Cone(flames.transform, "Flame", 6, new Vector3(0f, 0.08f, 0f), new Vector3(0.3f, 0.45f, 0.3f), flameMat).GetComponent<Renderer>(),
+                Cone(flames.transform, "Core", 5, new Vector3(0f, 0.08f, 0f), new Vector3(0.16f, 0.3f, 0.16f), coreMat).GetComponent<Renderer>(),
+            })
+                renderer.shadowCastingMode = ShadowCastingMode.Off;
+
+            var lightGO = new GameObject("FireLight");
+            lightGO.transform.SetParent(t, false);
+            lightGO.transform.localPosition = new Vector3(0f, 0.6f, 0f);
+            var fireLight = lightGO.AddComponent<Light>();
+            fireLight.type = LightType.Point;
+            fireLight.color = new Color(1f, 0.6f, 0.3f);
+            fireLight.range = 9f;
+            fireLight.intensity = 2.5f;
+            fireLight.shadows = LightShadows.None;
+
+            var obstacle = root.AddComponent<UnityEngine.AI.NavMeshObstacle>();
+            obstacle.shape = UnityEngine.AI.NavMeshObstacleShape.Capsule;
+            obstacle.radius = 0.4f;
+            obstacle.height = 0.4f;
+            obstacle.carving = true;
+
+            var campfire = root.AddComponent<Campfire>();
+            SetPrivateField(campfire, "fireLight", fireLight);
+            SetPrivateField(campfire, "flames", flames);
         }
 
         private static void CreateGround(Transform parent)
@@ -374,7 +429,7 @@ namespace PrehistoricTribe.EditorTools
             return playerGO;
         }
 
-        private static void CreateCamera(Transform target)
+        private static Camera CreateCamera(Transform target)
         {
             var cameraGO = new GameObject("Main Camera") { tag = "MainCamera" };
             var cam = cameraGO.AddComponent<Camera>();
@@ -389,6 +444,7 @@ namespace PrehistoricTribe.EditorTools
             var follow = cameraGO.AddComponent<CameraFollow>();
             SetPrivateField(follow, "target", target);
             follow.SnapToTarget();
+            return cam;
         }
 
         private static void CreateInteractionHighlight(PlayerInteraction interaction)

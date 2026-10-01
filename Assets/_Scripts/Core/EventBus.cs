@@ -16,6 +16,9 @@ namespace PrehistoricTribe
         /// <summary>Công trình đang được chọn thay đổi (null = bỏ chọn).</summary>
         public static event Action<BuildingInstance> OnBuildingSelected;
         public static event Action<BuildingInstance> OnBuildingUpgraded;
+        /// <summary>Trời vừa tối / vừa sáng (Milestone 5c).</summary>
+        public static event Action OnNightStarted;
+        public static event Action OnDayStarted;
 
         public static void RaiseResourceChanged(ResourceTypeData type, int newAmount) => OnResourceChanged?.Invoke(type, newAmount);
         public static void RaiseBuildingPlaced(BuildingInstance instance) => OnBuildingPlaced?.Invoke(instance);
@@ -25,5 +28,7 @@ namespace PrehistoricTribe
         public static void RaiseSelectionChanged(IReadOnlyList<NpcController> selected) => OnSelectionChanged?.Invoke(selected);
         public static void RaiseBuildingSelected(BuildingInstance building) => OnBuildingSelected?.Invoke(building);
         public static void RaiseBuildingUpgraded(BuildingInstance building) => OnBuildingUpgraded?.Invoke(building);
+        public static void RaiseNightStarted() => OnNightStarted?.Invoke();
+        public static void RaiseDayStarted() => OnDayStarted?.Invoke();
     }
 }

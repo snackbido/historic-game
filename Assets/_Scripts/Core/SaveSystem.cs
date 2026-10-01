@@ -7,7 +7,7 @@ namespace PrehistoricTribe
     [System.Serializable]
     public class SaveData
     {
-        public const int CurrentVersion = 4;
+        public const int CurrentVersion = 5;
 
         // Không gán giá trị mặc định: save cũ (chưa có field này) đọc ra 0 → biết là bản cũ,
         // tránh hiểu nhầm danh sách vật nuôi rỗng là "không còn con nào" rồi xóa hết.
@@ -29,6 +29,10 @@ namespace PrehistoricTribe
 
         // Từ saveVersion 4
         public List<PredatorSaveData> predators = new List<PredatorSaveData>();
+
+        // Từ saveVersion 5 (ngày & đêm)
+        public float timeOfDay;
+        public int day;
     }
 
     public static class SaveSystem

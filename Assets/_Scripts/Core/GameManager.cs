@@ -34,7 +34,9 @@ namespace PrehistoricTribe
                 farmPlots = InteractableRegistry.All<FarmPlot>().ConvertAll(p => p.GetSaveData()),
                 animals = InteractableRegistry.All<AnimalController>().ConvertAll(a => a.GetSaveData()),
                 npcs = NpcManager.Instance != null ? NpcManager.Instance.GetSaveData() : new List<NpcSaveData>(),
-                predators = PredatorManager.Instance != null ? PredatorManager.Instance.GetSaveData() : new List<PredatorSaveData>()
+                predators = PredatorManager.Instance != null ? PredatorManager.Instance.GetSaveData() : new List<PredatorSaveData>(),
+                timeOfDay = DayNightCycle.Instance != null ? DayNightCycle.Instance.TimeOfDay : 0f,
+                day = DayNightCycle.Instance != null ? DayNightCycle.Instance.Day : 1
             };
             SaveSystem.Save(data);
             EventBus.RaiseNotification("Đã lưu game");
@@ -71,6 +73,9 @@ namespace PrehistoricTribe
             // Save cũ hơn (chưa có thú dữ) giữ nguyên thú dữ đang có trong scene.
             if (data.saveVersion >= 4 && PredatorManager.Instance != null)
                 PredatorManager.Instance.LoadFromSaveData(data.predators);
+
+            if (data.saveVersion >= 5 && DayNightCycle.Instance != null)
+                DayNightCycle.Instance.SetTime(data.timeOfDay, data.day);
 
             EventBus.RaiseGameLoaded();
             EventBus.RaiseNotification("Đã tải game");

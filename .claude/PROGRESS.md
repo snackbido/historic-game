@@ -100,6 +100,12 @@ Quyết định user: công trình nâng cấp **5 cấp** (click công trình �
 - [x] E4 Kho: giới hạn lưu trữ theo loại (không kho ~20/loại, kho + cấp kho tăng), thịt ngoài kho hỏng dần — 2026-10-01
 - [x] E5 Dân làng ăn hằng ngày: thiếu ăn → đói, yếu, không sinh con — 2026-10-01 (**Milestone 5b hoàn tất**)
 
+## Milestone 5c — Ngày & đêm (thêm 2026-10-01)
+Quyết định user: một ngày **20 phút** thời gian thật (~14 phút ngày, ~6 phút đêm); **chỉ thể hiện bằng ánh sáng, không có chữ/đồng hồ**; ban đêm: **dân làng về lều ngủ** (người chưa có nhà ngủ quanh đống lửa; ra lệnh vẫn đánh thức được; cặp đôi sinh con về đêm tại lều), **sói rời hang lùng sục rộng hơn**, **cây trồng ngừng lớn**, **đống lửa trại chiếu sáng** (sói không dám lại gần lửa).
+- [x] N1 Chu kỳ ngày/đêm: mặt trời quay, đổi màu/độ sáng, trời tối; cây ngừng lớn ban đêm; đống lửa trại tự cháy khi tối; lưu/tải giờ trong ngày — 2026-10-01
+- [ ] N2 Ngủ: tối về lều (ẩn vào trong) / ngủ quanh đống lửa, sáng thức dậy, ngủ thì hồi máu, ra lệnh đánh thức; sinh con về đêm tại lều
+- [ ] N3 Sói ban đêm: lùng sục rộng, mò vào trại, né đống lửa; sáng về hang; người ngủ trong lều an toàn
+
 ## Milestone 6 — Thiên tai
 - [ ] DisasterManager: hệ thống sự kiện ngẫu nhiên
 - [ ] Base class DisasterEvent, tạo 1-2 loại thiên tai đầu tiên (VD: cháy rừng, lũ lụt)
@@ -126,6 +132,7 @@ Quyết định user: công trình nâng cấp **5 cấp** (click công trình �
 | 2026-09-22 | Tài nguyên "tri thức" (Milestone 4) tự sinh theo thời gian (tốc độ cố định), không gắn vào hành động gameplay | Đơn giản nhất, không phụ thuộc EventBus của các hệ thống khác; dễ cân bằng lại tốc độ sau này |
 | 2026-09-22 | Refactor `BuildingPlacer` từ 1 field `buildingToPlace` sang registry nhiều `BuildingData` + `SelectBuilding()` | Cần thiết để Tech Tree mở khóa được nhiều loại công trình khác nhau; đã ghi nợ từ Milestone 1 |
 | 2026-09-26 | Thứ tự triển khai tiếp theo: trả nợ kỹ thuật (feedback UX vật nuôi, save/load FarmPlot + Animal, test tay input) **trước** khi bắt đầu Milestone 5 | Đảm bảo M1-4 vững chắc, không cộng dồn nợ kỹ thuật trước khi mở rộng sang hệ thống mới |
+| 2026-10-01 | Thêm Milestone 5c Ngày & đêm: ngày 20 phút, chỉ ánh sáng (không đồng hồ); ban đêm dân làng ngủ (lều/đống lửa), sinh con về đêm, sói đi săn rộng, cây ngừng lớn, đống lửa chiếu sáng + đuổi sói | Chốt với user; tạo nhịp sinh hoạt và rủi ro ban đêm, gắn với lều (E2) và sói (M5.5) |
 | 2026-09-30 | Thêm Milestone 5b: công trình nâng cấp 5 cấp; lều = nhà của cặp đôi (chỉ sinh con tại lều); lương thực nhiều loại (thịt, lúa gạo, quả mọng, sữa, cá, rau…); kho giới hạn lưu trữ, thịt ngoài kho hỏng, dân làng ăn hằng ngày | User muốn công trình có chức năng riêng và nâng cấp được; làm kho/lương thực có ý nghĩa thật trong kinh tế. Chia 5 bước E1–E5 vì khối lượng lớn |
 | 2026-09-30 | M5 chỉ huy NPC: (1) tất cả NPC đều nghe lệnh (không có "lính" riêng); (2) kéo khung chuột để chọn nhiều NPC, mỗi NPC có nghề (trinh sát, thợ săn, nông dân, dân làng…) quyết định việc nó làm khi nhận lệnh; (3) UI hiển thị các NPC đang chọn theo nhóm và theo nghề | Chốt với user; nghề nghiệp gắn chỉ huy với hệ thống kinh tế (nông dân trồng trọt, thợ săn săn bắt) thay vì tách riêng quân đội |
 | 2026-09-30 | Chuyển bản Unity từ 2D top-down sang **2.5D**: model 3D low-poly + camera phối cảnh nghiêng cố định, gameplay vẫn trên mặt phẳng đất (XZ), vẫn đặt công trình theo grid | Không cần họa sĩ (dùng model miễn phí đồng phong cách), khớp game tham khảo (Banished/Frostpunk), nhẹ cho máy 8GB/mobile; bản web Three.js đã chứng minh hướng này. Loại 3D đầy đủ (camera tự do, địa hình) vì nhân khối lượng việc |
@@ -275,6 +282,13 @@ Quyết định user: công trình nâng cấp **5 cấp** (click công trình �
 - `NpcController.Fullness` (độ no 0–100, lưu trong save; save cũ = no đủ), `IsStarving` (= 0) → đi chậm ×0,6. `NpcManager.UpdateHunger(dt)`: người lớn mất 0,67 độ no/giây (trẻ con ×0,5); dưới 60 thì ăn 1 bữa (`mealCost` = 1 Thức ăn gộp → loại nào cũng được, đồ dễ hỏng trước) +40 → mỗi người lớn ~1 bữa/phút. Đói: mất 1 máu / 3s (có thể chết), không sinh con (`BirthBlocker` "Đang đói"), thông báo "Làng đang thiếu ăn! N người đói" mỗi 20s. UI: nhãn dân số "… · ĐANG ĐÓI: N", bảng "Đang chọn" đánh dấu "(đói)".
 - Test: `PlayModeTestBase` tắt `NpcManager.HungerEnabled` mặc định; test E5 gọi thẳng `UpdateHunger(giây)` để kết quả chắc chắn. **79/79 test PlayMode pass** (7 test mới `Milestone5bHungerTests.cs`).
 - **Rủi ro cân bằng chưa xử lý**: game bắt đầu với 0 thức ăn → sau ~2,5 phút cả làng đói, ~4,5 phút sau bắt đầu chết nếu người chơi chưa kiếm được thức ăn (đánh cá ở ao, săn heo, mở Nông nghiệp để trồng). Cân nhắc cho kho ban đầu một ít lương thực (vd 20 quả mọng) — cần chơi thử để quyết.
+
+## Nhật ký phiên làm việc 2026-10-01 (phần 5 — M5c/N1 chu kỳ ngày/đêm)
+- Mới `Core/DayNightCycle.cs`: `TimeOfDay` 0..1 (0 = bình minh), ngày 1200s, đêm từ 0,7 (30% = 6 phút), hoàng hôn/bình minh 4% chu kỳ (`Daylight` 1→0 mượt). Đổi hướng/màu/độ sáng mặt trời (ban ngày lên cao rồi hạ, hoàng hôn cam, đêm ánh trăng xanh 0,18), ánh sáng môi trường, màu trời + sương mù. Không có chữ/đồng hồ (theo quyết định). `SetTime(t, day)`; `EventBus.OnNightStarted/OnDayStarted`. Lưu/tải `timeOfDay` + `day` (`saveVersion` 5).
+- Mới `Building/Campfire.cs` + đống lửa giữa trại (0, -2): vòng đá, củi, ngọn lửa phát sáng, đèn điểm cam bập bùng — tự cháy khi `Daylight` < 0,6; `SafeRadius` 6m + `Campfire.IsProtected(pos)` chuẩn bị cho N3 (sói né lửa).
+- `FarmPlot`: ban đêm không lớn (cũng không héo).
+- Test: `PlayModeTestBase` dừng chu kỳ (`DayNightCycle.Running = false`) và đặt giữa trưa (0,3). 5 test mới `Milestone5cDayNightTests.cs`. Ảnh render ban đêm (trại tối xanh, chỉ ánh lửa cam) + chạng vạng (bóng dài, lửa vừa nhóm).
+- Sửa test chập chờn `AfterOrder_DeselectedVillager…`: chờ theo điều kiện thay vì mốc cố định (đống lửa mới làm đường đi dài/ngắn khác nhau). **84/84 test PlayMode pass** (batch mode khi Editor đã tắt — ổn định hơn nhiều so với chạy trong Editor đang mở; chạy trong Editor lại crash vì còn 0,2GB bộ nhớ).
 
 ## Vấn đề đang tồn đọng (Known issues / Open questions)
 - [x] Chế độ combat: lai (2026-09-26) + chi tiết chỉ huy NPC theo nghề (2026-09-30)

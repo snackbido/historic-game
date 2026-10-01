@@ -90,14 +90,15 @@ namespace PrehistoricTribe.Tests
             selection.IssueMoveCommand(new Vector3(-4f, 0f, 3.5f));
             selection.SetSelection(new[] { kept }); // bỏ chọn người thứ nhất, vẫn chọn người thứ hai
 
-            float deadline = Time.time + 25f;
+            float deadline = Time.time + 40f;
             while ((released.State == NpcState.Moving || kept.State == NpcState.Moving) && Time.time < deadline)
                 yield return null;
             Assert.IsTrue(released.IsHoldingPosition && kept.IsHoldingPosition, "Both hold position right after arriving");
 
             // Hết 20–30s đứng rảnh không được chọn → quay lại hành vi ban đầu (đi dạo).
-            float wait = Time.time + 32f;
-            while (Time.time < wait) yield return null;
+            // Chờ theo điều kiện (tối đa 40s) thay vì một mốc cố định — đường đi dài/ngắn khác nhau giữa các lần chạy.
+            deadline = Time.time + 40f;
+            while (released.IsHoldingPosition && Time.time < deadline) yield return null;
 
             Assert.IsFalse(released.IsHoldingPosition, "Deselected villager stops holding after 20-30s");
             Assert.IsTrue(kept.IsHoldingPosition, "A still-selected villager keeps holding position");

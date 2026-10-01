@@ -26,6 +26,9 @@ namespace PrehistoricTribe.Tests
             yield return EditorSceneManager.LoadSceneInPlayMode(ScenePath, new LoadSceneParameters(LoadSceneMode.Single));
 #endif
             yield return null;
+            // Test cũ chạy giữa ban ngày, thời gian đứng yên (cây không ngừng lớn vì đêm…); test ngày/đêm tự đặt giờ.
+            DayNightCycle.Running = false;
+            if (DayNightCycle.Instance != null) DayNightCycle.Instance.SetTime(0.3f);
             Time.timeScale = 25f;
         }
 
@@ -37,6 +40,7 @@ namespace PrehistoricTribe.Tests
             NpcManager.BirthsEnabled = true;
             ResourceManager.SpoilageEnabled = true;
             NpcManager.HungerEnabled = true;
+            DayNightCycle.Running = true;
             yield return null;
         }
     }

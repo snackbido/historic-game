@@ -63,6 +63,9 @@ namespace PrehistoricTribe
 
         private void Update()
         {
+            // Cây chỉ lớn khi có nắng (Milestone 5c) — ban đêm đứng yên, kể cả không héo thêm.
+            if (DayNightCycle.Instance != null && DayNightCycle.Instance.IsNight) return;
+
             if (State != FarmPlotState.Growing && !(State == FarmPlotState.ReadyToHarvest && crop.witherTime > 0f))
                 return;
 
