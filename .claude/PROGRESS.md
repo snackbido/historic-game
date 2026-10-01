@@ -119,7 +119,7 @@ Quyết định user: quy trình **vừa phải** (lúa ~6 bước: làm đất 
 ## Milestone 6 — Thiên tai (chốt với user 2026-10-01: cả 4 loại, tần suất vừa phải, thiệt hại sửa được)
 - [x] D1 Khung: `DisasterManager` (ngày đầu an toàn, sau đó 2–3 ngày/lần, báo trước nửa ngày) + `DisasterEvent` base + băng cảnh báo + công trình hư hại/sập → dân làng sửa (tốn gỗ) + lưu/tải
 - [x] D2 Hạn hán: ruộng bốc hơi nhanh, ao cạn dần (ít cá, mương/guồng yếu) — chống bằng giếng, mương, guồng
-- [ ] D3 Lũ lụt: mưa lớn, ao tràn — ruộng/công trình gần ao ngập (cây chết úng, nhà hư) — chống bằng Đê (công trình mới)
+- [x] D3 Lũ lụt: mưa lớn, ao tràn — ruộng/công trình gần ao ngập (cây chết úng, nhà hư) — chống bằng Đê (công trình mới)
 - [ ] D4 Cháy rừng: sét/lửa lan qua cây và lều — dân gánh nước dập lửa
 - [ ] D5 Bầy sói đột kích: đêm cả bầy tràn vào trại theo đợt — chống bằng hàng rào, lính gác, đuốc
 
@@ -387,6 +387,12 @@ Quyết định user: quy trình **vừa phải** (lúa ~6 bước: làm đất 
 - Điềm báo "trời oi bức, nắng gắt không một gợn mây"; băng đỏ "HẠN HÁN: ruộng khô nhanh gấp 3, ao cạn dần — dùng giếng, guồng nước".
 - `EditorBuildUtils.SetPrivateField` giờ dò cả field private của lớp cha (cấu hình `DisasterEvent` trong scene builder qua `ConfigureDisaster`).
 - Test: 5 test mới `Milestone6DroughtTests.cs`; test lịch ngẫu nhiên chỉ kiểm tra "có thiên tai được chọn" (giờ có nhiều loại). **153/153 test PlayMode pass**.
+
+## Nhật ký phiên làm việc 2026-10-01 (phần 17 — M6/D3 lũ lụt + đê)
+- `Disaster/FloodDisaster.cs` (0,5 ngày game): mưa lớn tưới mọi ruộng (+1/20 mỗi giây); ao tràn — vùng ngập lan dần tới 3,5m từ mép ao (25% đầu dâng, 25% cuối rút), hình đĩa nước lũ quanh ao. Trong vùng ngập: ruộng đầy nước; ruộng cạn ngập liên tục 40s thì cây chết úng (`FarmPlot.KillCrop`), ruộng nước/ruộng mạ chịu được; công trình có máu mất 12% máu tối đa mỗi phút ("bị sập vì lũ cuốn").
+- **Đê** (`levee`, 2 gỗ, mở cùng Thủy lợi, đi xuyên được) — `Disaster/Levee.cs`: nước tràn từ mép ao tới một điểm mà đường đi cắt qua đê (≤ 0,75m từ tâm đê) thì bị chặn. Thân đê tự xoay chắn ngang hướng ra ao. Lưu ý: đĩa nước lũ vẫn vẽ tràn qua đê (chỉ là hình), nhưng đối tượng sau đê không bị ngập.
+- Điềm báo "mây đen kéo về, mưa rả rích không dứt". Menu xây 10 nút → bảng hạt giống -385, công nghệ -595 (giao diện bên phải bắt đầu chật — cần sắp xếp lại khi làm M7).
+- Test: 7 test mới `Milestone6FloodTests.cs`. **160/160 test PlayMode pass**. Lưu ý: `Milestone5CombatTests.FarmerNearDen_FleesInsteadOfFighting` thỉnh thoảng lỗi (nông dân bị cắn mà đứng Idle thay vì chạy) — chập chờn có từ trước, chạy lại thì pass.
 
 ## Vấn đề đang tồn đọng (Known issues / Open questions)
 - [x] Chế độ combat: lai (2026-09-26) + chi tiết chỉ huy NPC theo nghề (2026-09-30)

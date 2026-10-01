@@ -74,6 +74,8 @@ namespace PrehistoricTribe.EditorTools
         public const string WaterWheelDataPath = "Assets/_Data/BuildingData_WaterWheel.asset";
         private const string WaterWheelPrefabPath = "Assets/Prefabs/Buildings/WaterWheel.prefab";
         public const string TechWaterWheelPath = "Assets/_Data/TechNode_WaterWheel.asset";
+        public const string LeveeDataPath = "Assets/_Data/BuildingData_Levee.asset";
+        private const string LeveePrefabPath = "Assets/Prefabs/Buildings/Levee.prefab";
         private const string MortarPrefabPath = "Assets/Prefabs/Buildings/RiceMortar.prefab";
 
         private const string HutPrefabPath = "Assets/Prefabs/Buildings/Hut.prefab";
@@ -95,7 +97,7 @@ namespace PrehistoricTribe.EditorTools
             if (!ConfirmOverwrite("Tạo lại prefab placeholder?",
                     "Prefab lều/kho/cây/heo rừng đã tồn tại. Tạo lại sẽ ghi đè mọi chỉnh sửa hoặc model thật bạn đã thay vào.",
                     HutPrefabPath, StoragePrefabPath, BoarPrefabPath, TreePrefabPath, VillagerPrefabPath, WolfPrefabPath,
-                    GoatPrefabPath, PondPrefabPath, DryFieldPrefabPath, PaddyFieldPrefabPath, WellPrefabPath, SeedbedPrefabPath, MortarPrefabPath, CanalPrefabPath, WaterWheelPrefabPath))
+                    GoatPrefabPath, PondPrefabPath, DryFieldPrefabPath, PaddyFieldPrefabPath, WellPrefabPath, SeedbedPrefabPath, MortarPrefabPath, CanalPrefabPath, WaterWheelPrefabPath, LeveePrefabPath))
                 return;
 
             Foods foods = EnsureResourceTypes(out var wood, out var knowledge);
@@ -142,6 +144,10 @@ namespace PrehistoricTribe.EditorTools
             var wheelData = AssetDatabase.LoadAssetAtPath<BuildingData>(WaterWheelDataPath);
             wheelData.requiresOpenWater = true;
             EditorUtility.SetDirty(wheelData);
+            // M6/D3: đê đất chắn nước lũ tràn từ ao (mở cùng Thủy lợi).
+            SaveSingleLevelBuilding(LeveeDataPath, "levee", "Đê", SavePrefab(BuildLevee(), LeveePrefabPath),
+                "Ụ đất đắp giữa ao và ruộng/nhà: chặn nước lũ tràn qua. Xếp liền nhau thành bờ đê kín",
+                unlockedByDefault: false, waterWithin: 0f, Cost(wood, 2));
             BuildCropModels(foods, riceSeed, seedling, sheaf);
             BuildTechs(knowledge, riceSeed);
             ProfessionData[] professions = BuildProfessions();
@@ -650,6 +656,34 @@ namespace PrehistoricTribe.EditorTools
             SetPrivateField(ww, "wheel", wheel);
             SetPrivateField(ww, "pouringWater", pouring);
             SetPrivateField(ww, "model", root.transform.Find("Level1"));
+            return root;
+        }
+
+        /// <summary>Đê (M6/D3): ụ đất dài phủ cỏ, cọc tre kè hai bên. Đi qua được (trigger), không chặn đường.</summary>
+        private static GameObject BuildLevee()
+        {
+            var root = new GameObject("Levee");
+            var col = root.AddComponent<BoxCollider>();
+            col.isTrigger = true;
+            col.center = new Vector3(0f, 0.12f, 0f);
+            col.size = new Vector3(0.96f, 0.24f, 0.96f);
+            root.AddComponent<BuildingInstance>();
+            AttachLevelModels(root, t =>
+            {
+                var earth = Mat("LeveeEarth", Palette.Hex(0x7a5a36));
+                var turf = Mat("PaddyBank", Palette.Hex(0x6f8a3c));
+                Part(t, "Mound", PrimitiveType.Cube, new Vector3(0f, 0.09f, 0f), new Vector3(0.98f, 0.18f, 0.6f), earth);
+                Part(t, "Top", PrimitiveType.Cube, new Vector3(0f, 0.2f, 0f), new Vector3(0.98f, 0.05f, 0.42f), turf);
+                Part(t, "SlopeN", PrimitiveType.Cube, new Vector3(0f, 0.06f, 0.33f), new Vector3(0.98f, 0.1f, 0.2f), earth, new Vector3(-25f, 0f, 0f));
+                Part(t, "SlopeS", PrimitiveType.Cube, new Vector3(0f, 0.06f, -0.33f), new Vector3(0.98f, 0.1f, 0.2f), earth, new Vector3(25f, 0f, 0f));
+                for (int i = 0; i < 5; i++)
+                {
+                    float x = -0.4f + i * 0.2f;
+                    Part(t, "Stake", PrimitiveType.Cylinder, new Vector3(x, 0.14f, 0.44f), new Vector3(0.03f, 0.14f, 0.03f), Palette.Wood);
+                    Part(t, "Stake", PrimitiveType.Cylinder, new Vector3(x, 0.14f, -0.44f), new Vector3(0.03f, 0.14f, 0.03f), Palette.Wood);
+                }
+            });
+            SetPrivateField(root.AddComponent<Levee>(), "model", root.transform.Find("Level1"));
             return root;
         }
 
@@ -1182,7 +1216,7 @@ namespace PrehistoricTribe.EditorTools
             irrigation.displayName = "Thủy lợi";
             irrigation.cost = Amounts(knowledge, 15);
             irrigation.prerequisites = new List<TechNode> { rice };
-            irrigation.unlockedBuildingIds = new List<string> { "canal" };
+            irrigation.unlockedBuildingIds = new List<string> { "canal", "levee" };
             irrigation.unlockedCropIds = new List<string>();
             irrigation.grantOnUnlock = new List<ResourceAmount>();
             if (isNew) AssetDatabase.CreateAsset(irrigation, TechIrrigationPath);

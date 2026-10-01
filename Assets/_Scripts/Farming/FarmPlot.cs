@@ -260,6 +260,16 @@ namespace PrehistoricTribe
             SetWater(Water - evaporationPerSecond * EvaporationMultiplier * seconds);
         }
 
+        /// <summary>Cây chết vì thiên tai (vd úng lụt). Trả về false nếu không có cây đang sống.</summary>
+        public bool KillCrop(string reason)
+        {
+            if (State != FarmPlotState.Growing && State != FarmPlotState.ReadyToHarvest) return false;
+            SetStage(CropStage.Withered);
+            State = FarmPlotState.Withered;
+            EventBus.RaiseNotification($"{crop.displayName} {reason}!");
+            return true;
+        }
+
         public void AddWater(float amount) => SetWater(Water + amount);
 
         public void SetWater(float level)

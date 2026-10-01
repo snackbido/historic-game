@@ -104,14 +104,15 @@ namespace PrehistoricTribe.EditorTools
             var techIrrigation = AssetDatabase.LoadAssetAtPath<TechNode>(GameContentBuilder.TechIrrigationPath);
             var waterWheel = AssetDatabase.LoadAssetAtPath<BuildingData>(GameContentBuilder.WaterWheelDataPath);
             var techWaterWheel = AssetDatabase.LoadAssetAtPath<TechNode>(GameContentBuilder.TechWaterWheelPath);
-            var buildings = new List<BuildingData> { hut, storage, dryField, seedbed, paddyField, well, canal, waterWheel, mortar };
+            var levee = AssetDatabase.LoadAssetAtPath<BuildingData>(GameContentBuilder.LeveeDataPath);
+            var buildings = new List<BuildingData> { hut, storage, dryField, seedbed, paddyField, well, canal, levee, waterWheel, mortar };
             var techs = new List<TechNode> { techFarming, techRice, techIrrigation, techWaterWheel };
 
             if (wood == null || food == null || knowledge == null || hut == null || storage == null ||
                 berry == null || techFarming == null || boarData == null || buttonPrefab == null ||
                 rice == null || vegetable == null || techRice == null || goatData == null || foodTypes.Contains(null) ||
                 dryField == null || paddyField == null || well == null ||
-                seedlingCrop == null || riceSeed == null || seedling == null || seedbed == null || manure == null || mortar == null || sheaf == null || canal == null || techIrrigation == null || waterWheel == null || techWaterWheel == null)
+                seedlingCrop == null || riceSeed == null || seedling == null || seedbed == null || manure == null || mortar == null || sheaf == null || canal == null || techIrrigation == null || waterWheel == null || techWaterWheel == null || levee == null)
             {
                 Debug.LogError("[GameplaySceneBuilder] Thieu asset can thiet. Chay 'Tools/Prehistoric/Build Missing Content' truoc (hoac dung 'Build All').");
                 return;
@@ -157,6 +158,12 @@ namespace PrehistoricTribe.EditorTools
                 "trời oi bức, nắng gắt không một gợn mây",
                 "ruộng khô nhanh gấp 3, ao cạn dần — dùng giếng, guồng nước",
                 "Hạn hán đã qua — trời dịu mát, ao đầy nước trở lại", durationDays: 1f);
+            var flood = disasters.AddComponent<FloodDisaster>();
+            ConfigureDisaster(flood, "flood", "Lũ lụt",
+                "mây đen kéo về, mưa rả rích không dứt",
+                "ao tràn bờ — ruộng cạn, nhà gần ao bị ngập. Đắp đê để chắn nước",
+                "Nước lũ đã rút — sửa lại nhà cửa, dọn ruộng úng", durationDays: 0.5f);
+            SetPrivateField(flood, "floodWaterMaterial", Mat("FloodWater", Palette.Hex(0x6b8c94), emission: 0.05f));
 
             var resources = new GameObject("ResourceNodes").transform;
             for (int i = 0; i < TreePositions.Length; i++)
@@ -803,7 +810,7 @@ namespace PrehistoricTribe.EditorTools
 
         private static void CreateCropSelectionPanel(Transform canvasTransform, Button buttonPrefab, List<CropData> crops)
         {
-            var container = CreatePanelContainer(canvasTransform, "CropPanel", new Vector2(-20f, -350f));
+            var container = CreatePanelContainer(canvasTransform, "CropPanel", new Vector2(-20f, -385f));
             var ui = container.gameObject.AddComponent<CropSelectionUI>();
             SetPrivateField(ui, "availableCrops", crops);
             SetPrivateField(ui, "buttonPrefab", buttonPrefab);
@@ -812,7 +819,7 @@ namespace PrehistoricTribe.EditorTools
 
         private static void CreateTechTreePanel(Transform canvasTransform, Button buttonPrefab, List<TechNode> techs)
         {
-            var container = CreatePanelContainer(canvasTransform, "TechPanel", new Vector2(-20f, -560f));
+            var container = CreatePanelContainer(canvasTransform, "TechPanel", new Vector2(-20f, -595f));
             var ui = container.gameObject.AddComponent<TechTreeUI>();
             SetPrivateField(ui, "allTechs", techs);
             SetPrivateField(ui, "entryButtonPrefab", buttonPrefab);
