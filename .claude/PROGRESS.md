@@ -103,7 +103,7 @@ Quyết định user: công trình nâng cấp **5 cấp** (click công trình �
 ## Milestone 5c — Ngày & đêm (thêm 2026-10-01)
 Quyết định user: một ngày **20 phút** thời gian thật (~14 phút ngày, ~6 phút đêm); **chỉ thể hiện bằng ánh sáng, không có chữ/đồng hồ**; ban đêm: **dân làng về lều ngủ** (người chưa có nhà ngủ quanh đống lửa; ra lệnh vẫn đánh thức được; cặp đôi sinh con về đêm tại lều), **sói rời hang lùng sục rộng hơn**, **cây trồng ngừng lớn**, **đống lửa trại chiếu sáng** (sói không dám lại gần lửa).
 - [x] N1 Chu kỳ ngày/đêm: mặt trời quay, đổi màu/độ sáng, trời tối; cây ngừng lớn ban đêm; đống lửa trại tự cháy khi tối; lưu/tải giờ trong ngày — 2026-10-01
-- [ ] N2 Ngủ: tối về lều (ẩn vào trong) / ngủ quanh đống lửa, sáng thức dậy, ngủ thì hồi máu, ra lệnh đánh thức; sinh con về đêm tại lều
+- [x] N2 Ngủ: tối về lều (ẩn vào trong) / ngủ quanh đống lửa, sáng thức dậy, ngủ thì hồi máu, ra lệnh đánh thức; sinh con về đêm tại lều
 - [ ] N3 Sói ban đêm: lùng sục rộng, mò vào trại, né đống lửa; sáng về hang; người ngủ trong lều an toàn
 
 ## Milestone 6 — Thiên tai
@@ -289,6 +289,13 @@ Quyết định user: một ngày **20 phút** thời gian thật (~14 phút ng�
 - `FarmPlot`: ban đêm không lớn (cũng không héo).
 - Test: `PlayModeTestBase` dừng chu kỳ (`DayNightCycle.Running = false`) và đặt giữa trưa (0,3). 5 test mới `Milestone5cDayNightTests.cs`. Ảnh render ban đêm (trại tối xanh, chỉ ánh lửa cam) + chạng vạng (bóng dài, lửa vừa nhóm).
 - Sửa test chập chờn `AfterOrder_DeselectedVillager…`: chờ theo điều kiện thay vì mốc cố định (đống lửa mới làm đường đi dài/ngắn khác nhau). **84/84 test PlayMode pass** (batch mode khi Editor đã tắt — ổn định hơn nhiều so với chạy trong Editor đang mở; chạy trong Editor lại crash vì còn 0,2GB bộ nhớ).
+
+## Nhật ký phiên làm việc 2026-10-01 (phần 6 — M5c/N2 ngủ)
+- `SleepJob` (thay `HomeVisitJob`): tối đến, người rảnh (không bị chọn, không giữ lệnh) về lều của mình và "vào trong" (ẩn mọi Renderer); người chưa có lều nằm ngủ quanh đống lửa (xoay `Visual` nằm xuống). Ngủ hồi 1,5 máu/s. Trời sáng → dậy. Đang nằm cạnh lửa mà được chia lều → chuyển về lều. Trẻ con cũng ngủ.
+- Ban đêm việc tự làm (chặt cây, làm ruộng…) dừng lại; lệnh của người chơi và tự vệ (`AttackJob`) vẫn tiếp tục. Ra lệnh / bị tấn công (bỏ chạy) thì thức dậy.
+- Sinh con chỉ về đêm: `NpcManager.TryNightBirth()` — cặp đủ điều kiện mà cả hai đang ngủ trong lều chung → em bé ra đời (bỏ `TryStartBirth` + hẹn về lều ban ngày).
+- Người ngủ trong lều: không chọn được bằng chuột (click/kéo khung), sói không nhắm tới (`PredatorAI.IsValidTarget`).
+- Test: 6 test mới `Milestone5cSleepTests.cs`; viết lại test sinh con trong `Milestone5bHomeTests`/`Milestone5PopulationTests` theo ban đêm; test đói đặt đầy máu trước khi đo 30s (máu tối đa tùy nghề). **90/90 test PlayMode pass** (batch mode).
 
 ## Vấn đề đang tồn đọng (Known issues / Open questions)
 - [x] Chế độ combat: lai (2026-09-26) + chi tiết chỉ huy NPC theo nghề (2026-09-30)

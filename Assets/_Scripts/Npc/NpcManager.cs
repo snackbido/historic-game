@@ -105,7 +105,7 @@ namespace PrehistoricTribe
 
             PairCouples();
             AssignHomes();
-            if (BirthsEnabled) TryStartBirth();
+            if (BirthsEnabled) TryNightBirth();
         }
 
         public ProfessionData FindProfession(string id) =>
@@ -232,27 +232,24 @@ namespace PrehistoricTribe
             return null;
         }
 
-        private static bool IsFree(NpcController npc) =>
-            !npc.IsSelected && !npc.IsHoldingPosition &&
-            !(npc.CurrentJob is AttackJob) && !(npc.CurrentJob is HomeVisitJob);
-
         /// <summary>
-        /// Chọn một cặp đủ điều kiện và đang rảnh → cả hai về lều (em bé ra đời khi cả hai ở nhà đủ lâu).
-        /// Trả về true nếu đã có cặp lên đường.
+        /// Sinh con chỉ xảy ra ban đêm: cặp đủ điều kiện mà cả hai đang ngủ trong lều của mình
+        /// → em bé ra đời. Trả về em bé (null nếu chưa có cặp nào).
         /// </summary>
-        public bool TryStartBirth()
+        public NpcController TryNightBirth()
         {
-            foreach (var mother in NpcController.All)
+            if (DayNightCycle.Instance == null || !DayNightCycle.Instance.IsNight) return null;
+
+            foreach (var mother in new List<NpcController>(NpcController.All))
             {
                 if (BirthBlocker(mother) != null) continue;
                 NpcController father = mother.Partner;
-                if (!IsFree(mother) || !IsFree(father)) continue;
+                if (!mother.IsInsideHut || !father.IsInsideHut || father.Home != mother.Home) continue;
 
-                mother.AssignJob(new HomeVisitJob(mother.Home), fromPlayer: false);
-                father.AssignJob(new HomeVisitJob(mother.Home), fromPlayer: false);
-                return true;
+                NpcController baby = CompleteBirth(mother, father, mother.Home);
+                if (baby != null) return baby;
             }
-            return false;
+            return null;
         }
 
         /// <summary>Gọi khi cặp đôi đã ở lều đủ lâu: trừ thức ăn và em bé ra đời trước cửa lều.</summary>

@@ -150,12 +150,24 @@ namespace PrehistoricTribe
         public bool IsStarving => Fullness <= 0f;
         public bool IsHungry => Fullness < 30f;
 
+        // ─── Ngủ (Milestone 5c) ──────────────────────────────────────────────
+        private Transform visualRoot;
+        private Renderer[] allRenderers;
+
+        public bool IsSleeping { get; private set; }
+        /// <summary>Đang ngủ TRONG lều: ẩn khỏi bản đồ, không chọn được bằng chuột, thú dữ không với tới.</summary>
+        public bool IsInsideHut { get; private set; }
+
+        private static bool IsNightNow => DayNightCycle.Instance != null && DayNightCycle.Instance.IsNight;
+
         private void Awake()
         {
             agent = GetComponent<NavMeshAgent>();
             health = GetComponent<HealthComponent>();
             home = transform.position;
             idleTimer = Random.Range(minIdlePause, maxIdlePause);
+            visualRoot = transform.Find("Visual");
+            allRenderers = GetComponentsInChildren<Renderer>(true);
             RefreshVisuals();
             SetSelected(false);
 
@@ -219,13 +231,13 @@ namespace PrehistoricTribe
                         UpdateHold();
                         break;
                     }
-                    if (TryAutoWork()) break;
+                    if (TrySleep() || TryAutoWork()) break;
                     idleTimer -= Time.deltaTime;
                     if (idleTimer <= 0f) TryWander();
                     break;
 
                 case NpcState.Wandering:
-                    if (TryAutoWork()) break; // đang đi dạo mà có việc thì làm luôn
+                    if (TrySleep() || TryAutoWork()) break; // trời tối thì đi ngủ; có việc thì làm luôn
                     if (HasArrived()) BecomeIdle();
                     break;
 
@@ -263,6 +275,66 @@ namespace PrehistoricTribe
             holdDuration = Random.Range(minHoldTime, maxHoldTime);
         }
 
+        /// <summary>Trời tối và đang rảnh (không giữ lệnh, không bị chọn) → về lều ngủ, chưa có lều thì ngủ cạnh đống lửa.</summary>
+        private bool TrySleep()
+        {
+            if (!IsNightNow || IsSelected || holdPosition) return false;
+
+            if (Home != null)
+            {
+                AssignJob(new SleepJob(Home), fromPlayer: false);
+                return true;
+            }
+
+            Campfire fire = NearestCampfire();
+            if (fire == null) return false;
+            AssignJob(new SleepJob(fire), fromPlayer: false);
+            return true;
+        }
+
+        private Campfire NearestCampfire()
+        {
+            Campfire best = null;
+            float bestDistance = float.MaxValue;
+            foreach (var fire in Campfire.All)
+            {
+                float d = InteractableRegistry.GroundDistance(transform.position, fire.transform.position);
+                if (d < bestDistance)
+                {
+                    best = fire;
+                    bestDistance = d;
+                }
+            }
+            return best;
+        }
+
+        /// <summary>Ngủ: trong lều thì ẩn hẳn; ngoài trời thì nằm xuống cạnh đống lửa.</summary>
+        public void FallAsleep(bool insideHut)
+        {
+            IsSleeping = true;
+            IsInsideHut = insideHut;
+            if (agent.hasPath) agent.ResetPath();
+
+            if (insideHut) SetVisible(false);
+            else if (visualRoot != null) visualRoot.localRotation = Quaternion.Euler(-80f, 0f, 0f); // nằm xuống
+        }
+
+        public void WakeUp()
+        {
+            if (!IsSleeping) return;
+            IsSleeping = false;
+            IsInsideHut = false;
+            SetVisible(true);
+            if (visualRoot != null) visualRoot.localRotation = Quaternion.identity;
+        }
+
+        private void SetVisible(bool visible)
+        {
+            if (allRenderers == null) return;
+            foreach (var r in allRenderers)
+                if (r != null) r.enabled = visible;
+        }
+
         /// <summary>Rảnh (không lệnh, không bị chọn, là người lớn) thì vài giây tìm việc theo nghề một lần.</summary>
         private bool TryAutoWork()
         {
@@ -285,6 +357,7 @@ namespace PrehistoricTribe
         {
             if (newJob == null || !newJob.IsValid) return;
 
+            if (!(newJob is SleepJob)) WakeUp(); // ra lệnh / bị tấn công thì thức dậy
             job = newJob;
             jobFromPlayer = fromPlayer;
             if (fromPlayer) StartHolding();
@@ -297,6 +370,20 @@ namespace PrehistoricTribe
         private void UpdateWork()
         {
             if (job == null || !job.IsValid)
+            {
+                EndJob();
+                return;
+            }
+
+            // Trời tối: việc tự làm (chặt cây, làm ruộng…) dừng để đi ngủ; lệnh của người chơi và tự vệ thì không.
+            if (IsNightNow && !jobFromPlayer && !(job is SleepJob) && !(job is AttackJob))
+            {
+                EndJob();
+                return;
+            }
+
+            // Trời sáng thì dậy; đang nằm cạnh đống lửa mà vừa được chia lều thì về lều ngủ.
+            if (job is SleepJob sleep && (!IsNightNow || (!sleep.InsideHut && Home != null)))
             {
                 EndJob();
                 return;
@@ -327,6 +414,7 @@ namespace PrehistoricTribe
 
         private void EndJob()
         {
+            WakeUp();
             job = null;
             home = transform.position;
             holdElapsed = 0f; // đếm lại từ lúc xong việc
@@ -394,6 +482,7 @@ namespace PrehistoricTribe
             if (!agent.isOnNavMesh || !NavMesh.SamplePosition(destination, out NavMeshHit hit, 2f, NavMesh.AllAreas))
                 return false;
 
+            WakeUp(); // lệnh của người chơi đánh thức người đang ngủ
             job = null; // lệnh mới thay thế việc đang làm
             agent.SetDestination(hit.position);
             home = hit.position;

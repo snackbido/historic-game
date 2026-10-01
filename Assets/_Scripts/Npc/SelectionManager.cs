@@ -330,7 +330,7 @@ namespace PrehistoricTribe
         {
             point = default;
             Camera cam = Camera.main;
-            if (cam == null) return false;
+            if (cam == null || npc.IsInsideHut) return false; // đang ngủ trong lều: không thấy, không chọn được
 
             // Lấy điểm giữa thân (không phải bàn chân) cho dễ trúng khi click.
             Vector3 screen = cam.WorldToScreenPoint(npc.transform.position + Vector3.up * 0.5f);

@@ -140,6 +140,13 @@ namespace PrehistoricTribe
                 agent.SetDestination(hit.position);
         }
 
+        /// <summary>Người đang ngủ trong lều thì thú dữ không với tới.</summary>
+        private static bool IsInsideHut(HealthComponent candidate)
+        {
+            var npc = candidate.GetComponent<NpcController>();
+            return npc != null && npc.IsInsideHut;
+        }
+
         private HealthComponent FindTarget()
         {
             HealthComponent best = null;
@@ -161,6 +168,7 @@ namespace PrehistoricTribe
 
         private bool IsValidTarget(HealthComponent candidate) =>
             candidate != null && candidate.isActiveAndEnabled && !candidate.IsDead &&
+            !IsInsideHut(candidate) &&
             InteractableRegistry.GroundDistance(den, candidate.transform.position) <= data.leashRange;
 
         private void HandleDamaged(HealthComponent _, GameObject source)

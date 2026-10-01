@@ -46,27 +46,28 @@ namespace PrehistoricTribe.Tests
         }
 
         [UnityTest]
-        public IEnumerator Couple_WalksHome_AndTheBabyIsBornAtTheHut()
+        public IEnumerator Couple_SleepsAtHome_AndTheBabyIsBornAtNight()
         {
             yield return null;
             var hut = PlaceHut();
             var mother = HousedMother(hut);
             ResourceManager.Instance.AddResource(Food, 20);
 
-            Assert.IsTrue(NpcManager.Instance.TryStartBirth());
-            Assert.IsInstanceOf<HomeVisitJob>(mother.CurrentJob, "Mother heads home");
-            Assert.IsInstanceOf<HomeVisitJob>(mother.Partner.CurrentJob, "Father heads home too");
+            Assert.IsNull(NpcManager.Instance.TryNightBirth(), "No births during the day");
 
-            yield return WaitUntil(() => NpcController.All.Any(n => !n.IsAdult), 60f);
-            var baby = NpcController.All.FirstOrDefault(n => !n.IsAdult);
-            Assert.IsNotNull(baby, "Baby is born once both parents stayed at the hut");
+            DayNightCycle.Instance.SetTime(0.8f);
+            yield return WaitUntil(() => mother.IsInsideHut && mother.Partner.IsInsideHut, 60f);
+            Assert.IsTrue(mother.IsInsideHut && mother.Partner.IsInsideHut, "Both parents go inside their hut at night");
+
+            var baby = NpcManager.Instance.TryNightBirth();
+            Assert.IsNotNull(baby, "Baby is born while the couple sleeps at home");
             Assert.AreSame(hut, baby.Home, "Baby belongs to its parents' hut");
             Assert.Less(InteractableRegistry.GroundDistance(baby.transform.position, hut.transform.position), 2.5f, "Born at the hut door");
             Assert.AreEqual(15, ResourceManager.Instance.GetAmount(Food), "Food is spent at birth");
             StringAssert.Contains("1/2 con", NpcManager.DescribeFamily(hut));
 
-            yield return null;
-            Assert.IsNull(mother.CurrentJob, "Parents go back to normal life afterwards");
+            yield return WaitUntil(() => baby.IsInsideHut, 30f);
+            Assert.IsTrue(baby.IsInsideHut, "The newborn sleeps in the hut too");
         }
 
         [UnityTest]

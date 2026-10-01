@@ -70,6 +70,7 @@ namespace PrehistoricTribe.Tests
             StringAssert.Contains("Đang đói", Manager.BirthBlocker(mother) ?? "");
             StringAssert.Contains("ĐANG ĐÓI: 4", PopulationUI.Describe(Manager));
 
+            mother.Health.SetCurrent(mother.Health.Max); // đo riêng 30s đói, không phụ thuộc máu tối đa của nghề
             float health = mother.Health.Current;
             Manager.UpdateHunger(30f);
             Assert.AreEqual(health - 10f, mother.Health.Current, 0.01f, "Starving costs 1 health every 3 seconds");

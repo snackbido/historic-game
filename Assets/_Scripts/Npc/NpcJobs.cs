@@ -128,46 +128,41 @@ namespace PrehistoricTribe
     }
 
     /// <summary>
-    /// Cặp đôi cùng về lều nhà mình; khi cả hai đã ở lều đủ lâu thì em bé ra đời (người mẹ kích hoạt).
-    /// Bỏ cuộc nếu chờ quá lâu (vd người kia bị gọi đi làm việc khác).
+    /// Đi ngủ ban đêm (Milestone 5c): người có lều về lều và vào trong (ẩn khỏi bản đồ, thú dữ không với tới);
+    /// người chưa có nhà nằm ngủ quanh đống lửa. Ngủ thì hồi máu. Trời sáng thì việc kết thúc → thức dậy.
     /// </summary>
-    public class HomeVisitJob : NpcJob
+    public class SleepJob : NpcJob
     {
-        private const float StayDuration = 4f;
-        private const float GiveUpAfter = 45f;
+        private const float HealPerSecond = 1.5f;
 
-        private readonly BuildingInstance hut;
-        private float waited;
-        private float together;
+        private readonly MonoBehaviour place;
+        private readonly bool insideHut;
 
-        public HomeVisitJob(BuildingInstance hut) => this.hut = hut;
+        public SleepJob(BuildingInstance hut)
+        {
+            place = hut;
+            insideHut = true;
+        }
 
-        public BuildingInstance Hut => hut;
-        public override MonoBehaviour Target => hut;
-        public override string Description => "về nhà";
-        public override float WorkRange => 1.2f;
+        public SleepJob(Campfire fire)
+        {
+            place = fire;
+            insideHut = false;
+        }
+
+        public bool InsideHut => insideHut;
+        public override MonoBehaviour Target => place;
+        public override string Description => "đi ngủ";
+        public override float WorkRange => insideHut ? 1.2f : 2.2f; // quanh đống lửa thì nằm cách lửa một khoảng
         public override float Interval => 1f;
-
-        public bool IsAtHome(NpcController npc) =>
-            npc.CurrentJob == this && InteractableRegistry.GroundDistance(npc.transform.position, hut.transform.position) <= WorkRange + 0.3f;
 
         public override bool DoWork(NpcController npc)
         {
-            waited += Interval;
-            if (waited > GiveUpAfter) return false;
+            if (DayNightCycle.Instance == null || !DayNightCycle.Instance.IsNight) return false; // sáng rồi → dậy
 
-            NpcController partner = npc.Partner;
-            if (partner == null || !(partner.CurrentJob is HomeVisitJob partnerJob) || partnerJob.Hut != hut)
-                return false; // người kia không còn về nhà nữa → thôi
-
-            if (npc.Gender != Gender.Female) return true; // người bố chờ; người mẹ quyết định lúc sinh
-            if (!partnerJob.IsAtHome(partner)) return true;
-
-            together += Interval;
-            if (together < StayDuration) return true;
-
-            NpcManager.Instance.CompleteBirth(npc, partner, hut);
-            return false;
+            if (!npc.IsSleeping) npc.FallAsleep(insideHut);
+            npc.Health.Heal(HealPerSecond * Interval);
+            return true;
         }
     }
 

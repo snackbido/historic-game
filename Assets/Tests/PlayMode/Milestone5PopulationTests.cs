@@ -120,7 +120,9 @@ namespace PrehistoricTribe.Tests
             var manager = NpcManager.Instance;
 
             ResourceManager.Instance.AddResource(food, 20);
-            Assert.IsFalse(manager.TryStartBirth(), "No hut → no birth, even with food (M5b/E2)");
+            DayNightCycle.Instance.SetTime(0.8f);
+            yield return null;
+            Assert.IsNull(manager.TryNightBirth(), "No hut → no birth, even with food (M5b/E2)");
 
             PlaceHut();
             manager.AssignHomes();
@@ -128,8 +130,8 @@ namespace PrehistoricTribe.Tests
             Assert.AreEqual(2, couples);
             Assert.AreEqual(1, housed, "One hut = one family");
 
-            Assert.IsTrue(manager.TryStartBirth(), "Housed couple with food heads home to have a baby");
-            yield return WaitUntil(() => manager.Population == 5, 60f);
+            // Cặp có lều về lều ngủ → em bé ra đời trong đêm.
+            yield return WaitUntil(() => manager.TryNightBirth() != null, 60f);
             Assert.AreEqual(5, manager.Population);
             Assert.AreEqual(15, ResourceManager.Instance.GetAmount(food), "A birth costs 5 food");
         }
