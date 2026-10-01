@@ -20,17 +20,38 @@ namespace PrehistoricTribe
         [SerializeField] private float safeRadius = 6f;
         [Tooltip("Trời tối dưới mức này (Daylight) thì nhóm lửa")]
         [SerializeField, Range(0f, 1f)] private float lightBelowDaylight = 0.6f;
+        [Tooltip("Người chưa có lều ngủ quanh đây được (đống lửa trại có, đuốc thì không)")]
+        [SerializeField] private bool isSleepSpot = true;
 
         public float SafeRadius => safeRadius;
+        public bool IsSleepSpot => isSleepSpot;
         public bool IsLit { get; private set; }
 
-        private void OnEnable() => all.Add(this);
-        private void OnDisable() => all.Remove(this);
+        private void OnEnable()
+        {
+            all.Add(this);
+            if (started) Refresh(force: true);
+        }
+
+        private void OnDisable()
+        {
+            all.Remove(this);
+            // Tắt (vd đuốc bị đổ): không còn sáng, không còn che chở.
+            IsLit = false;
+            if (flames != null) flames.SetActive(false);
+            if (fireLight != null) fireLight.enabled = false;
+        }
+
+        private bool started;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         private static void ResetOnPlay() => all.Clear();
 
-        private void Start() => Refresh(force: true);
+        private void Start()
+        {
+            started = true;
+            Refresh(force: true);
+        }
 
         private void Update() => Refresh(force: false);
 

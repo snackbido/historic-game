@@ -21,6 +21,11 @@ namespace PrehistoricTribe
         public float denX;
         public float denZ;
         public float health;
+        // M6/D5: sói đột kích
+        public bool raider;
+        public bool retreating;
+        public float exitX;
+        public float exitZ;
     }
 
     /// <summary>
@@ -54,9 +59,83 @@ namespace PrehistoricTribe
 
         // Ban đêm sói lùng sục rộng hơn, nhìn xa hơn, đuổi xa hơn; sáng ra thì về lại quanh hang.
         private static bool IsNight => DayNightCycle.Instance != null && DayNightCycle.Instance.IsNight;
-        public float PatrolRadius => IsNight ? data.nightPatrolRadius : data.patrolRadius;
-        public float AggroRange => IsNight ? data.nightAggroRange : data.aggroRange;
-        public float LeashRange => IsNight ? data.nightLeashRange : data.leashRange;
+        public float PatrolRadius => IsRaider ? RaidPatrolRadius : IsNight ? data.nightPatrolRadius : data.patrolRadius;
+        public float AggroRange => IsRaider ? RaidAggroRange : IsNight ? data.nightAggroRange : data.aggroRange;
+        public float LeashRange => IsRaider ? float.MaxValue : IsNight ? data.nightLeashRange : data.leashRange;
+
+        // ─── Đột kích (M6/D5) ─────────────────────────────────────────────────
+        private const float RaidPatrolRadius = 9f;
+        private const float RaidAggroRange = 9f;
+        private const float FenceSearchRadius = 4f;
+        private const float RetreatGiveUpSeconds = 40f;
+
+        /// <summary>Sói của bầy đột kích: lùng sục quanh làng, cắn cả vật nuôi, cào phá hàng rào; sáng ra rút về rừng rồi biến mất.</summary>
+        public bool IsRaider { get; private set; }
+        public bool IsRetreating { get; private set; }
+        private Vector3 raidExit;
+        private float retreatTimer;
+        private Fence fenceTarget;
+
+        /// <summary>Biến con sói này thành sói đột kích: kéo về <paramref name="village"/>, sáng ra rút về <paramref name="exit"/>.</summary>
+        public void BeginRaid(Vector3 village, Vector3 exit)
+        {
+            IsRaider = true;
+            IsRetreating = false;
+            den = village;
+            raidExit = exit;
+            target = null;
+            State = PredatorState.Chase;
+            agent.speed = data.chaseSpeed;
+            if (agent.isOnNavMesh) agent.SetDestination(village);
+        }
+
+        private void Retreat()
+        {
+            IsRetreating = true;
+            retreatTimer = 0f;
+            target = null;
+            fenceTarget = null;
+            agent.speed = data.chaseSpeed;
+            agent.SetDestination(raidExit);
+        }
+
+        /// <summary>Sáng ra: chạy về bìa rừng, tới nơi (hoặc quá lâu) thì biến mất — không rơi thịt.</summary>
+        private void UpdateRetreat()
+        {
+            retreatTimer += Time.deltaTime;
+            bool arrived = !agent.pathPending && agent.remainingDistance <= agent.stoppingDistance + 0.5f;
+            if (!arrived && retreatTimer < RetreatGiveUpSeconds) return;
+            gameObject.SetActive(false);
+            Destroy(gameObject);
+        }
+
+        /// <summary>Đường tới mục tiêu bị rào chặn → cào phá đoạn rào gần nhất. Trả về true nếu đang xử lý rào.</summary>
+        private bool UpdateFenceAttack(bool think)
+        {
+            if (fenceTarget != null && !fenceTarget.IsStanding) fenceTarget = null;
+            if (fenceTarget == null)
+            {
+                if (!think || agent.pathPending || agent.pathStatus != NavMeshPathStatus.PathPartial) return false;
+                fenceTarget = Fence.NearestStanding(transform.position, FenceSearchRadius);
+                if (fenceTarget == null) return false;
+            }
+
+            float distance = InteractableRegistry.GroundDistance(transform.position, fenceTarget.transform.position);
+            if (distance > data.attackRange + 0.7f)
+            {
+                if (think) agent.SetDestination(fenceTarget.transform.position);
+                State = PredatorState.Chase;
+                return true;
+            }
+            State = PredatorState.Attack;
+            if (agent.hasPath) agent.ResetPath();
+            FaceTowards(fenceTarget.transform.position);
+            attackTimer -= Time.deltaTime;
+            if (attackTimer > 0f) return true;
+            attackTimer = data.attackInterval;
+            fenceTarget.Building.Damage(data.attackDamage * 2f, "sói cào phá");
+            return true;
+        }
         private bool patrollingAtNight;
 
         private void Awake()
@@ -91,6 +170,21 @@ namespace PrehistoricTribe
         {
             if (data == null || !agent.isOnNavMesh || health.IsDead) return;
 
+            // Sói đột kích: trời sáng thì rút về rừng.
+            if (IsRaider)
+            {
+                if (IsRetreating)
+                {
+                    UpdateRetreat();
+                    return;
+                }
+                if (!IsNight)
+                {
+                    Retreat();
+                    return;
+                }
+            }
+
             // Chọn/cập nhật mục tiêu vài lần mỗi giây, không cần mỗi frame.
             thinkTimer -= Time.deltaTime;
             bool think = thinkTimer <= 0f;
@@ -102,6 +196,7 @@ namespace PrehistoricTribe
 
             if (target == null)
             {
+                if (IsRaider && UpdateFenceAttack(think)) return;
                 Patrol();
                 return;
             }
@@ -109,6 +204,7 @@ namespace PrehistoricTribe
             float distance = InteractableRegistry.GroundDistance(transform.position, target.transform.position);
             if (distance > data.attackRange)
             {
+                if (IsRaider && UpdateFenceAttack(think)) return; // bị rào chặn thì phá rào
                 // Mục tiêu di chuyển → cập nhật đường đi khi vừa bắt đầu đuổi và mỗi lượt "suy nghĩ".
                 if (State != PredatorState.Chase || think) agent.SetDestination(target.transform.position);
                 State = PredatorState.Chase;
@@ -205,6 +301,9 @@ namespace PrehistoricTribe
             }
 
             foreach (var npc in NpcController.All) Consider(npc.Health);
+            if (IsRaider) // bầy đột kích cắn cả vật nuôi
+                foreach (var animal in InteractableRegistry.All<AnimalController>())
+                    if (animal.State == AnimalState.Tamed) Consider(animal.GetComponent<HealthComponent>());
             Consider(playerHealth);
             return best;
         }
@@ -251,7 +350,11 @@ namespace PrehistoricTribe
             z = transform.position.z,
             denX = den.x,
             denZ = den.z,
-            health = health.Current
+            health = health.Current,
+            raider = IsRaider,
+            retreating = IsRetreating,
+            exitX = raidExit.x,
+            exitZ = raidExit.z
         };
 
         public void LoadFromSaveData(PredatorSaveData saved, PredatorData source)
@@ -262,6 +365,9 @@ namespace PrehistoricTribe
             health.SetCurrent(saved.health);
             target = null;
             State = PredatorState.Patrol;
+            if (!saved.raider) return;
+            BeginRaid(den, new Vector3(saved.exitX, 0f, saved.exitZ));
+            if (saved.retreating) Retreat();
         }
     }
 }

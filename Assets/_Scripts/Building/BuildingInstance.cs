@@ -178,7 +178,8 @@ namespace PrehistoricTribe
             }
             if (rubble != null) rubble.SetActive(collapsed);
             foreach (var behaviour in GetComponents<Behaviour>())
-                if (behaviour is RiceMortar || behaviour is WaterWheel || behaviour is WaterSource)
+                if (behaviour is RiceMortar || behaviour is WaterWheel || behaviour is WaterSource || behaviour is Campfire ||
+                    behaviour is UnityEngine.AI.NavMeshObstacle) // sập thì đi qua được (hàng rào bị phá), đuốc đổ thì tắt
                     behaviour.enabled = !collapsed;
             if (!collapsed) EventBus.RaiseNotification($"{LevelName} hoạt động trở lại");
         }

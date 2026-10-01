@@ -286,11 +286,14 @@ namespace PrehistoricTribe
         /// <summary>Có lều và lều chưa sập (lều sập thì ra đống lửa ngủ).</summary>
         private bool HasLivableHome => Home != null && !Home.IsCollapsed;
         private bool FireNearby => Fire.Nearest(transform.position, NpcJobFactory.FireAlarmRadius) != null;
+        /// <summary>Biết đánh mà có sói đột kích trong làng gần đây → thức canh (M6/D5).</summary>
+        private bool MustGuard => NpcJobFactory.CanFight(Profession) && IsAdult &&
+                                  NpcJobFactory.NearestRaider(transform.position, NpcJobFactory.RaidGuardRadius) != null;
 
         private bool TrySleep()
         {
             if (!IsNightNow || IsSelected || holdPosition) return false;
-            if (FireNearby) return false; // cháy gần làng thì thức dập lửa
+            if (FireNearby || MustGuard) return false; // cháy gần làng thì thức dập lửa; sói vào làng thì thức canh
 
             if (HasLivableHome)
             {
@@ -310,6 +313,7 @@ namespace PrehistoricTribe
             float bestDistance = float.MaxValue;
             foreach (var fire in Campfire.All)
             {
+                if (!fire.IsSleepSpot) continue;
                 float d = InteractableRegistry.GroundDistance(transform.position, fire.transform.position);
                 if (d < bestDistance)
                 {
@@ -395,7 +399,7 @@ namespace PrehistoricTribe
             }
 
             // Trời sáng thì dậy; đang nằm cạnh đống lửa mà vừa được chia lều thì về lều ngủ.
-            if (job is SleepJob sleep && (!IsNightNow || FireNearby || (!sleep.InsideHut && HasLivableHome) || (sleep.InsideHut && !HasLivableHome)))
+            if (job is SleepJob sleep && (!IsNightNow || FireNearby || MustGuard || (!sleep.InsideHut && HasLivableHome) || (sleep.InsideHut && !HasLivableHome)))
             {
                 EndJob();
                 return;

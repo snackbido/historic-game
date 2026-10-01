@@ -84,6 +84,10 @@ namespace PrehistoricTribe
             Fire fire = Fire.Nearest(position, FireAlarmRadius);
             if (fire != null) return new FirefightJob(fire);
 
+            // Sói đột kích vào làng: ai biết đánh thì ra chặn (M6/D5).
+            PredatorAI raider = NearestRaider(position, GuardRadius);
+            if (raider != null && CanFight(profession)) return new AttackJob(raider, profession);
+
             if (profession.autoWork == NpcCapability.None) return null;
 
             // Canh gác: sói đang đuổi/cắn ai đó gần đây thì lao vào.
@@ -138,6 +142,24 @@ namespace PrehistoricTribe
 
             return null;
         }
+
+        /// <summary>Sói đột kích (chưa rút) gần điểm này nhất trong bán kính.</summary>
+        public static PredatorAI NearestRaider(Vector3 position, float radius)
+        {
+            PredatorAI best = null;
+            float bestDistance = radius;
+            foreach (var predator in PredatorAI.All)
+            {
+                if (!predator.IsRaider || predator.IsRetreating || predator.Health.IsDead) continue;
+                float d = InteractableRegistry.GroundDistance(position, predator.transform.position);
+                if (d > bestDistance) continue;
+                best = predator;
+                bestDistance = d;
+            }
+            return best;
+        }
+
+        public const float RaidGuardRadius = GuardRadius;
 
         private static T Nearest<T>(IEnumerable<T> candidates, Vector3 position, float radius, System.Func<T, bool> wanted)
             where T : MonoBehaviour

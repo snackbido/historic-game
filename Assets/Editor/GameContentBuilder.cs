@@ -76,6 +76,10 @@ namespace PrehistoricTribe.EditorTools
         public const string TechWaterWheelPath = "Assets/_Data/TechNode_WaterWheel.asset";
         public const string LeveeDataPath = "Assets/_Data/BuildingData_Levee.asset";
         private const string LeveePrefabPath = "Assets/Prefabs/Buildings/Levee.prefab";
+        public const string TorchDataPath = "Assets/_Data/BuildingData_Torch.asset";
+        private const string TorchPrefabPath = "Assets/Prefabs/Buildings/Torch.prefab";
+        public const string FenceDataPath = "Assets/_Data/BuildingData_Fence.asset";
+        private const string FencePrefabPath = "Assets/Prefabs/Buildings/Fence.prefab";
         private const string MortarPrefabPath = "Assets/Prefabs/Buildings/RiceMortar.prefab";
 
         private const string HutPrefabPath = "Assets/Prefabs/Buildings/Hut.prefab";
@@ -97,7 +101,7 @@ namespace PrehistoricTribe.EditorTools
             if (!ConfirmOverwrite("Tạo lại prefab placeholder?",
                     "Prefab lều/kho/cây/heo rừng đã tồn tại. Tạo lại sẽ ghi đè mọi chỉnh sửa hoặc model thật bạn đã thay vào.",
                     HutPrefabPath, StoragePrefabPath, BoarPrefabPath, TreePrefabPath, VillagerPrefabPath, WolfPrefabPath,
-                    GoatPrefabPath, PondPrefabPath, DryFieldPrefabPath, PaddyFieldPrefabPath, WellPrefabPath, SeedbedPrefabPath, MortarPrefabPath, CanalPrefabPath, WaterWheelPrefabPath, LeveePrefabPath))
+                    GoatPrefabPath, PondPrefabPath, DryFieldPrefabPath, PaddyFieldPrefabPath, WellPrefabPath, SeedbedPrefabPath, MortarPrefabPath, CanalPrefabPath, WaterWheelPrefabPath, LeveePrefabPath, TorchPrefabPath, FencePrefabPath))
                 return;
 
             Foods foods = EnsureResourceTypes(out var wood, out var knowledge);
@@ -148,6 +152,13 @@ namespace PrehistoricTribe.EditorTools
             SaveSingleLevelBuilding(LeveeDataPath, "levee", "Đê", SavePrefab(BuildLevee(), LeveePrefabPath),
                 "Ụ đất đắp giữa ao và ruộng/nhà: chặn nước lũ tràn qua. Xếp liền nhau thành bờ đê kín",
                 unlockedByDefault: false, waterWithin: 0f, Cost(wood, 2));
+            // M6/D5: phòng thủ trước bầy sói đột kích — mở sẵn từ đầu.
+            SaveSingleLevelBuilding(TorchDataPath, "torch", "Đuốc", SavePrefab(BuildTorch(), TorchPrefabPath),
+                "Tối tự cháy: thú dữ không dám vào vùng sáng bán kính 3,5m. Cắm ở cổng rào, chuồng thú, ruộng xa",
+                unlockedByDefault: true, waterWithin: 0f, Cost(wood, 1));
+            SaveSingleLevelBuilding(FenceDataPath, "fence", "Hàng rào", SavePrefab(BuildFence(), FencePrefabPath),
+                "Cọc nhọn chắn kín ô — người và thú phải đi vòng (nhớ chừa cổng). Sói đột kích sẽ cào phá rào",
+                unlockedByDefault: true, waterWithin: 0f, Cost(wood, 2));
             BuildCropModels(foods, riceSeed, seedling, sheaf);
             BuildTechs(knowledge, riceSeed);
             ProfessionData[] professions = BuildProfessions();
@@ -684,6 +695,73 @@ namespace PrehistoricTribe.EditorTools
                 }
             });
             SetPrivateField(root.AddComponent<Levee>(), "model", root.transform.Find("Level1"));
+            return root;
+        }
+
+        /// <summary>Đuốc (M6/D5): cột gỗ, đầu quấn rơm; tối tự cháy (dùng lại <see cref="Campfire"/> với vùng sáng nhỏ hơn).</summary>
+        private static GameObject BuildTorch()
+        {
+            var root = new GameObject("Torch");
+            AddBuildingComponents(root, new Vector3(0f, 0.55f, 0f), new Vector3(0.3f, 1.1f, 0.3f), 60f);
+            GameObject flames = null;
+            Light light = null;
+            AttachLevelModels(root, t =>
+            {
+                Part(t, "Pole", PrimitiveType.Cylinder, new Vector3(0f, 0.5f, 0f), new Vector3(0.06f, 0.5f, 0.06f), Palette.Wood);
+                Part(t, "Head", PrimitiveType.Cylinder, new Vector3(0f, 1.02f, 0f), new Vector3(0.11f, 0.06f, 0.11f), Palette.Thatch);
+                foreach (var a in new[] { 0f, 120f, 240f })
+                    Part(t, "Stone", PrimitiveType.Sphere, new Vector3(Mathf.Cos(a * Mathf.Deg2Rad) * 0.1f, 0.03f, Mathf.Sin(a * Mathf.Deg2Rad) * 0.1f),
+                        new Vector3(0.1f, 0.06f, 0.09f), Palette.Stone);
+                flames = new GameObject("Flames");
+                flames.transform.SetParent(t, false);
+                var flameMat = Mat("Flame", Palette.Hex(0xff8a2a), emission: 1.5f);
+                var coreMat = Mat("FlameCore", Palette.Hex(0xffd36a), emission: 1.5f);
+                foreach (var renderer in new[]
+                {
+                    Cone(flames.transform, "Flame", 6, new Vector3(0f, 1.07f, 0f), new Vector3(0.14f, 0.26f, 0.14f), flameMat).GetComponent<Renderer>(),
+                    Cone(flames.transform, "Core", 5, new Vector3(0f, 1.07f, 0f), new Vector3(0.08f, 0.17f, 0.08f), coreMat).GetComponent<Renderer>(),
+                })
+                    renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                var lightGO = new GameObject("TorchLight");
+                lightGO.transform.SetParent(t, false);
+                lightGO.transform.localPosition = new Vector3(0f, 1.2f, 0f);
+                light = lightGO.AddComponent<Light>();
+                light.type = LightType.Point;
+                light.color = new Color(1f, 0.6f, 0.3f);
+                light.range = 5f;
+                light.intensity = 1.6f;
+                light.shadows = LightShadows.None;
+            });
+            var torch = root.AddComponent<Campfire>();
+            SetPrivateField(torch, "fireLight", light);
+            SetPrivateField(torch, "flames", flames);
+            SetPrivateField(torch, "lightIntensity", 1.6f);
+            SetPrivateField(torch, "safeRadius", 3.5f);
+            SetPrivateField(torch, "isSleepSpot", false);
+            return root;
+        }
+
+        /// <summary>Hàng rào (M6/D5): hàng cọc gỗ vót nhọn + 2 thanh giằng, chắn kín ô; hàng cọc tự xoay theo rào bên cạnh.</summary>
+        private static GameObject BuildFence()
+        {
+            var root = new GameObject("Fence");
+            AddBuildingComponents(root, new Vector3(0f, 0.45f, 0f), new Vector3(0.98f, 0.9f, 0.98f), 120f);
+            Transform stakes = null;
+            AttachLevelModels(root, t =>
+            {
+                stakes = new GameObject("Stakes").transform;
+                stakes.SetParent(t, false);
+                for (int i = 0; i < 6; i++)
+                {
+                    float x = -0.42f + i * 0.168f;
+                    float h = 0.62f + (i % 2) * 0.08f;
+                    Part(stakes, "Stake", PrimitiveType.Cylinder, new Vector3(x, h * 0.5f, 0f), new Vector3(0.12f, h * 0.5f, 0.12f), Palette.Wood);
+                    Cone(stakes, "Tip", 6, new Vector3(x, h, 0f), new Vector3(0.12f, 0.14f, 0.12f), Palette.Plank);
+                }
+                Part(stakes, "Rail", PrimitiveType.Cube, new Vector3(0f, 0.22f, 0.07f), new Vector3(0.98f, 0.05f, 0.04f), Palette.DarkWood);
+                Part(stakes, "Rail", PrimitiveType.Cube, new Vector3(0f, 0.48f, 0.07f), new Vector3(0.98f, 0.05f, 0.04f), Palette.DarkWood);
+            });
+            SetPrivateField(root.AddComponent<Fence>(), "model", stakes);
             return root;
         }
 

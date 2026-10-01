@@ -121,7 +121,7 @@ Quyết định user: quy trình **vừa phải** (lúa ~6 bước: làm đất 
 - [x] D2 Hạn hán: ruộng bốc hơi nhanh, ao cạn dần (ít cá, mương/guồng yếu) — chống bằng giếng, mương, guồng
 - [x] D3 Lũ lụt: mưa lớn, ao tràn — ruộng/công trình gần ao ngập (cây chết úng, nhà hư) — chống bằng Đê (công trình mới)
 - [x] D4 Cháy rừng: sét/lửa lan qua cây và lều — dân gánh nước dập lửa
-- [ ] D5 Bầy sói đột kích: đêm cả bầy tràn vào trại theo đợt — chống bằng hàng rào, lính gác, đuốc
+- [x] D5 Bầy sói đột kích: đêm cả bầy tràn vào trại theo đợt — chống bằng hàng rào, lính gác, đuốc
 
 ## Milestone 7 — Polish & mở rộng
 - [ ] Âm thanh (SFX + nhạc nền)
@@ -400,6 +400,14 @@ Quyết định user: quy trình **vừa phải** (lúa ~6 bước: làm đất 
 - Dập lửa: `FirefightJob` — múc nước ở nguồn gần nhất (≤ 20m) dội −0,5 mỗi gàu (xách thùng nước), không có nước thì đập −0,15; tắt xong sang đám cháy gần đó. Ai cũng làm được (cả trinh sát); chuột phải vào chỗ cháy để ra lệnh; tự đi dập khi có cháy trong 15m — **cả ban đêm** (không đi ngủ, đang ngủ thì dậy). Người chơi bấm E đập lửa −0,2. Gợi ý "[E] Dập lửa — đang cháy N%".
 - Đổi thiết kế so với dự tính: bỏ "hạn hán làm lửa lan nhanh" vì mỗi lúc chỉ có 1 thiên tai; thay bằng luật ruộng ướt không cháy.
 - Test: 9 test mới `Milestone6WildfireTests.cs`. **169/169 test PlayMode pass**.
+
+## Nhật ký phiên làm việc 2026-10-01 (phần 19 — M6/D5 sói đột kích) → **Milestone 6 hoàn tất**
+- `Disaster/WolfRaidDisaster.cs` (tối đa 1 ngày): bắt đầu ban ngày thì chờ tối; đêm xuống cả bầy (3 con, cứ 3 ngày thêm 1, tối đa 6) xuất hiện cách làng 20m, kéo vào làng. Hết sói (bị hạ hoặc đã rút) thì kết thúc. Tải game giữa đợt không sinh thêm bầy thứ hai.
+- `PredatorAI` chế độ đột kích (`BeginRaid`): hang = giữa làng, lùng sục 9m, phát hiện 9m, không bỏ cuộc; cắn cả vật nuôi đã thuần; vẫn sợ lửa (đống lửa trại, đuốc). Đường tới mục tiêu bị chặn (`PathPartial`) → cào phá đoạn rào gần nhất (2× sát thương cắn). Trời sáng → chạy về bìa rừng rồi biến mất (không rơi thịt). Lưu/tải giữ trạng thái đột kích/đang rút.
+- **Đuốc** (`torch`, 1 gỗ, mở sẵn): dùng lại `Campfire` (vùng sáng 3,5m, `isSleepSpot` = false để không ai ngủ cạnh đuốc), tối tự cháy. **Hàng rào** (`fence`, 2 gỗ, mở sẵn, 120 máu): cọc nhọn chắn kín ô (NavMeshObstacle), hàng cọc tự xoay theo rào bên cạnh (`Disaster/Fence.cs`). Công trình sập thì tắt NavMeshObstacle + Campfire → rào bị phá thì đi qua được, đuốc đổ thì tắt.
+- Lính gác: người biết đánh (dân làng, thợ săn, trinh sát) thấy sói đột kích trong 10m thì ra đánh — kể cả ban đêm (không đi ngủ / đang ngủ thì dậy).
+- Menu xây 12 nút → xếp lưới 2 cột (`GridLayoutGroup`, ô 148×30); bảng hạt giống trở lại -250, công nghệ -420.
+- Test: 7 test mới `Milestone6WolfRaidTests.cs`. **176/176 test PlayMode pass**.
 
 ## Vấn đề đang tồn đọng (Known issues / Open questions)
 - [x] Chế độ combat: lai (2026-09-26) + chi tiết chỉ huy NPC theo nghề (2026-09-30)
