@@ -41,7 +41,9 @@ namespace PrehistoricTribe
             switch (target)
             {
                 case ResourceNode node:
-                    return $"[E] Chặt cây — còn {node.AmountRemaining} {node.ResourceType.displayName}";
+                    return node.IsDepleted
+                        ? $"{node.ActionName}: đã cạn — chờ hồi lại"
+                        : $"[E] {node.ActionName} — còn {node.AmountRemaining} {node.ResourceType.displayName}";
                 case FarmPlot plot:
                     return DescribePlot(plot);
                 case AnimalController animal:

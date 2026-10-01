@@ -43,6 +43,7 @@ namespace PrehistoricTribe.Tests
             Assert.AreEqual(AnimalState.Tamed, boar.State);
             yield return null;
 
+            int animalsAtSave = InteractableRegistry.All<AnimalController>().Count; // heo rừng + dê núi (E3)
             GameManager.Instance.SaveGame();
 
             // Làm lệch trạng thái sau khi lưu: gieo thêm FarmPlot_2, xóa con heo.
@@ -61,7 +62,7 @@ namespace PrehistoricTribe.Tests
             var restored = GameObject.Find("WildBoar");
             Assert.IsNotNull(restored, "The saved boar should be recreated on load");
             Assert.AreEqual(AnimalState.Tamed, restored.GetComponent<AnimalController>().State, "Restored boar should still be tamed");
-            Assert.AreEqual(1, InteractableRegistry.All<AnimalController>().Count, "Load should not duplicate animals");
+            Assert.AreEqual(animalsAtSave, InteractableRegistry.All<AnimalController>().Count, "Load should restore exactly the saved animals, no duplicates");
         }
 
         [UnityTest]

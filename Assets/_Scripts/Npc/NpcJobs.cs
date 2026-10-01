@@ -91,7 +91,7 @@ namespace PrehistoricTribe
 
             if ((profession.autoWork & NpcCapability.Gather) != 0)
             {
-                ResourceNode node = Nearest(InteractableRegistry.All<ResourceNode>(), position, radius, _ => true);
+                ResourceNode node = Nearest(InteractableRegistry.All<ResourceNode>(), position, radius, n => !n.IsDepleted);
                 if (node != null) return new GatherJob(node);
             }
 
@@ -197,7 +197,7 @@ namespace PrehistoricTribe
         }
     }
 
-    /// <summary>Chặt cây đến khi hết tài nguyên.</summary>
+    /// <summary>Khai thác (chặt cây, đánh cá…) đến khi nguồn cạn.</summary>
     public class GatherJob : NpcJob
     {
         private readonly ResourceNode node;
@@ -205,13 +205,15 @@ namespace PrehistoricTribe
         public GatherJob(ResourceNode node) => this.node = node;
 
         public override MonoBehaviour Target => node;
-        public override string Description => "chặt cây";
-        public override float Interval => 3f; // 1 gỗ / 3s → một cây 10 gỗ mất ~30s
+        public override string Description => node.ActionName.ToLowerInvariant();
+        public override float WorkRange => node.WorkRange;
+        public override float Interval => 3f; // 1 đơn vị / 3s → một cây 10 gỗ mất ~30s
 
         public override bool DoWork(NpcController npc)
         {
-            node.Harvest(); // hết gỗ thì cây tự Destroy → IsValid = false ở lượt sau
-            return true;
+            if (node.IsDepleted) return false; // ao cạn: thôi, chờ cá sinh sôi lại
+            node.Harvest(); // cây hết gỗ thì tự Destroy → IsValid = false ở lượt sau
+            return !node.IsDepleted;
         }
     }
 

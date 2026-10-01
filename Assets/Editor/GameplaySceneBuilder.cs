@@ -79,9 +79,20 @@ namespace PrehistoricTribe.EditorTools
             foreach (string id in GameContentBuilder.ProfessionIds)
                 professions.Add(AssetDatabase.LoadAssetAtPath<ProfessionData>(GameContentBuilder.ProfessionAssetPath(id)));
             var buttonPrefab = AssetDatabase.LoadAssetAtPath<Button>(ButtonPrefabPath);
+            // M5b/E3: lương thực nhiều loại, cây lúa/rau, dê núi, công nghệ trồng lúa.
+            var rice = AssetDatabase.LoadAssetAtPath<CropData>(GameContentBuilder.RiceDataPath);
+            var vegetable = AssetDatabase.LoadAssetAtPath<CropData>(GameContentBuilder.VegetableDataPath);
+            var techRice = AssetDatabase.LoadAssetAtPath<TechNode>(GameContentBuilder.TechRicePath);
+            var goatData = AssetDatabase.LoadAssetAtPath<AnimalData>(GameContentBuilder.GoatDataPath);
+            var foodTypes = new List<ResourceTypeData>();
+            foreach (string name in GameContentBuilder.FoodAssetNames)
+                foodTypes.Add(AssetDatabase.LoadAssetAtPath<ResourceTypeData>(GameContentBuilder.ResourcePath(name)));
+            var crops = new List<CropData> { berry, vegetable, rice };
+            var techs = new List<TechNode> { techFarming, techRice };
 
             if (wood == null || food == null || knowledge == null || hut == null || storage == null ||
-                berry == null || techFarming == null || boarData == null || buttonPrefab == null)
+                berry == null || techFarming == null || boarData == null || buttonPrefab == null ||
+                rice == null || vegetable == null || techRice == null || goatData == null || foodTypes.Contains(null))
             {
                 Debug.LogError("[GameplaySceneBuilder] Thieu asset can thiet. Chay 'Tools/Prehistoric/Build Missing Content' truoc (hoac dung 'Build All').");
                 return;
@@ -104,7 +115,9 @@ namespace PrehistoricTribe.EditorTools
 
             var rmGO = new GameObject("ResourceManager");
             var rm = rmGO.AddComponent<ResourceManager>();
-            SetPrivateField(rm, "knownResourceTypes", new List<ResourceTypeData> { wood, food, knowledge });
+            var knownTypes = new List<ResourceTypeData> { wood, food, knowledge };
+            knownTypes.AddRange(foodTypes);
+            SetPrivateField(rm, "knownResourceTypes", knownTypes);
 
             var player = CreatePlayer();
             CreateCamera(player.transform);
@@ -117,6 +130,12 @@ namespace PrehistoricTribe.EditorTools
                 tree.transform.position = new Vector3(TreePositions[i].x, 0f, TreePositions[i].y);
                 tree.transform.rotation = Quaternion.Euler(0f, i * 47f, 0f);
             }
+
+            // Ao cá phía bắc trại (nạp prefab sau khi bake NavMesh để tham chiếu còn hiệu lực).
+            var pondPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(GameContentBuilder.PondPrefabPath);
+            var pond = (GameObject)PrefabUtility.InstantiatePrefab(pondPrefab, resources);
+            pond.name = "FishingPond";
+            pond.transform.position = new Vector3(4.5f, 0f, 6f);
 
             var gridGO = new GameObject("Grid");
             var grid = gridGO.AddComponent<Grid>();
@@ -135,9 +154,9 @@ namespace PrehistoricTribe.EditorTools
             SetPrivateField(placer, "placementPreview", previewGO);
 
             var farmManager = new GameObject("FarmManager").AddComponent<FarmManager>();
-            SetPrivateField(farmManager, "knownCrops", new List<CropData> { berry });
+            SetPrivateField(farmManager, "knownCrops", crops);
             var tamingSystem = new GameObject("TamingSystem").AddComponent<TamingSystem>();
-            SetPrivateField(tamingSystem, "knownAnimals", new List<AnimalData> { boarData });
+            SetPrivateField(tamingSystem, "knownAnimals", new List<AnimalData> { boarData, goatData });
 
             CreateInteractionHighlight(player.GetComponent<PlayerInteraction>());
 
@@ -148,6 +167,11 @@ namespace PrehistoricTribe.EditorTools
             boarInstance.name = "WildBoar";
             boarInstance.transform.SetPositionAndRotation(new Vector3(3f, 0f, -1.5f), Quaternion.Euler(0f, 200f, 0f));
             SetPrivateField(boarInstance.GetComponent<AnimalController>(), "data", boarData);
+
+            var goatInstance = (GameObject)PrefabUtility.InstantiatePrefab(goatData.prefab);
+            goatInstance.name = "Goat";
+            goatInstance.transform.SetPositionAndRotation(new Vector3(-5f, 0f, -6.5f), Quaternion.Euler(0f, 160f, 0f));
+            SetPrivateField(goatInstance.GetComponent<AnimalController>(), "data", goatData);
 
             // Nạp lại: tạo asset NavMesh ở trên có thể làm tham chiếu prefab cũ mất hiệu lực.
             villagerPrefab = AssetDatabase.LoadAssetAtPath<NpcController>(GameContentBuilder.VillagerPrefabPath);
@@ -167,7 +191,7 @@ namespace PrehistoricTribe.EditorTools
             var techManager = techManagerGO.AddComponent<TechManager>();
             SetPrivateField(techManager, "knowledgeResource", knowledge);
             SetPrivateField(techManager, "knowledgeGenerationInterval", 6f);
-            SetPrivateField(techManager, "allTechs", new List<TechNode> { techFarming });
+            SetPrivateField(techManager, "allTechs", techs);
 
             var gameManagerGO = new GameObject("GameManager");
             var gameManager = gameManagerGO.AddComponent<GameManager>();
@@ -178,7 +202,7 @@ namespace PrehistoricTribe.EditorTools
 
             // Nạp lại: tạo asset NavMesh phía trên làm tham chiếu prefab (component) đã nạp trước đó mất hiệu lực.
             buttonPrefab = AssetDatabase.LoadAssetAtPath<Button>(ButtonPrefabPath);
-            CreateUI(buttonPrefab, wood, food, knowledge, hut, storage, berry, techFarming, player.GetComponent<PlayerInteraction>());
+            CreateUI(buttonPrefab, wood, food, knowledge, hut, storage, crops, techs, player.GetComponent<PlayerInteraction>());
 
             EditorSceneManager.SaveScene(scene, ScenePath);
             AssetDatabase.SaveAssets();
@@ -402,7 +426,7 @@ namespace PrehistoricTribe.EditorTools
 
         // ─── UI (Canvas overlay — giữ nguyên như bản 2D) ─────────────────────
         private static void CreateUI(Button buttonPrefab, ResourceTypeData wood, ResourceTypeData food, ResourceTypeData knowledge,
-            BuildingData hut, BuildingData storage, CropData berry, TechNode techFarming, PlayerInteraction interaction)
+            BuildingData hut, BuildingData storage, List<CropData> crops, List<TechNode> techs, PlayerInteraction interaction)
         {
             var eventSystemGO = new GameObject("EventSystem");
             eventSystemGO.AddComponent<EventSystem>();
@@ -416,12 +440,13 @@ namespace PrehistoricTribe.EditorTools
 
             CreateResourceLabel(canvasGO.transform, "WoodLabel", new Vector2(20f, -20f), wood, "Wood: 0", 28f);
             CreateResourceLabel(canvasGO.transform, "FoodLabel", new Vector2(20f, -55f), food, "Food: 0", 20f);
-            CreateResourceLabel(canvasGO.transform, "KnowledgeLabel", new Vector2(20f, -85f), knowledge, "Knowledge: 0", 20f);
-            CreatePopulationLabel(canvasGO.transform, new Vector2(20f, -115f));
+            CreateFoodBreakdownLabel(canvasGO.transform, new Vector2(20f, -80f));
+            CreateResourceLabel(canvasGO.transform, "KnowledgeLabel", new Vector2(20f, -105f), knowledge, "Knowledge: 0", 20f);
+            CreatePopulationLabel(canvasGO.transform, new Vector2(20f, -135f));
 
             CreateBuildMenuPanel(canvasGO.transform, buttonPrefab, hut, storage);
-            CreateCropSelectionPanel(canvasGO.transform, buttonPrefab, berry);
-            CreateTechTreePanel(canvasGO.transform, buttonPrefab, techFarming);
+            CreateCropSelectionPanel(canvasGO.transform, buttonPrefab, crops);
+            CreateTechTreePanel(canvasGO.transform, buttonPrefab, techs);
             CreateNotificationLabel(canvasGO.transform);
             CreateInteractionPrompt(canvasGO.transform, interaction);
             CreateSelectionPanel(canvasGO.transform, buttonPrefab);
@@ -586,6 +611,21 @@ namespace PrehistoricTribe.EditorTools
             SetPrivateField(barUI, "label", tmp);
         }
 
+        private static void CreateFoodBreakdownLabel(Transform canvasTransform, Vector2 anchoredPosition)
+        {
+            var labelGO = new GameObject("FoodBreakdownLabel");
+            labelGO.transform.SetParent(canvasTransform, false);
+            var rect = labelGO.AddComponent<RectTransform>();
+            rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(0f, 1f);
+            rect.anchoredPosition = anchoredPosition;
+            rect.sizeDelta = new Vector2(700f, 24f);
+            var tmp = labelGO.AddComponent<TextMeshProUGUI>();
+            tmp.fontSize = 15f;
+            tmp.color = new Color(0.9f, 0.86f, 0.75f);
+            tmp.text = string.Empty;
+            SetPrivateField(labelGO.AddComponent<FoodBreakdownUI>(), "label", tmp);
+        }
+
         private static void CreatePopulationLabel(Transform canvasTransform, Vector2 anchoredPosition)
         {
             var labelGO = new GameObject("PopulationLabel");
@@ -647,20 +687,20 @@ namespace PrehistoricTribe.EditorTools
             SetPrivateField(ui, "buttonContainer", container);
         }
 
-        private static void CreateCropSelectionPanel(Transform canvasTransform, Button buttonPrefab, CropData berry)
+        private static void CreateCropSelectionPanel(Transform canvasTransform, Button buttonPrefab, List<CropData> crops)
         {
             var container = CreatePanelContainer(canvasTransform, "CropPanel", new Vector2(-20f, -220f));
             var ui = container.gameObject.AddComponent<CropSelectionUI>();
-            SetPrivateField(ui, "availableCrops", new List<CropData> { berry });
+            SetPrivateField(ui, "availableCrops", crops);
             SetPrivateField(ui, "buttonPrefab", buttonPrefab);
             SetPrivateField(ui, "buttonContainer", container);
         }
 
-        private static void CreateTechTreePanel(Transform canvasTransform, Button buttonPrefab, TechNode techFarming)
+        private static void CreateTechTreePanel(Transform canvasTransform, Button buttonPrefab, List<TechNode> techs)
         {
             var container = CreatePanelContainer(canvasTransform, "TechPanel", new Vector2(-20f, -420f));
             var ui = container.gameObject.AddComponent<TechTreeUI>();
-            SetPrivateField(ui, "allTechs", new List<TechNode> { techFarming });
+            SetPrivateField(ui, "allTechs", techs);
             SetPrivateField(ui, "entryButtonPrefab", buttonPrefab);
             SetPrivateField(ui, "entryContainer", container);
         }

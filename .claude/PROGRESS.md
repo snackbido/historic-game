@@ -96,7 +96,7 @@
 Quyết định user: công trình nâng cấp **5 cấp** (click công trình → bảng thông tin + nút Nâng cấp); **lều là nhà riêng của từng cặp đôi**, chỉ sinh con tại lều; lương thực tách **nhiều loại** (Thịt, Lúa gạo, Quả mọng, Sữa, Cá, Rau…); kho có **giới hạn lưu trữ**, **thịt để ngoài kho bị hỏng**, **dân làng ăn hằng ngày**.
 - [x] E1 Hệ thống nâng cấp 5 cấp cho Lều + Kho (chi phí, model đổi theo cấp, bảng thông tin khi click công trình, lưu/tải cấp) — 2026-09-30
 - [x] E2 Lều là nhà: gán cặp đôi vào lều, cặp đôi về lều để sinh con, cấp lều → thêm chỗ cho con + sinh nhanh hơn — 2026-10-01
-- [ ] E3 Nhiều loại lương thực + nguồn mới (lúa, rau = cây trồng mới; cá = đánh cá; sữa = vật nuôi mới; thịt = săn/vật nuôi); chi phí "thức ăn" nhận loại nào cũng được
+- [x] E3 Nhiều loại lương thực + nguồn mới (lúa, rau = cây trồng mới; cá = đánh cá; sữa = vật nuôi mới; thịt = săn/vật nuôi); chi phí "thức ăn" nhận loại nào cũng được — 2026-10-01
 - [ ] E4 Kho: giới hạn lưu trữ theo loại (không kho ~20/loại, kho + cấp kho tăng), thịt ngoài kho hỏng dần
 - [ ] E5 Dân làng ăn hằng ngày: thiếu ăn → đói, yếu, không sinh con
 
@@ -257,6 +257,13 @@ Quyết định user: công trình nâng cấp **5 cấp** (click công trình �
 - UI: nhãn dân số "Dân số: 5 (1 trẻ em) · Nhà: 1/2 cặp"; bảng công trình lều hiện "Chỗ cho con: N" + "Gia đình: Ka & Mây — 1/2 con" (hoặc "Lều trống").
 - **Sự cố**: Unity crash lúc chạy test nhóm NPC qua MCP (bộ nhớ ~0,5GB) và **ghi hỏng `LiberationSans SDF - Fallback.asset`** (toàn ký tự rỗng → test lỗi "File is either empty or corrupted"). Đã khôi phục bản trong git (chỉ là bộ đệm ký tự font, Unity tự thêm lại) → file này hết bị "modified" luôn.
 - **Đã xác nhận**: **59/59 test PlayMode pass** (chạy batch mode khi Editor đã tắt, 4,9GB trống); 6 test mới `Milestone5bHomeTests.cs` (xây lều → một cặp có nhà; cặp đôi về lều, em bé ra đời ở cửa lều; lều đủ con chặn sinh tới khi nâng cấp; lều cấp 5 nghỉ ngắn hơn; con trưởng thành ra ở riêng; lưu/tải giữ nhà).
+
+## Nhật ký phiên làm việc 2026-10-01 (phần 2 — M5b/E3 nhiều loại lương thực)
+- `ResourceTypeData`: thêm `category` (Material/Food/Knowledge), `isFoodPool` + `poolDefault`, `perishable`. 6 loại lương thực mới (asset `ResourceType_Meat/Rice/Berries/Milk/Fish/Vegetables`): Thịt*, Lúa gạo, Quả mọng, Sữa*, Cá*, Rau (* = dễ hỏng). Asset cũ `ResourceType_Food` (id "food") thành **loại gộp "Thức ăn"** = tổng mọi loại → mọi chi phí/test đang dùng nó vẫn chạy; trả chi phí gộp thì dùng đồ dễ hỏng trước, rồi loại đang nhiều nhất; cộng vào loại gộp = cộng vào Quả mọng. Loại gộp không lưu trong save; save cũ có "food" → chuyển thành Quả mọng.
+- Nguồn: cây mọng → Quả mọng; **cây Lúa** mới (20/40/60s, thu 6 Lúa gạo, mở bằng công nghệ mới **"Trồng lúa"** — 10 tri thức, cần Nông nghiệp); **cây Rau** mới (8/16/30s, thu 2 Rau, mở cùng Nông nghiệp); heo rừng → Thịt (sản phẩm 2, săn 6); sói → Thịt 4; **Dê núi** mới (cho ăn 3 lần để thuần, ra 2 Sữa / 45s, săn được 4 Thịt) đặt ở (-5, -6,5); **Ao cá** mới ở (4,5; 6) — `ResourceNode` không biến mất khi cạn, cá hồi 1 con / 20s (tối đa 8), dân làng đứng trên bờ đánh cá (`workRange` 1,7m), người chơi bấm E.
+- `ResourceNode`: `actionName` ("Chặt cây"/"Đánh cá"), `workRange`, `regenInterval`/`maxAmount` (sinh sôi lại — dùng lại được cho cây mọc lại sau này). `GatherJob` dừng khi nguồn cạn; tự làm việc bỏ qua nguồn đã cạn.
+- UI: dòng chi tiết dưới "Thức ăn: N" (`FoodBreakdownUI`: "Thịt 3 · Lúa gạo 0 · Quả mọng 6 · Sữa 0 · Cá 2 · Rau 0"); bảng hạt giống 3 cây; bảng công nghệ 2 mục. Đổi tên dữ liệu sang tiếng Việt có dấu: Gỗ, Tri thức, Heo rừng, Cây mọng, Nông nghiệp, Lều, Kho.
+- **Đã xác nhận**: **67/67 test PlayMode pass** (8 test mới `Milestone5bFoodTests.cs`; sửa `SaveLoadTests` vì giờ bản đồ có 2 con vật); ảnh render lúa chín, rau, dê núi, ao cá.
 
 ## Vấn đề đang tồn đọng (Known issues / Open questions)
 - [x] Chế độ combat: lai (2026-09-26) + chi tiết chỉ huy NPC theo nghề (2026-09-30)

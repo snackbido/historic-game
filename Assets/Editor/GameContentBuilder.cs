@@ -50,6 +50,13 @@ namespace PrehistoricTribe.EditorTools
         private const string KnowledgeAssetPath = "Assets/_Data/ResourceType_Knowledge.asset";
         private const string BoarDataPath = "Assets/_Data/AnimalData_WildBoar.asset";
         private const string BerryDataPath = "Assets/_Data/CropData_Berry.asset";
+        public const string RiceDataPath = "Assets/_Data/CropData_Rice.asset";
+        public const string VegetableDataPath = "Assets/_Data/CropData_Vegetable.asset";
+        public const string GoatDataPath = "Assets/_Data/AnimalData_Goat.asset";
+        public const string GoatPrefabPath = "Assets/Prefabs/Animals/Goat.prefab";
+        public const string PondPrefabPath = "Assets/Prefabs/Resources/FishingPond.prefab";
+        public const string TechFarmingPath = "Assets/_Data/TechNode_Farming.asset";
+        public const string TechRicePath = "Assets/_Data/TechNode_Rice.asset";
 
         private const string HutPrefabPath = "Assets/Prefabs/Buildings/Hut.prefab";
         private const string StoragePrefabPath = "Assets/Prefabs/Buildings/Storage.prefab";
@@ -69,35 +76,86 @@ namespace PrehistoricTribe.EditorTools
         {
             if (!ConfirmOverwrite("Tạo lại prefab placeholder?",
                     "Prefab lều/kho/cây/heo rừng đã tồn tại. Tạo lại sẽ ghi đè mọi chỉnh sửa hoặc model thật bạn đã thay vào.",
-                    HutPrefabPath, StoragePrefabPath, BoarPrefabPath, TreePrefabPath, VillagerPrefabPath, WolfPrefabPath))
+                    HutPrefabPath, StoragePrefabPath, BoarPrefabPath, TreePrefabPath, VillagerPrefabPath, WolfPrefabPath,
+                    GoatPrefabPath, PondPrefabPath))
                 return;
 
-            var wood = AssetDatabase.LoadAssetAtPath<ResourceTypeData>(WoodAssetPath);
-            var food = AssetDatabase.LoadAssetAtPath<ResourceTypeData>(FoodAssetPath);
-            var knowledge = AssetDatabase.LoadAssetAtPath<ResourceTypeData>(KnowledgeAssetPath);
-            if (wood == null || food == null || knowledge == null)
-            {
-                Debug.LogError($"[GameContentBuilder] Khong tim thay asset tai nguyen (go/thuc an/tri thuc). Dung lai.");
-                return;
-            }
+            Foods foods = EnsureResourceTypes(out var wood, out var knowledge);
+            if (foods == null) return;
 
             AssignBuildingPrefab(HutDataPath, SavePrefab(BuildHut(), HutPrefabPath),
-                "Nhà ở của dân làng", HutLevels(wood, knowledge));
+                "Nhà ở của dân làng", HutLevels(wood, knowledge), "Lều");
             AssignBuildingPrefab(StorageDataPath, SavePrefab(BuildStorage(), StoragePrefabPath),
-                "Cất giữ lương thực", StorageLevels(wood, knowledge));
+                "Cất giữ lương thực", StorageLevels(wood, knowledge), "Kho");
             SavePrefab(BuildTree(wood), TreePrefabPath);
-            BuildWildBoarContent(food);
-            BuildCropModels();
+            SavePrefab(BuildPond(foods.fish), PondPrefabPath);
+            BuildWildBoarContent(foods);
+            BuildGoatContent(foods);
+            BuildCropModels(foods);
+            BuildTechs(knowledge);
             ProfessionData[] professions = BuildProfessions();
             SavePrefab(BuildVillager(professions), VillagerPrefabPath);
-            BuildWolfContent(food);
+            BuildWolfContent(foods.meat);
 
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
-            Debug.Log("[GameContentBuilder] Da tao xong prefab 3D: Hut, Storage, Tree, WildBoar, Villager, 4 nghe va model giai doan cho CropData_Berry");
+            Debug.Log("[GameContentBuilder] Da tao xong content: cong trinh, cay, ao ca, heo rung, de nui, 3 cay trong, 6 loai luong thuc, 2 cong nghe, dan lang, soi");
         }
 
-        private static void AssignBuildingPrefab(string dataAssetPath, GameObject prefab, string function, List<BuildingLevel> levels)
+        // ─── Tài nguyên & lương thực (M5b/E3) ────────────────────────────────
+        /// <summary>Các loại lương thực + loại gộp "Thức ăn" (chi phí trả bằng loại nào cũng được).</summary>
+        internal class Foods
+        {
+            public ResourceTypeData pool, meat, rice, berries, milk, fish, vegetables;
+            public List<ResourceTypeData> All => new List<ResourceTypeData> { meat, rice, berries, milk, fish, vegetables };
+        }
+
+        public static string ResourcePath(string name) => $"Assets/_Data/ResourceType_{name}.asset";
+
+        // Thứ tự = thứ tự hiển thị trên dòng chi tiết lương thực.
+        public static readonly string[] FoodAssetNames = { "Meat", "Rice", "Berries", "Milk", "Fish", "Vegetables" };
+
+        private static ResourceTypeData SaveResourceType(string assetName, string id, string displayName,
+            ResourceCategory category, bool perishable = false)
+        {
+            string path = ResourcePath(assetName);
+            var type = AssetDatabase.LoadAssetAtPath<ResourceTypeData>(path);
+            bool isNew = type == null;
+            if (isNew) type = ScriptableObject.CreateInstance<ResourceTypeData>();
+            type.id = id;
+            type.displayName = displayName;
+            type.category = category;
+            type.perishable = perishable;
+            if (isNew) AssetDatabase.CreateAsset(type, path);
+            else EditorUtility.SetDirty(type);
+            return type;
+        }
+
+        private static Foods EnsureResourceTypes(out ResourceTypeData wood, out ResourceTypeData knowledge)
+        {
+            wood = SaveResourceType("Wood", "wood", "Gỗ", ResourceCategory.Material);
+            knowledge = SaveResourceType("Knowledge", "knowledge", "Tri thức", ResourceCategory.Knowledge);
+
+            var foods = new Foods
+            {
+                meat = SaveResourceType("Meat", "meat", "Thịt", ResourceCategory.Food, perishable: true),
+                rice = SaveResourceType("Rice", "rice", "Lúa gạo", ResourceCategory.Food),
+                berries = SaveResourceType("Berries", "berries", "Quả mọng", ResourceCategory.Food),
+                milk = SaveResourceType("Milk", "milk", "Sữa", ResourceCategory.Food, perishable: true),
+                fish = SaveResourceType("Fish", "fish", "Cá", ResourceCategory.Food, perishable: true),
+                vegetables = SaveResourceType("Vegetables", "vegetables", "Rau", ResourceCategory.Food),
+            };
+
+            // "food" (asset cũ ResourceType_Food) thành loại gộp: mọi chi phí/test đang dùng nó vẫn chạy.
+            foods.pool = SaveResourceType("Food", "food", "Thức ăn", ResourceCategory.Food);
+            foods.pool.isFoodPool = true;
+            foods.pool.poolDefault = foods.berries;
+            EditorUtility.SetDirty(foods.pool);
+            return foods;
+        }
+
+        private static void AssignBuildingPrefab(string dataAssetPath, GameObject prefab, string function,
+            List<BuildingLevel> levels, string displayName)
         {
             var data = AssetDatabase.LoadAssetAtPath<BuildingData>(dataAssetPath);
             if (data == null)
@@ -106,6 +164,7 @@ namespace PrehistoricTribe.EditorTools
                 return;
             }
             data.prefab = prefab;
+            data.displayName = displayName;
             data.functionDescription = function;
             data.levels = levels;
             EditorUtility.SetDirty(data);
@@ -330,8 +389,76 @@ namespace PrehistoricTribe.EditorTools
             Cone(parent, "Leaves2", 7, new Vector3(0f, 1.33f, 0f), new Vector3(0.6f, 0.55f, 0.6f), Palette.LeavesLight, new Vector3(0f, 50f, 0f));
         }
 
-        // ─── Wild boar ───────────────────────────────────────────────────────
-        private static void BuildWildBoarContent(ResourceTypeData food)
+        // ─── Animals ─────────────────────────────────────────────────────────
+        /// <summary>Phần chung của mọi vật nuôi: vòng cổ (đã thuần), biểu tượng sản phẩm, thanh máu, lưu prefab.</summary>
+        private static GameObject FinishAnimal(GameObject root, AnimalController controller, Renderer[] bodyRenderers,
+            Vector3 collarPosition, float collarSize, float iconHeight, string prefabPath)
+        {
+            var t = root.transform;
+            var collar = Part(t, "TamedCollar", PrimitiveType.Cylinder, collarPosition, new Vector3(collarSize, 0.03f, collarSize), Palette.Rope, new Vector3(90f, 0f, 0f));
+            var productIcon = Part(t, "ProductIcon", PrimitiveType.Sphere, new Vector3(0f, iconHeight, 0f), Vector3.one * 0.2f, Palette.ProductGlow);
+            collar.SetActive(false); // thú mới là thú hoang — AnimalController bật lên khi thuần hóa
+            productIcon.SetActive(false);
+
+            SetPrivateField(controller, "bodyRenderers", bodyRenderers);
+            SetPrivateField(controller, "tamedIndicator", collar);
+            SetPrivateField(controller, "productIndicator", productIcon);
+            BuildHealthBar(root, iconHeight + 0.25f);
+            return SavePrefab(root, prefabPath);
+        }
+
+        private static AnimalData SaveAnimalData(string path)
+        {
+            var data = AssetDatabase.LoadAssetAtPath<AnimalData>(path);
+            if (data != null) return data;
+            data = ScriptableObject.CreateInstance<AnimalData>();
+            AssetDatabase.CreateAsset(data, path);
+            return data;
+        }
+
+        private static List<ResourceAmount> Amounts(ResourceTypeData type, int amount) =>
+            new List<ResourceAmount> { new ResourceAmount { type = type, amount = amount } };
+
+        /// <summary>Dê núi (E3): thuần hóa để vắt sữa.</summary>
+        private static void BuildGoatContent(Foods foods)
+        {
+            var root = new GameObject("Goat");
+            var controller = root.AddComponent<AnimalController>();
+            SetPrivateField(root.AddComponent<HealthComponent>(), "maxHealth", 40f);
+            var t = root.transform;
+
+            var coat = Mat("GoatCoat", Palette.Hex(0xe4ddd0));
+            var horn = Mat("GoatHorn", Palette.Hex(0x5b5146));
+            var body = Part(t, "Body", PrimitiveType.Sphere, new Vector3(0f, 0.42f, 0f), new Vector3(0.36f, 0.36f, 0.62f), coat);
+            var neck = Part(t, "Neck", PrimitiveType.Cylinder, new Vector3(0f, 0.55f, 0.25f), new Vector3(0.13f, 0.12f, 0.13f), coat, new Vector3(35f, 0f, 0f));
+            var head = Part(t, "Head", PrimitiveType.Cube, new Vector3(0f, 0.66f, 0.36f), new Vector3(0.16f, 0.17f, 0.24f), coat);
+            Part(t, "Beard", PrimitiveType.Cube, new Vector3(0f, 0.55f, 0.45f), new Vector3(0.05f, 0.1f, 0.04f), Mat("GoatBeard", Palette.Hex(0xbfb6a6)));
+            Part(t, "HornL", PrimitiveType.Cylinder, new Vector3(-0.05f, 0.79f, 0.3f), new Vector3(0.03f, 0.08f, 0.03f), horn, new Vector3(-40f, 0f, 0f));
+            Part(t, "HornR", PrimitiveType.Cylinder, new Vector3(0.05f, 0.79f, 0.3f), new Vector3(0.03f, 0.08f, 0.03f), horn, new Vector3(-40f, 0f, 0f));
+            var legs = new[] { new Vector3(-0.1f, 0.13f, 0.17f), new Vector3(0.1f, 0.13f, 0.17f), new Vector3(-0.1f, 0.13f, -0.18f), new Vector3(0.1f, 0.13f, -0.18f) };
+            for (int i = 0; i < legs.Length; i++)
+                Part(t, $"Leg{i}", PrimitiveType.Cylinder, legs[i], new Vector3(0.05f, 0.13f, 0.05f), horn);
+
+            GameObject prefab = FinishAnimal(root, controller,
+                new[] { body.GetComponent<Renderer>(), neck.GetComponent<Renderer>(), head.GetComponent<Renderer>() },
+                new Vector3(0f, 0.55f, 0.22f), 0.3f, 1.05f, GoatPrefabPath);
+
+            var data = SaveAnimalData(GoatDataPath);
+            data.id = "goat";
+            data.displayName = "Dê núi";
+            data.prefab = prefab;
+            data.hungerDecayInterval = 20f;
+            data.hungerThresholdForNeeds = 50f;
+            data.feedCost = Amounts(foods.pool, 2); // ăn loại thức ăn nào cũng được
+            data.feedingsToTame = 3;
+            data.reproductionInterval = 120f;
+            data.products = Amounts(foods.milk, 2);
+            data.productionInterval = 45f;
+            data.huntYield = Amounts(foods.meat, 4);
+            EditorUtility.SetDirty(data);
+        }
+
+        private static void BuildWildBoarContent(Foods foods)
         {
             var root = new GameObject("WildBoar");
             var controller = root.AddComponent<AnimalController>();
@@ -352,41 +479,23 @@ namespace PrehistoricTribe.EditorTools
                 Part(t, $"Leg{i}", PrimitiveType.Cylinder, legs[i], new Vector3(0.09f, 0.12f, 0.09f), Palette.BoarDark);
 
             // Vòng cổ + biểu tượng sản phẩm: phân biệt rõ con hoang / đã thuần / có sản phẩm (UX gap ở PROGRESS.md M3).
-            var collar = Part(t, "TamedCollar", PrimitiveType.Cylinder, new Vector3(0f, 0.42f, 0.27f), new Vector3(0.44f, 0.03f, 0.44f), Palette.Rope, new Vector3(90f, 0f, 0f));
-            var productIcon = Part(t, "ProductIcon", PrimitiveType.Sphere, new Vector3(0f, 1f, 0f), Vector3.one * 0.2f, Palette.ProductGlow);
-            collar.SetActive(false); // heo mới là heo hoang — AnimalController bật lên khi thuần hóa
-            productIcon.SetActive(false);
+            GameObject prefab = FinishAnimal(root, controller,
+                new[] { body.GetComponent<Renderer>(), head.GetComponent<Renderer>(), earL.GetComponent<Renderer>(), earR.GetComponent<Renderer>() },
+                new Vector3(0f, 0.42f, 0.27f), 0.44f, 1f, BoarPrefabPath);
 
-            SetPrivateField(controller, "bodyRenderers", new Renderer[]
-            {
-                body.GetComponent<Renderer>(), head.GetComponent<Renderer>(), earL.GetComponent<Renderer>(), earR.GetComponent<Renderer>()
-            });
-            SetPrivateField(controller, "tamedIndicator", collar);
-            SetPrivateField(controller, "productIndicator", productIcon);
-            BuildHealthBar(root, 1.25f);
-
-            GameObject prefab = SavePrefab(root, BoarPrefabPath);
-
-            var data = AssetDatabase.LoadAssetAtPath<AnimalData>(BoarDataPath);
-            bool isNew = data == null;
-            if (isNew) data = ScriptableObject.CreateInstance<AnimalData>();
-
+            var data = SaveAnimalData(BoarDataPath);
             data.id = "wild_boar";
-            data.displayName = "Heo rung";
+            data.displayName = "Heo rừng";
             data.prefab = prefab;
             data.hungerDecayInterval = 20f;
             data.hungerThresholdForNeeds = 50f;
-            data.feedCost = new List<ResourceAmount> { new ResourceAmount { type = food, amount = 3 } };
+            data.feedCost = Amounts(foods.pool, 3); // ăn loại thức ăn nào cũng được
             data.feedingsToTame = 2;
             data.reproductionInterval = 90f;
-            data.products = new List<ResourceAmount> { new ResourceAmount { type = food, amount = 2 } };
+            data.products = Amounts(foods.meat, 2);
             data.productionInterval = 30f;
-            data.huntYield = new List<ResourceAmount> { new ResourceAmount { type = food, amount = 6 } };
-
-            if (isNew)
-                AssetDatabase.CreateAsset(data, BoarDataPath);
-            else
-                EditorUtility.SetDirty(data);
+            data.huntYield = Amounts(foods.meat, 6);
+            EditorUtility.SetDirty(data);
         }
 
         // ─── Health bar ──────────────────────────────────────────────────────
@@ -617,6 +726,60 @@ namespace PrehistoricTribe.EditorTools
             EditorUtility.SetDirty(data);
         }
 
+        // ─── Công nghệ ───────────────────────────────────────────────────────
+        /// <summary>Nông nghiệp mở thêm Rau; công nghệ mới "Trồng lúa" (cần Nông nghiệp) mở cây Lúa.</summary>
+        private static void BuildTechs(ResourceTypeData knowledge)
+        {
+            var farming = AssetDatabase.LoadAssetAtPath<TechNode>(TechFarmingPath);
+            if (farming == null)
+            {
+                Debug.LogError($"[GameContentBuilder] Khong tim thay {TechFarmingPath}");
+                return;
+            }
+            farming.displayName = "Nông nghiệp";
+            farming.unlockedCropIds = new List<string> { "berry", "vegetable" };
+            EditorUtility.SetDirty(farming);
+
+            var rice = AssetDatabase.LoadAssetAtPath<TechNode>(TechRicePath);
+            bool isNew = rice == null;
+            if (isNew) rice = ScriptableObject.CreateInstance<TechNode>();
+            rice.id = "tech_rice";
+            rice.displayName = "Trồng lúa";
+            rice.cost = Amounts(knowledge, 10);
+            rice.prerequisites = new List<TechNode> { farming };
+            rice.unlockedBuildingIds = new List<string>();
+            rice.unlockedCropIds = new List<string> { "rice" };
+            if (isNew) AssetDatabase.CreateAsset(rice, TechRicePath);
+            else EditorUtility.SetDirty(rice);
+        }
+
+        // ─── Ao cá ───────────────────────────────────────────────────────────
+        /// <summary>Ao cá (E3): khai thác như cây nhưng không cạn hẳn — cá sinh sôi lại 1 con / 20s, tối đa 8.</summary>
+        private static GameObject BuildPond(ResourceTypeData fish)
+        {
+            var root = new GameObject("FishingPond");
+            var node = root.AddComponent<ResourceNode>();
+            SetPrivateField(node, "resourceType", fish);
+            SetPrivateField(node, "amountRemaining", 8);
+            SetPrivateField(node, "maxAmount", 8);
+            SetPrivateField(node, "yieldPerHit", 1);
+            SetPrivateField(node, "regenInterval", 20f);
+            SetPrivateField(node, "actionName", "Đánh cá");
+            SetPrivateField(node, "workRange", 1.7f); // đứng trên bờ
+            AddObstacle(root, NavMeshObstacleShape.Capsule, new Vector3(0f, 0.2f, 0f), new Vector3(1.8f, 0.4f, 1.8f));
+
+            var t = root.transform;
+            Part(t, "Shore", PrimitiveType.Cylinder, new Vector3(0f, 0.005f, 0f), new Vector3(2.3f, 0.01f, 2.1f), Mat("Sand", Palette.Hex(0xc9b27c)))
+                .GetComponent<Renderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            Part(t, "Water", PrimitiveType.Cylinder, new Vector3(0f, 0.02f, 0f), new Vector3(1.9f, 0.01f, 1.7f), Mat("Water", Palette.Hex(0x3f7fb0), emission: 0.15f))
+                .GetComponent<Renderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            var reed = Mat("Reed", Palette.Hex(0x6a8f3a));
+            foreach (var p in new[] { new Vector3(0.85f, 0f, 0.3f), new Vector3(0.9f, 0f, 0.15f), new Vector3(-0.8f, 0f, -0.45f), new Vector3(-0.7f, 0f, 0.55f) })
+                Part(t, "Reed", PrimitiveType.Cylinder, p + new Vector3(0f, 0.18f, 0f), new Vector3(0.025f, 0.18f, 0.025f), reed, new Vector3(0f, 0f, p.x * 8f));
+            Part(t, "Fish", PrimitiveType.Sphere, new Vector3(0.25f, 0.03f, -0.2f), new Vector3(0.18f, 0.03f, 0.07f), Mat("FishShadow", Palette.Hex(0x2c5a7d)), new Vector3(0f, 30f, 0f));
+            return root;
+        }
+
         // ─── Crop stages ─────────────────────────────────────────────────────
         private static readonly Vector3[] CropSpots =
         {
@@ -625,7 +788,84 @@ namespace PrehistoricTribe.EditorTools
             new Vector3(-0.25f, 0f, 0.3f), new Vector3(0.25f, 0f, 0.3f),
         };
 
-        private static void BuildCropModels()
+        private static CropData SaveCropData(string path, string id, string displayName, bool unlockedByDefault,
+            float sprout, float mature, float wither, ResourceTypeData yieldType, int yieldAmount)
+        {
+            var crop = AssetDatabase.LoadAssetAtPath<CropData>(path);
+            bool isNew = crop == null;
+            if (isNew) crop = ScriptableObject.CreateInstance<CropData>();
+            crop.id = id;
+            crop.displayName = displayName;
+            crop.unlockedByDefault = unlockedByDefault;
+            crop.timeToSprout = sprout;
+            crop.timeToMature = mature;
+            crop.witherTime = wither;
+            crop.harvestYield = Amounts(yieldType, yieldAmount);
+            if (isNew) AssetDatabase.CreateAsset(crop, path);
+            else EditorUtility.SetDirty(crop);
+            return crop;
+        }
+
+        private static void BuildCropModels(Foods foods)
+        {
+            BuildBerryCrop(foods.berries);
+            BuildRiceCrop(foods.rice);
+            BuildVegetableCrop(foods.vegetables);
+        }
+
+        /// <summary>Lúa (E3): lâu lớn nhất, thu nhiều nhất — mở bằng công nghệ "Trồng lúa".</summary>
+        private static void BuildRiceCrop(ResourceTypeData rice)
+        {
+            var crop = SaveCropData(RiceDataPath, "rice", "Lúa", false, sprout: 20f, mature: 40f, wither: 60f, rice, 6);
+            var seedMat = Mat("RiceSeed", Palette.Hex(0xd8c9a0));
+            var stalkMat = Mat("RiceStalk", Palette.Hex(0x7fb24a));
+            var grainMat = Mat("RiceGrain", Palette.Hex(0xe2c25a), emission: 0.1f);
+            var deadMat = Mat("RiceWithered", Palette.Hex(0x8a7a5a));
+
+            crop.seedModel = SaveCropStage("Rice_Seed", (t, p) =>
+                Part(t, "Seed", PrimitiveType.Sphere, p + new Vector3(0f, 0.02f, 0f), Vector3.one * 0.06f, seedMat));
+            crop.sproutModel = SaveCropStage("Rice_Sprout", (t, p) =>
+            {
+                for (int i = -1; i <= 1; i++)
+                    Part(t, "Blade", PrimitiveType.Cylinder, p + new Vector3(i * 0.04f, 0.08f, 0f), new Vector3(0.015f, 0.08f, 0.015f), stalkMat, new Vector3(0f, 0f, i * 12f));
+            });
+            crop.matureModel = SaveCropStage("Rice_Mature", (t, p) =>
+            {
+                for (int i = -1; i <= 1; i++)
+                {
+                    Part(t, "Stalk", PrimitiveType.Cylinder, p + new Vector3(i * 0.05f, 0.14f, 0f), new Vector3(0.018f, 0.14f, 0.018f), stalkMat, new Vector3(0f, 0f, i * 10f));
+                    Part(t, "Ear", PrimitiveType.Capsule, p + new Vector3(i * 0.07f, 0.3f, 0.02f), new Vector3(0.04f, 0.06f, 0.04f), grainMat, new Vector3(25f, 0f, i * 15f));
+                }
+            });
+            crop.witheredModel = SaveCropStage("Rice_Withered", (t, p) =>
+                Part(t, "Dead", PrimitiveType.Cylinder, p + new Vector3(0f, 0.05f, 0f), new Vector3(0.12f, 0.05f, 0.12f), deadMat, new Vector3(0f, 0f, 30f)));
+            EditorUtility.SetDirty(crop);
+        }
+
+        /// <summary>Rau (E3): lớn nhanh, thu ít — mở cùng công nghệ Nông nghiệp.</summary>
+        private static void BuildVegetableCrop(ResourceTypeData vegetables)
+        {
+            var crop = SaveCropData(VegetableDataPath, "vegetable", "Rau", false, sprout: 8f, mature: 16f, wither: 30f, vegetables, 2);
+            var seedMat = Mat("VegSeed", Palette.Hex(0x4a3420));
+            var leafMat = Mat("VegLeaf", Palette.Hex(0x5fbf4a));
+            var headMat = Mat("VegHead", Palette.Hex(0x8fd46a));
+            var deadMat = Mat("VegWithered", Palette.Hex(0x7a6a45));
+
+            crop.seedModel = SaveCropStage("Vegetable_Seed", (t, p) =>
+                Part(t, "Seed", PrimitiveType.Sphere, p + new Vector3(0f, 0.02f, 0f), Vector3.one * 0.06f, seedMat));
+            crop.sproutModel = SaveCropStage("Vegetable_Sprout", (t, p) =>
+                Part(t, "Leaf", PrimitiveType.Sphere, p + new Vector3(0f, 0.04f, 0f), new Vector3(0.12f, 0.05f, 0.12f), leafMat));
+            crop.matureModel = SaveCropStage("Vegetable_Mature", (t, p) =>
+            {
+                Part(t, "Leaves", PrimitiveType.Sphere, p + new Vector3(0f, 0.06f, 0f), new Vector3(0.24f, 0.09f, 0.24f), leafMat);
+                Part(t, "Head", PrimitiveType.Sphere, p + new Vector3(0f, 0.11f, 0f), Vector3.one * 0.15f, headMat);
+            });
+            crop.witheredModel = SaveCropStage("Vegetable_Withered", (t, p) =>
+                Part(t, "Dead", PrimitiveType.Sphere, p + new Vector3(0f, 0.03f, 0f), new Vector3(0.2f, 0.05f, 0.2f), deadMat));
+            EditorUtility.SetDirty(crop);
+        }
+
+        private static void BuildBerryCrop(ResourceTypeData berries)
         {
             var crop = AssetDatabase.LoadAssetAtPath<CropData>(BerryDataPath);
             if (crop == null)
@@ -633,6 +873,8 @@ namespace PrehistoricTribe.EditorTools
                 Debug.LogError($"[GameContentBuilder] Khong tim thay {BerryDataPath}");
                 return;
             }
+            crop.displayName = "Cây mọng";
+            crop.harvestYield = Amounts(berries, 3); // giữ nguyên thời gian lớn đã cân bằng trong asset
 
             var seedMat = Mat("BerrySeed", Palette.Hex(0x3a2412));
             var sproutMat = Mat("BerrySprout", Palette.Hex(0x6fae3a));
