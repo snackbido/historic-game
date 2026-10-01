@@ -122,10 +122,26 @@ namespace PrehistoricTribe
             return center;
         }
 
-        private bool CanPlace(Vector3Int cell) =>
-            !occupiedCells.Contains(cell) &&
-            (TechManager.Instance == null || TechManager.Instance.IsBuildingUnlocked(selectedBuilding)) &&
-            ResourceManager.Instance.CanAfford(selectedBuilding.costs);
+        private bool CanPlace(Vector3Int cell) => PlacementBlocker(selectedBuilding, cell) == null;
+
+        /// <summary>Không xây sát mép nước hơn chừng này (m).</summary>
+        private const float WaterClearance = 0.3f;
+
+        /// <summary>Lý do không đặt được công trình tại ô này (null = đặt được).</summary>
+        public string PlacementBlocker(BuildingData data, Vector3Int cell)
+        {
+            if (data == null) return "Chưa chọn công trình";
+            if (occupiedCells.Contains(cell)) return "Ô này đã có công trình";
+            if (TechManager.Instance != null && !TechManager.Instance.IsBuildingUnlocked(data)) return "Chưa mở khóa";
+
+            Vector3 center = CellToGround(cell);
+            if (WaterSource.IsOnWater(center, WaterClearance)) return "Không xây đè lên mặt nước";
+            if (data.requiresWaterWithin > 0f && !WaterSource.AnyWithin(center, data.requiresWaterWithin))
+                return $"{data.displayName} phải ở gần nguồn nước (ao)";
+
+            if (!ResourceManager.Instance.CanAfford(data.costs)) return "Chưa đủ tài nguyên";
+            return null;
+        }
 
         private void UpdatePreview(Vector3Int cell)
         {
@@ -138,7 +154,12 @@ namespace PrehistoricTribe
 
         private void TryPlace(Vector3Int cell)
         {
-            if (!CanPlace(cell)) return;
+            string blocker = PlacementBlocker(selectedBuilding, cell);
+            if (blocker != null)
+            {
+                EventBus.RaiseNotification(blocker);
+                return;
+            }
             PlaceBuilding(selectedBuilding, cell, spendResources: true);
         }
 
@@ -150,6 +171,8 @@ namespace PrehistoricTribe
 
             Vector3 worldPosition = CellToGround(cell);
             GameObject instanceObject = Instantiate(data.prefab, worldPosition, Quaternion.identity);
+            // Tên duy nhất theo ô: lưu/tải các phần gắn theo tên (vd ô ruộng) khớp đúng công trình.
+            instanceObject.name = $"{data.id}_{cell.x}_{cell.y}";
             BuildingInstance instance = instanceObject.GetComponent<BuildingInstance>();
             instance.Initialize(data, cell);
 

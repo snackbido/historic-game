@@ -88,11 +88,16 @@ namespace PrehistoricTribe.EditorTools
             foreach (string name in GameContentBuilder.FoodAssetNames)
                 foodTypes.Add(AssetDatabase.LoadAssetAtPath<ResourceTypeData>(GameContentBuilder.ResourcePath(name)));
             var crops = new List<CropData> { berry, vegetable, rice };
+            // M5d: ruộng do người chơi xây.
+            var dryField = AssetDatabase.LoadAssetAtPath<BuildingData>(GameContentBuilder.DryFieldDataPath);
+            var paddyField = AssetDatabase.LoadAssetAtPath<BuildingData>(GameContentBuilder.PaddyFieldDataPath);
+            var buildings = new List<BuildingData> { hut, storage, dryField, paddyField };
             var techs = new List<TechNode> { techFarming, techRice };
 
             if (wood == null || food == null || knowledge == null || hut == null || storage == null ||
                 berry == null || techFarming == null || boarData == null || buttonPrefab == null ||
-                rice == null || vegetable == null || techRice == null || goatData == null || foodTypes.Contains(null))
+                rice == null || vegetable == null || techRice == null || goatData == null || foodTypes.Contains(null) ||
+                dryField == null || paddyField == null)
             {
                 Debug.LogError("[GameplaySceneBuilder] Thieu asset can thiet. Chay 'Tools/Prehistoric/Build Missing Content' truoc (hoac dung 'Build All').");
                 return;
@@ -156,7 +161,7 @@ namespace PrehistoricTribe.EditorTools
             var placerGO = new GameObject("BuildingPlacer");
             var placer = placerGO.AddComponent<BuildingPlacer>();
             SetPrivateField(placer, "grid", grid);
-            SetPrivateField(placer, "availableBuildings", new List<BuildingData> { hut, storage });
+            SetPrivateField(placer, "availableBuildings", buildings);
             SetPrivateField(placer, "placementPreview", previewGO);
 
             var farmManager = new GameObject("FarmManager").AddComponent<FarmManager>();
@@ -209,7 +214,7 @@ namespace PrehistoricTribe.EditorTools
 
             // Nạp lại: tạo asset NavMesh phía trên làm tham chiếu prefab (component) đã nạp trước đó mất hiệu lực.
             buttonPrefab = AssetDatabase.LoadAssetAtPath<Button>(ButtonPrefabPath);
-            CreateUI(buttonPrefab, wood, food, knowledge, hut, storage, crops, techs, player.GetComponent<PlayerInteraction>());
+            CreateUI(buttonPrefab, wood, food, knowledge, buildings, crops, techs, player.GetComponent<PlayerInteraction>());
 
             EditorSceneManager.SaveScene(scene, ScenePath);
             AssetDatabase.SaveAssets();
@@ -483,7 +488,7 @@ namespace PrehistoricTribe.EditorTools
 
         // ─── UI (Canvas overlay — giữ nguyên như bản 2D) ─────────────────────
         private static void CreateUI(Button buttonPrefab, ResourceTypeData wood, ResourceTypeData food, ResourceTypeData knowledge,
-            BuildingData hut, BuildingData storage, List<CropData> crops, List<TechNode> techs, PlayerInteraction interaction)
+            List<BuildingData> buildings, List<CropData> crops, List<TechNode> techs, PlayerInteraction interaction)
         {
             var eventSystemGO = new GameObject("EventSystem");
             eventSystemGO.AddComponent<EventSystem>();
@@ -501,7 +506,7 @@ namespace PrehistoricTribe.EditorTools
             CreateResourceLabel(canvasGO.transform, "KnowledgeLabel", new Vector2(20f, -105f), knowledge, "Knowledge: 0", 20f);
             CreatePopulationLabel(canvasGO.transform, new Vector2(20f, -135f));
 
-            CreateBuildMenuPanel(canvasGO.transform, buttonPrefab, hut, storage);
+            CreateBuildMenuPanel(canvasGO.transform, buttonPrefab, buildings);
             CreateCropSelectionPanel(canvasGO.transform, buttonPrefab, crops);
             CreateTechTreePanel(canvasGO.transform, buttonPrefab, techs);
             CreateNotificationLabel(canvasGO.transform);
@@ -735,11 +740,11 @@ namespace PrehistoricTribe.EditorTools
             return panelGO.transform;
         }
 
-        private static void CreateBuildMenuPanel(Transform canvasTransform, Button buttonPrefab, BuildingData hut, BuildingData storage)
+        private static void CreateBuildMenuPanel(Transform canvasTransform, Button buttonPrefab, List<BuildingData> buildings)
         {
             var container = CreatePanelContainer(canvasTransform, "BuildPanel", new Vector2(-20f, -20f));
             var ui = container.gameObject.AddComponent<BuildMenuUI>();
-            SetPrivateField(ui, "availableBuildings", new List<BuildingData> { hut, storage });
+            SetPrivateField(ui, "availableBuildings", buildings);
             SetPrivateField(ui, "buttonPrefab", buttonPrefab);
             SetPrivateField(ui, "buttonContainer", container);
         }

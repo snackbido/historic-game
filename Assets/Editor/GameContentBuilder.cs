@@ -58,6 +58,11 @@ namespace PrehistoricTribe.EditorTools
         public const string TechFarmingPath = "Assets/_Data/TechNode_Farming.asset";
         public const string TechRicePath = "Assets/_Data/TechNode_Rice.asset";
 
+        public const string DryFieldDataPath = "Assets/_Data/BuildingData_DryField.asset";
+        public const string PaddyFieldDataPath = "Assets/_Data/BuildingData_PaddyField.asset";
+        private const string DryFieldPrefabPath = "Assets/Prefabs/Buildings/DryField.prefab";
+        private const string PaddyFieldPrefabPath = "Assets/Prefabs/Buildings/PaddyField.prefab";
+
         private const string HutPrefabPath = "Assets/Prefabs/Buildings/Hut.prefab";
         private const string StoragePrefabPath = "Assets/Prefabs/Buildings/Storage.prefab";
         private const string BoarPrefabPath = "Assets/Prefabs/Animals/WildBoar.prefab";
@@ -77,7 +82,7 @@ namespace PrehistoricTribe.EditorTools
             if (!ConfirmOverwrite("Tạo lại prefab placeholder?",
                     "Prefab lều/kho/cây/heo rừng đã tồn tại. Tạo lại sẽ ghi đè mọi chỉnh sửa hoặc model thật bạn đã thay vào.",
                     HutPrefabPath, StoragePrefabPath, BoarPrefabPath, TreePrefabPath, VillagerPrefabPath, WolfPrefabPath,
-                    GoatPrefabPath, PondPrefabPath))
+                    GoatPrefabPath, PondPrefabPath, DryFieldPrefabPath, PaddyFieldPrefabPath))
                 return;
 
             Foods foods = EnsureResourceTypes(out var wood, out var knowledge);
@@ -87,6 +92,12 @@ namespace PrehistoricTribe.EditorTools
                 "Nhà ở của dân làng", HutLevels(wood, knowledge), "Lều");
             AssignBuildingPrefab(StorageDataPath, SavePrefab(BuildStorage(), StoragePrefabPath),
                 "Cất giữ lương thực", StorageLevels(wood, knowledge), "Kho");
+            SaveFieldData(DryFieldDataPath, "dry_field", "Ruộng cạn", SavePrefab(BuildField(FieldType.Dry), DryFieldPrefabPath),
+                "Trồng rau, quả mọng. Mới xây là đất hoang — nông dân khai hoang xong mới gieo được",
+                unlockedByDefault: true, waterWithin: 0f, Cost(wood, 2));
+            SaveFieldData(PaddyFieldDataPath, "paddy_field", "Ruộng nước", SavePrefab(BuildField(FieldType.Paddy), PaddyFieldPrefabPath),
+                "Cấy lúa. Phải xây gần ao — nông dân đắp bờ xong mới cấy được",
+                unlockedByDefault: false, waterWithin: 3f, Cost(wood, 4));
             SavePrefab(BuildTree(wood), TreePrefabPath);
             SavePrefab(BuildPond(foods.fish), PondPrefabPath);
             BuildWildBoarContent(foods);
@@ -250,6 +261,86 @@ namespace PrehistoricTribe.EditorTools
             var instance = root.GetComponent<BuildingInstance>();
             SetPrivateField(instance, "levelModels", models);
             SetPrivateField(instance, "selectionRing", ring);
+        }
+
+        // ─── Ruộng (Milestone 5d) ────────────────────────────────────────────
+        private static void SaveFieldData(string path, string id, string displayName, GameObject prefab, string function,
+            bool unlockedByDefault, float waterWithin, params ResourceAmount[] cost)
+        {
+            var data = AssetDatabase.LoadAssetAtPath<BuildingData>(path);
+            bool isNew = data == null;
+            if (isNew) data = ScriptableObject.CreateInstance<BuildingData>();
+            data.id = id;
+            data.displayName = displayName;
+            data.prefab = prefab;
+            data.functionDescription = function;
+            data.unlockedByDefault = unlockedByDefault;
+            data.requiresWaterWithin = waterWithin;
+            data.costs = new List<ResourceAmount>(cost);
+            data.levels = new List<BuildingLevel> { Level(displayName, 0, 0) };
+            if (isNew) AssetDatabase.CreateAsset(data, path);
+            else EditorUtility.SetDirty(data);
+        }
+
+        /// <summary>
+        /// Một ô ruộng 1×1: lúc mới xây là đất hoang (cỏ, đá); khai hoang xong thành đất đã làm
+        /// (ruộng cạn: luống đất; ruộng nước: bùn + bờ đắp quanh). Đi xuyên qua được, click để xem thông tin.
+        /// </summary>
+        private static GameObject BuildField(FieldType type)
+        {
+            bool paddy = type == FieldType.Paddy;
+            var root = new GameObject(paddy ? "PaddyField" : "DryField");
+            var col = root.AddComponent<BoxCollider>();
+            col.isTrigger = true; // không chặn đường, chỉ để click chọn
+            col.center = new Vector3(0f, 0.05f, 0f);
+            col.size = new Vector3(0.96f, 0.1f, 0.96f);
+            root.AddComponent<BuildingInstance>();
+            AttachLevelModels(root, _ => { }); // chỉ có 1 cấp; lấy vòng chọn
+            var t = root.transform;
+
+            var wild = new GameObject("Wild").transform;
+            wild.SetParent(t, false);
+            Part(wild, "Ground", PrimitiveType.Cube, new Vector3(0f, 0.015f, 0f), new Vector3(0.96f, 0.03f, 0.96f),
+                paddy ? Mat("Marsh", Palette.Hex(0x55613a)) : Mat("WildGround", Palette.Hex(0x6b7a3c)));
+            var tuft = Mat("WildGrass", Palette.Hex(0x7f9a3e));
+            foreach (var p in new[] { new Vector3(-0.3f, 0f, 0.25f), new Vector3(0.28f, 0f, 0.3f), new Vector3(0.05f, 0f, -0.05f),
+                         new Vector3(-0.2f, 0f, -0.32f), new Vector3(0.32f, 0f, -0.22f) })
+                for (int i = -1; i <= 1; i++)
+                    Part(wild, "Tuft", PrimitiveType.Cylinder, p + new Vector3(i * 0.03f, 0.08f, 0f), new Vector3(0.012f, 0.06f, 0.012f), tuft, new Vector3(0f, 0f, i * 18f));
+            Part(wild, "Rock", PrimitiveType.Sphere, new Vector3(-0.05f, 0.04f, 0.32f), new Vector3(0.14f, 0.08f, 0.11f), Palette.Stone);
+            Part(wild, "Rock", PrimitiveType.Sphere, new Vector3(0.22f, 0.03f, 0.02f), new Vector3(0.09f, 0.06f, 0.08f), Palette.Stone);
+
+            var prepared = new GameObject("Prepared").transform;
+            prepared.SetParent(t, false);
+            if (paddy)
+            {
+                Part(prepared, "Mud", PrimitiveType.Cube, new Vector3(0f, 0.02f, 0f), new Vector3(0.9f, 0.04f, 0.9f), Mat("PaddyMud", Palette.Hex(0x4e3b26)));
+                var bank = Mat("PaddyBank", Palette.Hex(0x6f8a3c)); // bờ đất có cỏ
+                Part(prepared, "Bank", PrimitiveType.Cube, new Vector3(0f, 0.06f, 0.46f), new Vector3(0.98f, 0.12f, 0.07f), bank);
+                Part(prepared, "Bank", PrimitiveType.Cube, new Vector3(0f, 0.06f, -0.46f), new Vector3(0.98f, 0.12f, 0.07f), bank);
+                Part(prepared, "Bank", PrimitiveType.Cube, new Vector3(0.46f, 0.06f, 0f), new Vector3(0.07f, 0.12f, 0.98f), bank);
+                Part(prepared, "Bank", PrimitiveType.Cube, new Vector3(-0.46f, 0.06f, 0f), new Vector3(0.07f, 0.12f, 0.98f), bank);
+            }
+            else
+            {
+                Part(prepared, "Soil", PrimitiveType.Cube, new Vector3(0f, 0.04f, 0f), new Vector3(0.96f, 0.08f, 0.96f), Palette.Soil);
+                foreach (float z in new[] { -0.3f, 0f, 0.3f })
+                    Part(prepared, "Furrow", PrimitiveType.Cube, new Vector3(0f, 0.09f, z), new Vector3(0.86f, 0.03f, 0.1f), Palette.SoilDark);
+            }
+            prepared.gameObject.SetActive(false);
+
+            var anchor = new GameObject("CropAnchor").transform;
+            anchor.SetParent(t, false);
+            anchor.localPosition = new Vector3(0f, 0.1f, 0f);
+
+            var plot = root.AddComponent<FarmPlot>();
+            SetPrivateField(plot, "cropAnchor", anchor);
+            SetPrivateField(plot, "fieldType", type);
+            SetPrivateField(plot, "startsWild", true);
+            SetPrivateField(plot, "clearWorkNeeded", paddy ? 12 : 8); // đắp bờ lâu hơn
+            SetPrivateField(plot, "wildVisual", wild.gameObject);
+            SetPrivateField(plot, "preparedVisual", prepared.gameObject);
+            return root;
         }
 
         private static GameObject BuildHut()
@@ -747,7 +838,7 @@ namespace PrehistoricTribe.EditorTools
             rice.displayName = "Trồng lúa";
             rice.cost = Amounts(knowledge, 10);
             rice.prerequisites = new List<TechNode> { farming };
-            rice.unlockedBuildingIds = new List<string>();
+            rice.unlockedBuildingIds = new List<string> { "paddy_field" };
             rice.unlockedCropIds = new List<string> { "rice" };
             if (isNew) AssetDatabase.CreateAsset(rice, TechRicePath);
             else EditorUtility.SetDirty(rice);
@@ -767,6 +858,7 @@ namespace PrehistoricTribe.EditorTools
             SetPrivateField(node, "actionName", "Đánh cá");
             SetPrivateField(node, "workRange", 1.7f); // đứng trên bờ
             AddObstacle(root, NavMeshObstacleShape.Capsule, new Vector3(0f, 0.2f, 0f), new Vector3(1.8f, 0.4f, 1.8f));
+            SetPrivateField(root.AddComponent<WaterSource>(), "radius", 0.95f); // M5d: nguồn nước cho ruộng
 
             var t = root.transform;
             Part(t, "Shore", PrimitiveType.Cylinder, new Vector3(0f, 0.005f, 0f), new Vector3(2.3f, 0.01f, 2.1f), Mat("Sand", Palette.Hex(0xc9b27c)))
@@ -789,12 +881,13 @@ namespace PrehistoricTribe.EditorTools
         };
 
         private static CropData SaveCropData(string path, string id, string displayName, bool unlockedByDefault,
-            float sprout, float mature, float wither, ResourceTypeData yieldType, int yieldAmount)
+            float sprout, float mature, float wither, ResourceTypeData yieldType, int yieldAmount, FieldType field = FieldType.Dry)
         {
             var crop = AssetDatabase.LoadAssetAtPath<CropData>(path);
             bool isNew = crop == null;
             if (isNew) crop = ScriptableObject.CreateInstance<CropData>();
             crop.id = id;
+            crop.fieldType = field;
             crop.displayName = displayName;
             crop.unlockedByDefault = unlockedByDefault;
             crop.timeToSprout = sprout;
@@ -816,7 +909,7 @@ namespace PrehistoricTribe.EditorTools
         /// <summary>Lúa (E3): lâu lớn nhất, thu nhiều nhất — mở bằng công nghệ "Trồng lúa".</summary>
         private static void BuildRiceCrop(ResourceTypeData rice)
         {
-            var crop = SaveCropData(RiceDataPath, "rice", "Lúa", false, sprout: 20f, mature: 40f, wither: 60f, rice, 6);
+            var crop = SaveCropData(RiceDataPath, "rice", "Lúa", false, sprout: 20f, mature: 40f, wither: 60f, rice, 6, FieldType.Paddy);
             var seedMat = Mat("RiceSeed", Palette.Hex(0xd8c9a0));
             var stalkMat = Mat("RiceStalk", Palette.Hex(0x7fb24a));
             var grainMat = Mat("RiceGrain", Palette.Hex(0xe2c25a), emission: 0.1f);

@@ -106,6 +106,16 @@ Quyết định user: một ngày **20 phút** thời gian thật (~14 phút ng�
 - [x] N2 Ngủ: tối về lều (ẩn vào trong) / ngủ quanh đống lửa, sáng thức dậy, ngủ thì hồi máu, ra lệnh đánh thức; sinh con về đêm tại lều
 - [x] N3 Sói ban đêm: lùng sục rộng, mò vào trại, né đống lửa; sáng về hang; người ngủ trong lều an toàn
 
+## Milestone 5d — Canh tác thực tế (thêm 2026-10-01)
+Quyết định user: quy trình **vừa phải** (lúa ~6 bước: làm đất → dẫn nước → gieo mạ → cấy → chăm → gặt + giã); **người chơi tự đặt ruộng** qua menu xây dựng; nước **đủ 3 giai đoạn** (gánh nước → mương → guồng nước, mở dần theo tech); **nông dân tự làm bước kế tiếp**, người chơi vẫn ra lệnh được.
+- [x] F1 Xây ruộng: "Ruộng cạn" + "Ruộng nước" trong menu xây; ruộng mới là đất hoang → nông dân khai hoang/đắp bờ; ruộng nước phải gần nguồn nước; lúa chỉ trồng ruộng nước, rau/quả mọng ruộng cạn. 2 ô vườn có sẵn giữ lại (đã khai hoang)
+- [ ] F2 Làm đất + nước: cày/xới trước mỗi vụ; ruộng có mức nước (bốc hơi dần, ruộng nước cần ngập mới cấy/lớn, ruộng cạn thiếu nước thì ngừng lớn rồi héo); việc mới "gánh nước" từ ao; công trình Giếng
+- [ ] F3 Gieo mạ & cấy: ô ươm mạ (gieo thóc giống → mạ), nhổ mạ, cấy vào ruộng nước đã cày + ngập; giữ thóc giống sau gặt
+- [ ] F4 Chăm sóc: cỏ dại mọc giảm năng suất → làm cỏ; bón phân (phân từ vật nuôi) tăng năng suất
+- [ ] F5 Sau gặt: lúa gặt về là bó lúa → phơi/tuốt/giã ở công trình Cối giã → gạo ăn được
+- [ ] F6 Mương dẫn nước (tech Thủy lợi): đào mương từ ao, ruộng cạnh mương tự có nước
+- [ ] F7 Guồng nước (tech): đặt bên ao/đầu mương, bơm nước mạnh → ruộng nối mương luôn đầy nước
+
 ## Milestone 6 — Thiên tai
 - [ ] DisasterManager: hệ thống sự kiện ngẫu nhiên
 - [ ] Base class DisasterEvent, tạo 1-2 loại thiên tai đầu tiên (VD: cháy rừng, lũ lụt)
@@ -123,6 +133,7 @@ Quyết định user: một ngày **20 phút** thời gian thật (~14 phút ng�
 
 | Ngày | Quyết định | Lý do |
 |------|-----------|-------|
+| 2026-10-01 | Thêm Milestone 5d Canh tác thực tế (F1–F7) trước Thiên tai: ruộng do người chơi xây, quy trình nhiều bước, nước 3 giai đoạn (gánh → mương → guồng nước thay cho "bơm" cho hợp thời tiền sử) | Chốt với user; nông nghiệp là trục chính của game, thiên tai (lũ, hạn) sau này sẽ tác động lên hệ thống nước/ruộng này |
 | 2026-09-21 | Chọn Unity + C#, IDE VS Code | Nhiều tài nguyên học, asset store phong phú cho thể loại survival/building; VS Code quen thuộc với nền web dev |
 | 2026-09-21 | Bắt đầu bằng 2D top-down | Dễ quản lý hơn 3D khi làm một mình, chưa có kinh nghiệm Unity |
 | 2026-09-21 | Đặt công trình theo grid-based (không free-placement) | Dễ quản lý va chạm/chồng lấn, dễ tính toán, phù hợp người mới học Unity |
@@ -303,6 +314,13 @@ Quyết định user: một ngày **20 phút** thời gian thật (~14 phút ng�
 - Trời sáng: sói đang lùng sục quay thẳng về hang. Người ngủ trong lều đã an toàn từ N2.
 - Test: 4 test mới `Milestone5cWolfNightTests.cs`. **94/94 test PlayMode pass** (batch mode).
 - Lưu ý cân bằng: đống lửa (0,-2) bán kính 6 che luôn lều đầu tiên ở (1.5,-5.5) → làng nhỏ ban đêm gần như an toàn; nguy hiểm chủ yếu với người được ra lệnh làm việc xa trại về đêm. Cần chơi thử để xem có nên thu nhỏ vùng an toàn không.
+
+## Nhật ký phiên làm việc 2026-10-01 (phần 8 — M5d/F1 xây ruộng)
+- Công trình mới "Ruộng cạn" (`dry_field`, 2 gỗ, mở sẵn) + "Ruộng nước" (`paddy_field`, 4 gỗ, mở cùng tech Trồng lúa, phải cách mép ao ≤ 3m). Prefab 1×1 ô: `BuildingInstance` + `FarmPlot`, collider trigger (đi xuyên được, click xem thông tin), hình đất hoang (cỏ, đá) ↔ đất đã làm (ruộng cạn: luống; ruộng nước: bùn + bờ đắp 4 phía).
+- `FarmPlotState.Wild` (thêm cuối enum để save cũ không lệch): ruộng mới là đất hoang → `DoClearWork()` mỗi lượt công (ruộng cạn 8, ruộng nước 12 lượt). Nông dân tự khai hoang khi rảnh (làm đến xong), ra lệnh được; người chơi bấm E cũng khai hoang. 2 ô vườn có sẵn trong scene giữ nguyên (đã khai hoang).
+- `CropData.fieldType` (lúa = ruộng nước, rau/quả mọng = ruộng cạn); `FarmPlot.Accepts`. `FarmManager` nhớ hạt giống chọn gần nhất **cho từng loại ruộng** (`CropFor(plot)`): chọn Lúa rồi Quả mọng → ruộng nước cấy lúa, ruộng cạn trồng quả mọng.
+- Mới `Farming/WaterSource.cs` (ao cá có bán kính mặt nước 0,95). `BuildingData.requiresWaterWithin`; `BuildingPlacer.PlacementBlocker()` nêu lý do không đặt được (đã có công trình / chưa mở khóa / đè lên mặt nước / xa nguồn nước / thiếu tài nguyên) và hiện thông báo khi click sai chỗ. Công trình đặt ra được đặt tên theo ô (`{id}_{x}_{y}`) để lưu/tải ô ruộng khớp đúng; lưu tiến độ khai hoang (`clearWorkDone`).
+- Test: 6 test mới `Milestone5dFieldTests.cs`; test lúa cũ chuyển sang ruộng nước cạnh ao. **100/100 test PlayMode pass**. Ảnh render xác nhận hình đất hoang/ruộng cạn/ruộng nước có bờ cạnh ao.
 
 ## Vấn đề đang tồn đọng (Known issues / Open questions)
 - [x] Chế độ combat: lai (2026-09-26) + chi tiết chỉ huy NPC theo nghề (2026-09-30)

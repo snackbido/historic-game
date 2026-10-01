@@ -30,6 +30,9 @@ namespace PrehistoricTribe
         [Tooltip("Mở khóa sẵn ngay từ đầu game, không cần tech")]
         public bool unlockedByDefault;
 
+        [Tooltip("> 0: phải đặt cách nguồn nước (ao, mương…) không quá chừng này mét — vd ruộng nước")]
+        public float requiresWaterWithin;
+
         [Tooltip("Mô tả chức năng hiện trên bảng thông tin công trình")]
         public string functionDescription;
 

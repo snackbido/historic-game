@@ -75,10 +75,11 @@ namespace PrehistoricTribe
 
             if ((profession.autoWork & NpcCapability.Farm) != 0)
             {
-                bool hasSeed = FarmManager.Instance != null && FarmManager.Instance.SelectedCrop != null;
+                FarmManager farm = FarmManager.Instance;
                 FarmPlot plot = Nearest(InteractableRegistry.All<FarmPlot>(), position, radius, p =>
                     p.State == FarmPlotState.ReadyToHarvest || p.State == FarmPlotState.Withered ||
-                    (p.State == FarmPlotState.Empty && hasSeed));
+                    p.State == FarmPlotState.Wild ||
+                    (p.State == FarmPlotState.Empty && farm != null && farm.CropFor(p) != null));
                 if (plot != null) return new FarmJob(plot, continuous: false);
             }
 
@@ -228,7 +229,7 @@ namespace PrehistoricTribe
         }
 
         public override MonoBehaviour Target => plot;
-        public override string Description => "làm ruộng";
+        public override string Description => plot.State == FarmPlotState.Wild ? $"khai hoang {plot.FieldName}" : "làm ruộng";
         public override float WorkRange => 0.7f;
         public override float Interval => 1f;
 
@@ -236,6 +237,10 @@ namespace PrehistoricTribe
         {
             switch (plot.State)
             {
+                case FarmPlotState.Wild:
+                    // Khai hoang/đắp bờ: làm đến khi xong rồi mới thôi (kể cả khi tự làm).
+                    return !plot.DoClearWork() || continuous;
+
                 case FarmPlotState.Growing:
                     return continuous; // lệnh: đứng chờ cây lớn; tự làm: đi tìm việc khác
 

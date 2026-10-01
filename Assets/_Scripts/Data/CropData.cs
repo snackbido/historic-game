@@ -3,6 +3,13 @@ using UnityEngine;
 
 namespace PrehistoricTribe
 {
+    /// <summary>Loại ruộng (Milestone 5d): ruộng cạn cho rau/quả, ruộng nước cho lúa.</summary>
+    public enum FieldType
+    {
+        Dry,
+        Paddy
+    }
+
     [CreateAssetMenu(fileName = "NewCropData", menuName = "PrehistoricTribe/Crop Data")]
     public class CropData : ScriptableObject
     {
@@ -11,6 +18,9 @@ namespace PrehistoricTribe
 
         [Tooltip("Mở khóa sẵn ngay từ đầu game, không cần tech")]
         public bool unlockedByDefault;
+
+        [Tooltip("Trồng trên loại ruộng nào (lúa = ruộng nước)")]
+        public FieldType fieldType = FieldType.Dry;
 
         [Tooltip("Thời gian (giây) từ khi gieo hạt đến khi nảy mầm")]
         public float timeToSprout = 10f;

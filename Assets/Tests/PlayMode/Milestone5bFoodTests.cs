@@ -88,7 +88,11 @@ namespace PrehistoricTribe.Tests
         {
             yield return null;
             var rice = Asset<CropData>("Assets/_Data/CropData_Rice.asset");
-            var plot = GameObject.Find("FarmPlot_1").GetComponent<FarmPlot>();
+            // M5d: lúa chỉ cấy trên ruộng nước (xây gần ao, đắp bờ xong).
+            var paddy = BuildingPlacer.Instance.PlaceBuilding(Asset<BuildingData>("Assets/_Data/BuildingData_PaddyField.asset"),
+                new Vector3Int(2, 5, 0), spendResources: false);
+            var plot = paddy.GetComponent<FarmPlot>();
+            while (plot.State == FarmPlotState.Wild) plot.DoClearWork();
             FarmManager.Instance.SelectCrop(rice);
             Assert.IsTrue(FarmManager.Instance.TryInteract(plot));
 

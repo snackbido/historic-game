@@ -12,6 +12,9 @@ namespace PrehistoricTribe
 
         public CropData SelectedCrop { get; private set; }
 
+        // Hạt giống chọn gần nhất cho từng loại ruộng: chọn Lúa rồi chọn Quả mọng → ruộng nước cấy lúa, ruộng cạn trồng quả mọng.
+        private readonly Dictionary<FieldType, CropData> seedByField = new Dictionary<FieldType, CropData>();
+
         private void Awake()
         {
             if (Instance != null && Instance != this)
@@ -22,7 +25,16 @@ namespace PrehistoricTribe
             Instance = this;
         }
 
-        public void SelectCrop(CropData crop) => SelectedCrop = crop;
+        public void SelectCrop(CropData crop)
+        {
+            SelectedCrop = crop;
+            if (crop == null) seedByField.Clear();
+            else seedByField[crop.fieldType] = crop;
+        }
+
+        /// <summary>Hạt giống sẽ gieo trên ruộng này (null = chưa chọn hạt nào hợp loại ruộng).</summary>
+        public CropData CropFor(FarmPlot plot) =>
+            plot != null && seedByField.TryGetValue(plot.FieldType, out CropData crop) ? crop : null;
 
         public CropData FindCrop(string id) =>
             string.IsNullOrEmpty(id) ? null : knownCrops.Find(c => c != null && c.id == id);
@@ -33,8 +45,12 @@ namespace PrehistoricTribe
 
             switch (plot.State)
             {
+                case FarmPlotState.Wild:
+                    plot.DoClearWork();
+                    return true;
+
                 case FarmPlotState.Empty:
-                    return SelectedCrop != null && plot.Plant(SelectedCrop);
+                    return plot.Plant(CropFor(plot));
 
                 case FarmPlotState.ReadyToHarvest:
                     return plot.Harvest();
