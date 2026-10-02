@@ -445,6 +445,14 @@ Quyết định user: quy trình **vừa phải** (lúa ~6 bước: làm đất 
 - Scene builder đăng ký `Gameplay.unity` vào Build Settings (trước đây trống) — cần cho "Về menu chính" và để build game.
 - Test: `PlayModeTestBase` tắt menu chính (`ShowMainMenuOnStart = false`); 4 test mới `Milestone7MenuTests.cs`. **193/193 test PlayMode pass**. Ảnh chụp menu (canvas tạm đổi sang ScreenSpaceCamera) xác nhận bố cục + chữ tiếng Việt.
 
+## Nhật ký phiên làm việc 2026-10-02 (phần 6 — M7/P4a nhịp độ + gợi ý mở khóa)
+- User chơi thử: "nhịp độ hơi nhanh"; "chức năng nào cần điều kiện để mở khóa thì thông báo cần làm gì".
+- `Core/GamePace.cs`: hệ số nhịp độ chung, 3 mức **Thong thả ×2 / Vừa phải ×1,5 (mặc định) / Nhanh ×1 (như cũ)**, chọn ở Cài đặt → "Nhịp độ" (PlayerPrefs). Giãn: cây lớn, ruộng khô, cỏ mọc, hạn chết cây (`FarmPlot`), mọi việc "kinh tế" của dân (`NpcJob.Paced`; Sleep/Attack/Firefight/Hunt không giãn), đói + sinh nở + em bé/trẻ em lớn (`NpcManager`), tri thức, đồ hỏng, cá sinh sôi, phơi lúa, thú nuôi (đói/sinh sản/sản phẩm). Không đổi: di chuyển, chiến đấu, thiên tai, độ dài ngày/đêm (vẫn 20 phút). Test đặt `GamePace.Factor = 1` (số liệu gốc).
+- Gợi ý mở khóa: menu xây + cây trồng hiện cả mục còn khóa (chữ xám "(khóa)", `UI/LockedEntry.cs`), bấm → báo nghiên cứu công nghệ nào, giá bao nhiêu, còn thiếu công nghệ trước nào (`TechManager.UnlockHint/LockReason/CostText`). Bảng công nghệ: nút rộng 230, ghi luôn chi phí; thiếu công nghệ tiên quyết thì "(khóa)"; bấm khi chưa đủ → báo lý do ("cần 10 Tri thức (đang có 3)"); nghiên cứu xong → báo "mở khóa: …" (`TechManager.knownBuildings/knownCrops`). Dòng thông báo rộng 1100, chữ tự co 15–24.
+- Sự cố commit: code P4a nằm trong commit `c64adbf` nhưng message của commit đó bị lấy nhầm từ P3 ("main menu…") vì lệnh ghi file message lỗi giữa chừng. Không force-push sửa lịch sử; commit ghi nhật ký ngay sau đó mô tả đúng nội dung.
+- Lưu ý kỹ thuật: perl `s|…|…|` mà trong mẫu có `\|` thì thành phép "hoặc" → chèn nhầm lên đầu file (gặp 2 lần, đã sửa). Khi mẫu có dấu `|` hay backtick thì dùng Edit tool.
+- Test: sửa test M4 (đếm nút "(khóa)" thay vì số nút), 5 test mới `Milestone7PaceAndUnlockTests.cs`. **198/198 test PlayMode pass**.
+
 ## Vấn đề đang tồn đọng (Known issues / Open questions)
 - [x] Chế độ combat: lai (2026-09-26) + chi tiết chỉ huy NPC theo nghề (2026-09-30)
 - [ ] Chưa có tên chính thức cho dự án
