@@ -125,7 +125,8 @@ Quyết định user: quy trình **vừa phải** (lúa ~6 bước: làm đất 
 
 ## Milestone 7 — Polish & mở rộng (bắt đầu 2026-10-02; chia bước P1–P4, tự chọn mặc định vì user chưa có asset)
 - [x] P1 Hiệu ứng hình ảnh: particle dựng bằng code (`VfxManager`) cho chặt/đánh cá/cuốc/gặt/xây/sửa/sập/đánh nhau/dập lửa + mưa khi lũ, chớp khi sét
-- [ ] P2 Âm thanh: SFX + nhạc nền sinh bằng code (sóng 8-bit hợp phong cách pixel, như texture pixel) — thay bằng file thật sau
+- [x] P2a Nhạc nền đơn giản sinh bằng code (ngày/đêm) — user sẽ tự thay bằng nhạc riêng
+- [ ] P2b Hiệu ứng âm thanh (chặt, cuốc, gặt, đánh, sói hú, mưa, sấm, lửa…)
 - [ ] P3 Menu chính + cài đặt (âm lượng, bật/tắt pixel, chơi mới / tiếp tục / thoát)
 - [ ] P4 Cân bằng (đầu game 0 lương thực, chuỗi lúa dài mà ít gạo, thiên tai 2–3 ngày/lần có dày quá?) + lưu cây đã chặt — cần user chơi thử
 
@@ -422,6 +423,13 @@ Quyết định user: quy trình **vừa phải** (lúa ~6 bước: làm đất 
 - Gắn vào: chặt cây (mùn gỗ, cây đổ thì lá), đánh cá/gánh nước tưới (nước bắn), khai hoang/làm cỏ (lá), cày/gieo/cối giã (bụi), gặt (hạt vàng–xanh), xây xong (bụi lớn qua `OnBuildingPlaced`), nâng cấp (lấp lánh), sửa (bụi), sập (bụi lớn), người/thú bị đánh (máu, giãn 0,15s; chết thì bụi lớn), công trình hư do thiên tai (bụi, giãn 1,5s), dập lửa (hơi nước), sét đánh (tia sáng + đèn chớp 2 nhịp). Lũ lụt: mưa (hạt kéo dài, phủ 36m theo camera) suốt lúc lũ.
 - Lưu ý: hệ hạt đang dừng thì hạt Emit ra không cập nhật → `Play()` sau mỗi lần phun. Ảnh chụp chế độ edit chỉ thấy mưa (đợt hạt không mô phỏng ngoài Play) — test xác nhận hạt sống thật khi chạy.
 - Test: 6 test mới `Milestone7VfxTests.cs`. **182/182 test PlayMode pass**.
+
+## Nhật ký phiên làm việc 2026-10-02 (phần 3 — M7/P2a nhạc nền)
+- User: "trước tiên làm nhạc đơn giản, sau đó tôi có thể thay bằng đoạn nhạc tùy ý".
+- `Editor/MusicBuilder.cs` sinh 2 bài WAV (22050Hz mono, lặp liền mạch nhờ đuôi nốt quấn vòng về đầu) vào `Assets/Audio/Music/Generated/`: **Day** (92 BPM, 16 ô ≈ 42s: trống da, ống lắc tre, đàn gảy Karplus–Strong rải hợp âm, sáo trúc khuôn A–B–A từ ô 5) và **Night** (60 BPM, 8 ô = 32s: nền trầm, tiếng gảy thưa, nhịp tim nhẹ, dế kêu). Thang ngũ cung La thứ. `BuildAll` sinh nhạc trước khi dựng scene.
+- **Thay nhạc riêng**: đặt `Day.*` / `Night.*` (.wav/.mp3/.ogg) vào `Assets/Audio/Music/` rồi Build All — `MusicBuilder.Resolve` ưu tiên file người dùng, file sinh ra nằm thư mục riêng nên không bao giờ đè. Hoặc kéo thả vào ô Day/Night Music của object `MusicManager` (bị mất khi dựng lại scene).
+- `Core/MusicManager.cs`: 2 AudioSource lặp, đổi bài theo ngày/đêm (nhỏ dần/to dần 4s thật), **phím M** tắt/bật nhạc; `Volume`/`Muted` lưu PlayerPrefs (cho màn cài đặt P3).
+- Test: 2 test mới `Milestone7MusicTests.cs`. **184/184 test PlayMode pass**.
 
 ## Vấn đề đang tồn đọng (Known issues / Open questions)
 - [x] Chế độ combat: lai (2026-09-26) + chi tiết chỉ huy NPC theo nghề (2026-09-30)

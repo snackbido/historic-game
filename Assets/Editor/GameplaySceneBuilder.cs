@@ -66,6 +66,7 @@ namespace PrehistoricTribe.EditorTools
         public static void BuildAll()
         {
             PixelTextureBuilder.BuildAll(); // thử nghiệm phong cách pixel (2026-10-02)
+            MusicBuilder.BuildAll(); // nhạc nền sinh bằng code (M7/P2)
             GameContentBuilder.Build();
             Build();
         }
@@ -196,6 +197,10 @@ namespace PrehistoricTribe.EditorTools
             SetPrivateField(raid, "wolf", AssetDatabase.LoadAssetAtPath<PredatorData>(GameContentBuilder.WolfDataPath));
             // Milestone 7: hiệu ứng hạt (chặt, gặt, xây, đánh, mưa, sét…).
             SetPrivateField(new GameObject("VfxManager").AddComponent<VfxManager>(), "particleMaterial", ParticleMaterial());
+            // Nhạc nền ngày/đêm: file của người dùng trong Assets/Audio/Music (Day/Night.*) nếu có, không thì bản sinh bằng code.
+            var music = new GameObject("MusicManager").AddComponent<MusicManager>();
+            SetPrivateField(music, "dayMusic", MusicBuilder.Resolve("Day"));
+            SetPrivateField(music, "nightMusic", MusicBuilder.Resolve("Night"));
 
             var resources = new GameObject("ResourceNodes").transform;
             for (int i = 0; i < TreePositions.Length; i++)
