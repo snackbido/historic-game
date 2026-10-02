@@ -15,7 +15,7 @@ namespace PrehistoricTribe.EditorTools
     {
         public const string Folder = "Assets/Audio/Music";
         public const string GeneratedFolder = Folder + "/Generated";
-        private const int Rate = 22050;
+        internal const int Rate = 22050;
         private static readonly string[] Extensions = { ".wav", ".mp3", ".ogg" };
 
         [MenuItem("Tools/Prehistoric/Build Music")]
@@ -288,7 +288,7 @@ namespace PrehistoricTribe.EditorTools
             return buf;
         }
 
-        private static void WriteWav(string path, float[] samples)
+        internal static void WriteWav(string path, float[] samples)
         {
             using (var stream = new FileStream(path, FileMode.Create))
             using (var w = new BinaryWriter(stream))

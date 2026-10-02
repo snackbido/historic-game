@@ -67,6 +67,7 @@ namespace PrehistoricTribe.EditorTools
         {
             PixelTextureBuilder.BuildAll(); // thử nghiệm phong cách pixel (2026-10-02)
             MusicBuilder.BuildAll(); // nhạc nền sinh bằng code (M7/P2)
+            SfxBuilder.BuildAll(); // tiếng động sinh bằng code (M7/P2b)
             GameContentBuilder.Build();
             Build();
         }
@@ -198,6 +199,11 @@ namespace PrehistoricTribe.EditorTools
             // Milestone 7: hiệu ứng hạt (chặt, gặt, xây, đánh, mưa, sét…).
             SetPrivateField(new GameObject("VfxManager").AddComponent<VfxManager>(), "particleMaterial", ParticleMaterial());
             // Nhạc nền ngày/đêm: file của người dùng trong Assets/Audio/Music (Day/Night.*) nếu có, không thì bản sinh bằng code.
+            // Tiếng động: file của người dùng trong Assets/Audio/SFX (Chop.wav, Howl.mp3…) nếu có, không thì bản sinh bằng code.
+            var sfxEntries = new List<SfxManager.Entry>();
+            foreach (SfxKind kind in System.Enum.GetValues(typeof(SfxKind)))
+                sfxEntries.Add(new SfxManager.Entry { kind = kind, clip = SfxBuilder.Resolve(kind) });
+            SetPrivateField(new GameObject("SfxManager").AddComponent<SfxManager>(), "clips", sfxEntries);
             var music = new GameObject("MusicManager").AddComponent<MusicManager>();
             SetPrivateField(music, "dayMusic", MusicBuilder.Resolve("Day"));
             SetPrivateField(music, "nightMusic", MusicBuilder.Resolve("Night"));

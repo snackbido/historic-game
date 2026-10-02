@@ -147,7 +147,7 @@ namespace PrehistoricTribe
             ResourceAmount cost = RepairCost;
             if (cost.type != null && !ResourceManager.Instance.TrySpend(cost.type, cost.amount)) return false;
             Health.SetCurrent(Health.Current + Health.Max * RepairFractionPerWork);
-            VfxManager.Play(VfxKind.Dust, transform.position + Vector3.up * 0.5f);
+            VfxManager.Play(VfxKind.Dust, transform.position + Vector3.up * 0.5f, SfxKind.Build);
             if (!IsDamaged) EventBus.RaiseNotification($"Đã sửa xong {LevelName}");
             return true;
         }

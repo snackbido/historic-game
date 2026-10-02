@@ -67,7 +67,7 @@ namespace PrehistoricTribe
         {
             bool building = GetComponent<BuildingInstance>() != null;
             if (building) { if (IsDead) return; } // công trình sập: BuildingInstance tự phun bụi lớn
-            else if (IsDead) { VfxManager.Play(VfxKind.BigDust, transform.position); return; }
+            else if (IsDead) { VfxManager.Play(VfxKind.BigDust, transform.position, SfxKind.Hit); return; }
 
             float interval = building ? 1.5f : 0.15f;
             if (Time.time - lastVfxTime < interval) return;

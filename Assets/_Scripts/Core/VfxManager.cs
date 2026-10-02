@@ -75,7 +75,7 @@ namespace PrehistoricTribe
             if (instance == this) instance = null;
         }
 
-        private void HandleBuildingPlaced(BuildingInstance building) => Play(VfxKind.BigDust, building.transform.position);
+        private void HandleBuildingPlaced(BuildingInstance building) => Play(VfxKind.BigDust, building.transform.position, SfxKind.Build);
         private void HandleBuildingUpgraded(BuildingInstance building) => Play(VfxKind.Sparkle, building.transform.position + Vector3.up * 0.8f);
 
         private void Update()
@@ -97,9 +97,13 @@ namespace PrehistoricTribe
         }
 
         // ─── API ────────────────────────────────────────────────────────────
-        public static void Play(VfxKind kind, Vector3 position)
+        /// <summary>Phun một đợt hạt kèm tiếng tương ứng (<paramref name="sound"/> để đổi tiếng mặc định của hiệu ứng).</summary>
+        public static void Play(VfxKind kind, Vector3 position, SfxKind? sound = null)
         {
             playCounts[kind] = PlayCount(kind) + 1;
+            SfxKind sfx = sound ?? SoundOf(kind);
+            if (sfx == SfxKind.Thunder) SfxManager.Play(sfx); // sấm vang khắp nơi
+            else SfxManager.Play(sfx, position);
             if (instance == null || !instance.systems.TryGetValue(kind, out ParticleSystem system) || system == null) return;
 
             var emit = new ParticleSystem.EmitParams { position = position, applyShapeToPosition = true };
@@ -108,9 +112,27 @@ namespace PrehistoricTribe
             if (kind == VfxKind.Lightning) instance.Flash(position);
         }
 
+        private static SfxKind SoundOf(VfxKind kind)
+        {
+            switch (kind)
+            {
+                case VfxKind.WoodChips: return SfxKind.Chop;
+                case VfxKind.Leaves: return SfxKind.Rustle;
+                case VfxKind.Splash: return SfxKind.Splash;
+                case VfxKind.BigDust: return SfxKind.Crash;
+                case VfxKind.Harvest: return SfxKind.Harvest;
+                case VfxKind.Sparkle: return SfxKind.Chime;
+                case VfxKind.Hit: return SfxKind.Hit;
+                case VfxKind.Steam: return SfxKind.Hiss;
+                case VfxKind.Lightning: return SfxKind.Thunder;
+                default: return SfxKind.Dig;
+            }
+        }
+
         /// <summary>Bật/tắt mưa (lũ lụt).</summary>
         public static void SetRain(bool on)
         {
+            SfxManager.SetRain(on);
             if (instance == null || instance.rain == null) return;
             if (on && !instance.rain.isEmitting) instance.rain.Play();
             else if (!on && instance.rain.isEmitting) instance.rain.Stop(true, ParticleSystemStopBehavior.StopEmitting);

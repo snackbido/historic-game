@@ -126,7 +126,7 @@ Quyết định user: quy trình **vừa phải** (lúa ~6 bước: làm đất 
 ## Milestone 7 — Polish & mở rộng (bắt đầu 2026-10-02; chia bước P1–P4, tự chọn mặc định vì user chưa có asset)
 - [x] P1 Hiệu ứng hình ảnh: particle dựng bằng code (`VfxManager`) cho chặt/đánh cá/cuốc/gặt/xây/sửa/sập/đánh nhau/dập lửa + mưa khi lũ, chớp khi sét
 - [x] P2a Nhạc nền đơn giản sinh bằng code (ngày/đêm) — user sẽ tự thay bằng nhạc riêng
-- [ ] P2b Hiệu ứng âm thanh (chặt, cuốc, gặt, đánh, sói hú, mưa, sấm, lửa…)
+- [x] P2b Hiệu ứng âm thanh sinh bằng code (14 tiếng), thay được bằng file riêng
 - [ ] P3 Menu chính + cài đặt (âm lượng, bật/tắt pixel, chơi mới / tiếp tục / thoát)
 - [ ] P4 Cân bằng (đầu game 0 lương thực, chuỗi lúa dài mà ít gạo, thiên tai 2–3 ngày/lần có dày quá?) + lưu cây đã chặt — cần user chơi thử
 
@@ -430,6 +430,12 @@ Quyết định user: quy trình **vừa phải** (lúa ~6 bước: làm đất 
 - **Thay nhạc riêng**: đặt `Day.*` / `Night.*` (.wav/.mp3/.ogg) vào `Assets/Audio/Music/` rồi Build All — `MusicBuilder.Resolve` ưu tiên file người dùng, file sinh ra nằm thư mục riêng nên không bao giờ đè. Hoặc kéo thả vào ô Day/Night Music của object `MusicManager` (bị mất khi dựng lại scene).
 - `Core/MusicManager.cs`: 2 AudioSource lặp, đổi bài theo ngày/đêm (nhỏ dần/to dần 4s thật), **phím M** tắt/bật nhạc; `Volume`/`Muted` lưu PlayerPrefs (cho màn cài đặt P3).
 - Test: 2 test mới `Milestone7MusicTests.cs`. **184/184 test PlayMode pass**.
+
+## Nhật ký phiên làm việc 2026-10-02 (phần 4 — M7/P2b tiếng động)
+- `Editor/SfxBuilder.cs` sinh 14 tiếng WAV vào `Assets/Audio/SFX/Generated/` (`SfxKind`): Chop (rìu bổ gỗ), Rustle (lá xào xạc), Splash, Dig (cuốc), Build (3 nhát búa), Crash (sập đổ), Harvest (xào xạc + 2 nốt "tưng"), Chime (3 tiếng chuông), Hit, Hiss (xèo hơi nước), Thunder (đanh rồi ầm ì 3s), Howl (2 con sói hú), Rain + Fire (lặp 4s/3s, quấn vòng liền mạch). **Thay tiếng riêng**: đặt file cùng tên (vd `Chop.wav`, `Howl.mp3`) vào `Assets/Audio/SFX/` rồi Build All.
+- `Core/SfxManager.cs`: 10 nguồn phát xoay vòng, nửa 3D (gần to xa nhỏ theo camera), lệch cao độ ±8% cho khỏi máy móc, cùng một tiếng cách nhau ≥0,08s; `Volume` lưu PlayerPrefs. Mưa = nguồn lặp riêng; lửa = AudioSource lặp gắn vào vật đang cháy (gỡ khi tắt).
+- Mỗi `VfxManager.Play` tự kèm tiếng mặc định theo loại hiệu ứng (đổi được bằng tham số): xây xong/sửa = búa, người/thú chết = Hit, sét = sấm (nghe khắp nơi). Sói đột kích kéo vào = tiếng hú; mở công nghệ = chuông.
+- Test: 5 test mới `Milestone7SfxTests.cs`. **189/189 test PlayMode pass**.
 
 ## Vấn đề đang tồn đọng (Known issues / Open questions)
 - [x] Chế độ combat: lai (2026-09-26) + chi tiết chỉ huy NPC theo nghề (2026-09-30)

@@ -38,6 +38,7 @@ namespace PrehistoricTribe
         private readonly List<Transform> flames = new List<Transform>();
         private readonly List<Transform> smokePuffs = new List<Transform>();
         private Light glow;
+        private AudioSource crackle;
 
         /// <summary>Ruộng có nước từ mức này trở lên thì không cháy.</summary>
         public const float WetFieldLevel = 0.5f;
@@ -107,6 +108,7 @@ namespace PrehistoricTribe
 
         public void PutOut()
         {
+            if (crackle != null) Destroy(crackle);
             foreach (var puff in smokePuffs)
                 if (puff != null) Destroy(puff.gameObject);
             smokePuffs.Clear();
@@ -241,6 +243,7 @@ namespace PrehistoricTribe
 
         private void BuildVisual()
         {
+            crackle = SfxManager.AttachLoop(gameObject, SfxKind.Fire, 0.8f);
             Mesh mesh = ConeMesh();
             Mesh sphere = Resources.GetBuiltinResource<Mesh>("New-Sphere.fbx");
             foreach (var spot in FlameSpots())

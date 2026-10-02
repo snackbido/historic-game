@@ -76,6 +76,7 @@ namespace PrehistoricTribe
                 go.name = $"RaidWolf_{i}";
                 go.GetComponent<PredatorAI>()?.BeginRaid(village, hit.position);
             }
+            SfxManager.Play(SfxKind.Howl, null, 0.6f); // tiếng hú dày hơn các tiếng khác
             EventBus.RaiseNotification($"Bầy {count} con sói đang kéo vào làng! Vào lều, đứng gần lửa, người biết đánh ra chặn!");
         }
     }
