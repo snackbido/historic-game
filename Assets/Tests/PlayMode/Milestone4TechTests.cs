@@ -44,16 +44,28 @@ namespace PrehistoricTribe.Tests
             var cropPanel = GameObject.Find("CropPanel").transform;
 
             yield return null;
-            int buildButtonsBefore = buildPanel.childCount;
-            int cropButtonsBefore = cropPanel.childCount;
+            int buildLockedBefore = LockedCount(buildPanel);
+            int cropLockedBefore = LockedCount(cropPanel);
+            Assert.Greater(buildLockedBefore, 0, "Locked buildings are listed (greyed) so players know they exist");
 
             ResourceManager.Instance.AddResource(knowledge, 100);
             bool unlocked = TechManager.Instance.TryUnlock(techFarming);
             Assert.IsTrue(unlocked);
             yield return null;
 
-            Assert.Greater(buildPanel.childCount, buildButtonsBefore, "BuildMenuUI should add Storage's button after tech unlock");
-            Assert.Greater(cropPanel.childCount, cropButtonsBefore, "CropSelectionUI should add Berry's button after tech unlock");
+            Assert.Less(LockedCount(buildPanel), buildLockedBefore, "BuildMenuUI should unlock Storage's button after tech unlock");
+            Assert.Less(LockedCount(cropPanel), cropLockedBefore, "CropSelectionUI should unlock Berry's button after tech unlock");
+        }
+
+        private static int LockedCount(Transform panel)
+        {
+            int count = 0;
+            foreach (Transform child in panel)
+            {
+                var button = child.GetComponent<UnityEngine.UI.Button>();
+                if (button != null && LockedEntry.IsLocked(button)) count++;
+            }
+            return count;
         }
 
         [UnityTest]

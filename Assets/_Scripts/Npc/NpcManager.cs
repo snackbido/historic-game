@@ -55,8 +55,8 @@ namespace PrehistoricTribe
 
         public IReadOnlyList<ProfessionData> KnownProfessions => knownProfessions;
         public ProfessionData AdultProfession => adultProfession;
-        public float BabyDuration => babyDuration;
-        public float ChildDuration => childDuration;
+        public float BabyDuration => GamePace.Duration(babyDuration);
+        public float ChildDuration => GamePace.Duration(childDuration);
         public int Population => NpcController.All.Count;
 
         /// <summary>Số cặp đôi (người lớn) và số cặp đã có lều.</summary>
@@ -101,7 +101,7 @@ namespace PrehistoricTribe
 
             birthTimer -= Time.deltaTime;
             if (birthTimer > 0f) return;
-            birthTimer = birthCheckInterval;
+            birthTimer = GamePace.Duration(birthCheckInterval);
 
             PairCouples();
             AssignHomes();
@@ -149,7 +149,7 @@ namespace PrehistoricTribe
             foreach (var npc in new List<NpcController>(NpcController.All))
             {
                 float appetite = npc.IsAdult ? 1f : childAppetite;
-                npc.Fullness = Mathf.Max(0f, npc.Fullness - fullnessDecayPerSecond * appetite * deltaTime);
+                npc.Fullness = Mathf.Max(0f, npc.Fullness - fullnessDecayPerSecond * appetite * GamePace.Scaled(deltaTime));
 
                 if (npc.Fullness < eatBelow && ResourceManager.Instance.SpendAll(mealCost))
                     npc.Fullness = Mathf.Min(NpcController.MaxFullness, npc.Fullness + fullnessPerMeal);
@@ -217,7 +217,7 @@ namespace PrehistoricTribe
 
         /// <summary>Thời gian nghỉ giữa hai lần sinh: lều cấp càng cao càng ngắn (mỗi cấp -10%).</summary>
         public float BirthCooldownFor(BuildingInstance hut) =>
-            coupleBirthCooldown * (1f - 0.1f * ((hut != null ? hut.Level : 1) - 1));
+            GamePace.Duration(coupleBirthCooldown) * (1f - 0.1f * ((hut != null ? hut.Level : 1) - 1));
 
         /// <summary>Lý do cặp đôi này chưa sinh con được (null = sinh được).</summary>
         public string BirthBlocker(NpcController mother)

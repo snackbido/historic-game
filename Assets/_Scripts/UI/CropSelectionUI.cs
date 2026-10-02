@@ -39,9 +39,12 @@ namespace PrehistoricTribe
                 if (crop == null) continue;
                 bool unlocked = crop.unlockedByDefault ||
                                  (TechManager.Instance != null && TechManager.Instance.IsCropUnlocked(crop));
-                if (!unlocked) continue;
-
                 Button button = Instantiate(buttonPrefab, buttonContainer);
+                if (!unlocked)
+                {
+                    LockedEntry.Apply(button, crop.displayName, () => TechManager.Instance.UnlockHint(crop));
+                    continue;
+                }
                 TMP_Text label = button.GetComponentInChildren<TMP_Text>();
                 if (label != null) label.text = crop.displayName;
 

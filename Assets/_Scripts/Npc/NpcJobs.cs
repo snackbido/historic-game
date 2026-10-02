@@ -14,6 +14,8 @@ namespace PrehistoricTribe
         public abstract string Description { get; }
         public virtual float WorkRange => 1.1f;
         public virtual float Interval => 1.5f;
+        /// <summary>Việc "kinh tế" giãn theo <see cref="GamePace"/>; đánh nhau, dập lửa, ngủ thì không.</summary>
+        public virtual bool Paced => true;
         public virtual bool IsValid => Target != null && Target.isActiveAndEnabled;
 
         /// <summary>Việc này đang "giữ" đối tượng này (để người khác không tranh làm).</summary>
@@ -196,6 +198,7 @@ namespace PrehistoricTribe
     /// </summary>
     public class SleepJob : NpcJob
     {
+        public override bool Paced => false;
         private const float HealPerSecond = 1.5f;
 
         private readonly MonoBehaviour place;
@@ -232,6 +235,7 @@ namespace PrehistoricTribe
     /// <summary>Đánh thú dữ trong tầm đánh của nghề cho đến khi nó chết.</summary>
     public class AttackJob : NpcJob
     {
+        public override bool Paced => false;
         private readonly PredatorAI predator;
         private readonly ProfessionData profession;
 
@@ -422,6 +426,7 @@ namespace PrehistoricTribe
     /// </summary>
     public class FirefightJob : NpcJob
     {
+        public override bool Paced => false;
         public const float DousePerBucket = 0.5f;
         public const float DousePerBeat = 0.15f;
         private const float MaxWaterTrip = 20f;
@@ -516,6 +521,7 @@ namespace PrehistoricTribe
     /// <summary>Săn thú hoang: đánh từ xa trong tầm đánh của nghề cho đến khi thú chết.</summary>
     public class HuntJob : NpcJob
     {
+        public override bool Paced => false;
         private readonly AnimalController animal;
         private readonly HealthComponent health;
         private readonly ProfessionData profession;

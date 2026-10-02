@@ -34,6 +34,7 @@ namespace PrehistoricTribe
         private Slider sfxSlider;
         private TMP_Text pixelLabel;
         private TMP_Text fullscreenLabel;
+        private TMP_Text paceLabel;
         private MenuScreen settingsReturn = MenuScreen.Main;
         private float timeScaleBefore = 1f;
         private bool placerWasPlacing;
@@ -161,6 +162,7 @@ namespace PrehistoricTribe
             musicSlider.SetValueWithoutNotify(MusicManager.Volume);
             sfxSlider.SetValueWithoutNotify(SfxManager.Volume);
             pixelLabel.text = $"Đồ họa pixel: {(PixelModeOn() ? "BẬT" : "TẮT")}";
+            paceLabel.text = $"Nhịp độ: {GamePace.PresetName}";
             fullscreenLabel.text = $"Toàn màn hình: {(Screen.fullScreen ? "BẬT" : "TẮT")}";
         }
 
@@ -176,6 +178,13 @@ namespace PrehistoricTribe
             PixelArtCamera.SavedPreference = on;
             var pixel = Camera.main != null ? Camera.main.GetComponent<PixelArtCamera>() : null;
             if (pixel != null) pixel.PixelModeOn = on;
+            RefreshSettings();
+        }
+
+        /// <summary>Đổi vòng các mức nhịp độ (Thong thả → Vừa phải → Nhanh → …), áp dụng ngay.</summary>
+        public void CyclePace()
+        {
+            GamePace.PresetIndex = (GamePace.PresetIndex + 1) % GamePace.Presets.Length;
             RefreshSettings();
         }
 
@@ -220,6 +229,7 @@ namespace PrehistoricTribe
             musicSlider = VolumeSlider(settingsPanel.transform, v => MusicManager.Volume = v);
             Label(settingsPanel.transform, "Âm lượng tiếng động", 20f, FontStyles.Normal, TextColor, 28f);
             sfxSlider = VolumeSlider(settingsPanel.transform, v => SfxManager.Volume = v);
+            paceLabel = MenuButton(settingsPanel.transform, "Nhịp độ", CyclePace).GetComponentInChildren<TMP_Text>();
             pixelLabel = MenuButton(settingsPanel.transform, "Đồ họa pixel", TogglePixelMode).GetComponentInChildren<TMP_Text>();
             fullscreenLabel = MenuButton(settingsPanel.transform, "Toàn màn hình", ToggleFullscreen).GetComponentInChildren<TMP_Text>();
             MenuButton(settingsPanel.transform, "Quay lại", () => Show(settingsReturn));

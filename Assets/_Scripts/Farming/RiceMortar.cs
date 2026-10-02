@@ -87,7 +87,7 @@ namespace PrehistoricTribe
             for (int i = 0; i < slots.Length; i++)
             {
                 if (slots[i] < 0f || slots[i] >= dryTime) continue;
-                slots[i] = Mathf.Min(dryTime, slots[i] + Time.deltaTime);
+                slots[i] = Mathf.Min(dryTime, slots[i] + GamePace.Scaled(Time.deltaTime));
                 if (slots[i] >= dryTime) changed = true;
             }
             if (changed) UpdateVisual();

@@ -39,7 +39,7 @@ namespace PrehistoricTribe
         {
             if (!Regenerates || RegenPaused || amountRemaining >= maxAmount) return;
 
-            regenTimer += Time.deltaTime;
+            regenTimer += GamePace.Scaled(Time.deltaTime);
             if (regenTimer < regenInterval) return;
             regenTimer = 0f;
             amountRemaining++;

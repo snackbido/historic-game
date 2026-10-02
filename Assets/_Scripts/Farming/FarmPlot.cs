@@ -232,7 +232,7 @@ namespace PrehistoricTribe
             if (State == FarmPlotState.Growing && !HasEnoughWater)
             {
                 // Khô hạn: không lớn; khô lâu quá thì chết.
-                droughtTimer += Time.deltaTime;
+                droughtTimer += GamePace.Scaled(Time.deltaTime);
                 if (droughtTimer >= droughtWitherTime)
                 {
                     droughtTimer = 0f;
@@ -245,19 +245,19 @@ namespace PrehistoricTribe
             droughtTimer = 0f;
 
             if (State == FarmPlotState.Growing && WeedsEnabled && Weeds < 1f)
-                SetWeeds(Weeds + weedGrowthPerSecond * Time.deltaTime);
+                SetWeeds(Weeds + weedGrowthPerSecond * GamePace.Scaled(Time.deltaTime));
 
             if (State != FarmPlotState.Growing && !(State == FarmPlotState.ReadyToHarvest && crop.witherTime > 0f))
                 return;
 
-            stageTimer += Time.deltaTime;
+            stageTimer += GamePace.Scaled(Time.deltaTime); // nhịp độ chậm → cây lớn chậm theo
             AdvanceStage();
         }
 
         private void Evaporate(float seconds)
         {
             if (Water <= 0f || State == FarmPlotState.Wild) return;
-            SetWater(Water - evaporationPerSecond * EvaporationMultiplier * seconds);
+            SetWater(Water - evaporationPerSecond * EvaporationMultiplier * GamePace.Scaled(seconds));
         }
 
         /// <summary>Cây chết vì thiên tai (vd úng lụt). Trả về false nếu không có cây đang sống.</summary>

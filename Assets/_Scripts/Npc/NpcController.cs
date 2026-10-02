@@ -424,7 +424,7 @@ namespace PrehistoricTribe
             workTimer -= Time.deltaTime;
             if (workTimer > 0f) return;
 
-            workTimer = job.Interval;
+            workTimer = job.Paced ? GamePace.Duration(job.Interval) : job.Interval;
             if (!job.DoWork(this)) EndJob();
         }
 

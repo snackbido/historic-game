@@ -25,6 +25,7 @@ namespace PrehistoricTribe.Tests
             FarmPlot.WeedsEnabled = false; // cỏ dại làm lệch sản lượng các test cũ — test F4 tự bật
             DisasterManager.RandomEnabled = false; // thiên tai ngẫu nhiên làm lệch test — test M6 tự gọi
             GameMenuUI.ShowMainMenuOnStart = false; // vào thẳng ván chơi, không dừng ở menu chính
+            GamePace.Factor = 1f; // số liệu gốc — test viết theo nhịp độ ban đầu
 #if UNITY_EDITOR
             yield return EditorSceneManager.LoadSceneInPlayMode(ScenePath, new LoadSceneParameters(LoadSceneMode.Single));
 #endif
@@ -46,6 +47,7 @@ namespace PrehistoricTribe.Tests
             FarmPlot.WeedsEnabled = true;
             DisasterManager.RandomEnabled = true;
             GameMenuUI.ShowMainMenuOnStart = true;
+            GamePace.ClearOverride();
             DayNightCycle.Running = true;
             yield return null;
         }

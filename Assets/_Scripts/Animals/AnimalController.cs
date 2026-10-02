@@ -196,7 +196,7 @@ namespace PrehistoricTribe
 
         private void UpdateHunger()
         {
-            hungerTimer += Time.deltaTime;
+            hungerTimer += GamePace.Scaled(Time.deltaTime);
             if (hungerTimer < data.hungerDecayInterval) return;
 
             hungerTimer = 0f;
@@ -205,7 +205,7 @@ namespace PrehistoricTribe
 
         private void UpdateReproduction()
         {
-            reproductionTimer += Time.deltaTime;
+            reproductionTimer += GamePace.Scaled(Time.deltaTime);
             if (reproductionTimer < data.reproductionInterval) return;
 
             reproductionTimer = 0f;
@@ -216,7 +216,7 @@ namespace PrehistoricTribe
         {
             if (ProductReady) return;
 
-            productionTimer += Time.deltaTime;
+            productionTimer += GamePace.Scaled(Time.deltaTime);
             if (productionTimer >= data.productionInterval)
             {
                 ProductReady = true;

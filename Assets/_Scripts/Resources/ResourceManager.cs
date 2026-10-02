@@ -103,7 +103,7 @@ namespace PrehistoricTribe
         private void Update()
         {
             if (!SpoilageEnabled) return;
-            spoilTimer += Time.deltaTime;
+            spoilTimer += GamePace.Scaled(Time.deltaTime);
             if (spoilTimer < spoilInterval) return;
             spoilTimer = 0f;
             SpoilOutsideFood();

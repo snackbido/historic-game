@@ -128,6 +128,7 @@ Quyết định user: quy trình **vừa phải** (lúa ~6 bước: làm đất 
 - [x] P2a Nhạc nền đơn giản sinh bằng code (ngày/đêm) — user sẽ tự thay bằng nhạc riêng
 - [x] P2b Hiệu ứng âm thanh sinh bằng code (14 tiếng), thay được bằng file riêng
 - [x] P3 Menu chính + tạm dừng (Esc) + cài đặt (âm lượng nhạc/tiếng động, pixel, toàn màn hình)
+- [x] P4a Sau chơi thử (user: "nhịp độ hơi nhanh", "chức năng cần điều kiện thì báo cần làm gì để mở"): nhịp độ chỉnh được + gợi ý mở khóa
 - [ ] P4 Cân bằng (đầu game 0 lương thực, chuỗi lúa dài mà ít gạo, thiên tai 2–3 ngày/lần có dày quá?) + lưu cây đã chặt — cần user chơi thử
 
 ## Nhật ký quyết định quan trọng (Decision Log)

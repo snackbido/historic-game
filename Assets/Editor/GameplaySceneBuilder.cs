@@ -280,6 +280,8 @@ namespace PrehistoricTribe.EditorTools
             SetPrivateField(techManager, "knowledgeResource", knowledge);
             SetPrivateField(techManager, "knowledgeGenerationInterval", 6f);
             SetPrivateField(techManager, "allTechs", techs);
+            SetPrivateField(techManager, "knownBuildings", buildings);
+            SetPrivateField(techManager, "knownCrops", crops);
 
             var gameManagerGO = new GameObject("GameManager");
             var gameManager = gameManagerGO.AddComponent<GameManager>();
@@ -821,9 +823,12 @@ namespace PrehistoricTribe.EditorTools
             rect.anchorMax = new Vector2(0.5f, 1f);
             rect.pivot = new Vector2(0.5f, 1f);
             rect.anchoredPosition = new Vector2(0f, -20f);
-            rect.sizeDelta = new Vector2(600f, 40f);
+            rect.sizeDelta = new Vector2(1100f, 40f);
             var tmp = labelGO.AddComponent<TextMeshProUGUI>();
             tmp.fontSize = 24f;
+            tmp.enableAutoSizing = true; // gợi ý mở khóa có thể dài: tự thu nhỏ chữ cho vừa khung
+            tmp.fontSizeMin = 15f;
+            tmp.fontSizeMax = 24f;
             tmp.alignment = TextAlignmentOptions.Center;
             tmp.text = string.Empty;
             var notificationUI = labelGO.AddComponent<NotificationUI>();

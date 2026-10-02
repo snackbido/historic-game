@@ -39,9 +39,13 @@ namespace PrehistoricTribe
                 if (building == null) continue;
                 bool unlocked = building.unlockedByDefault ||
                                  (TechManager.Instance != null && TechManager.Instance.IsBuildingUnlocked(building));
-                if (!unlocked) continue;
-
                 Button button = Instantiate(buttonPrefab, buttonContainer);
+                if (!unlocked)
+                {
+                    // Còn khóa: vẫn hiện, bấm vào báo cần nghiên cứu gì.
+                    LockedEntry.Apply(button, building.displayName, () => TechManager.Instance.UnlockHint(building));
+                    continue;
+                }
                 TMP_Text label = button.GetComponentInChildren<TMP_Text>();
                 if (label != null) label.text = building.displayName;
 
