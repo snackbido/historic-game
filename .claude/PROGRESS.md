@@ -409,6 +409,13 @@ Quyết định user: quy trình **vừa phải** (lúa ~6 bước: làm đất 
 - Menu xây 12 nút → xếp lưới 2 cột (`GridLayoutGroup`, ô 148×30); bảng hạt giống trở lại -250, công nghệ -420.
 - Test: 7 test mới `Milestone6WolfRaidTests.cs`. **176/176 test PlayMode pass**.
 
+## Nhật ký phiên làm việc 2026-10-02 (thử nghiệm phong cách pixel art)
+- User muốn cảnh và nhân vật dạng pixel, chưa có gói asset, không biết vẽ → thử "3D pixel art": giữ nguyên model 3D + gameplay, chỉ đổi cách vẽ.
+- `Shaders/PixelArt.shader` + `Player/PixelArtCamera.cs` (trên Main Camera, `[ExecuteAlways]`): vẽ khung hình cao 240 điểm ảnh rồi phóng to lọc Point; viền tối mép vật thể (so độ sâu ô bên cạnh); ép về bảng màu 40 màu đất–rừng–nước (`GameplaySceneBuilder.PixelPalette`) có rải điểm Bayer 4×4 cho chuyển màu mượt. Giao diện Canvas không bị ảnh hưởng, chuột/chọn vẫn tính trên màn hình thật. **Phím P** bật/tắt.
+- `Editor/PixelTextureBuilder.cs` sinh texture pixel lát liền mạch bằng code (`Assets/Textures/Pixel`): cỏ 64×64 (khóm cỏ, hoa dại), đất trại 32×32 (sỏi), cát 16×16, nước 32×32 (gợn sóng); lọc Point, không mipmap. Dùng cho mặt đất, sân trại, bờ cát + mặt ao (`EditorBuildUtils.TexturedMat`). `BuildAll` sinh texture trước.
+- Chưa làm: nhân vật vẫn là khối 3D (bước sau nếu user thích: sprite pixel billboard — cần gói asset như Ninja Adventure (CC0) hoặc AI như PixelLab); camera vẫn phối cảnh (chưa orthographic/khóa điểm ảnh → có thể hơi rung khi di chuyển); chưa xem ban đêm.
+- 176/176 test pass (lần đầu `GrownUpChild_LeavesTheFamilyHut` lỗi do chờ 10s game hụt giờ — chập chờn, chạy lại pass).
+
 ## Vấn đề đang tồn đọng (Known issues / Open questions)
 - [x] Chế độ combat: lai (2026-09-26) + chi tiết chỉ huy NPC theo nghề (2026-09-30)
 - [ ] Chưa có tên chính thức cho dự án

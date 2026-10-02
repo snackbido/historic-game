@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using TMPro;
 using Unity.AI.Navigation;
 using UnityEditor;
@@ -33,6 +34,17 @@ namespace PrehistoricTribe.EditorTools
         private const string NavMeshAssetPath = "Assets/_Scenes/Gameplay_NavMesh.asset";
 
         private static readonly Color SkyColor = new Color(0.81f, 0.89f, 0.9f);
+        private const string PixelArtMaterialPath = "Assets/Materials/PixelArt.mat";
+
+        /// <summary>Bảng màu đất – rừng – nước cho phong cách pixel (khung hình bị ép về các màu này).</summary>
+        private static Color[] PixelPalette => new[]
+        {
+            0x0e0c0a, 0x1f3a1c, 0x2f5a28, 0x3f6b2a, 0x4f8a33, 0x66a33d, 0x86bf4c, 0xb0d86a,
+            0x2e1d10, 0x47301a, 0x5a3d22, 0x6b4423, 0x8b5e34, 0xa87b4a, 0xc9a35a, 0xd9b36c,
+            0xc98d5e, 0xe0b088, 0x3a3632, 0x5c5752, 0x8a857c, 0xb5b0a5, 0xe8e4d8, 0xcfe3e6,
+            0x1c2e4a, 0x2f5f86, 0x3f7fb0, 0x6fa8d0, 0xa8d0e6, 0xe2c25a, 0xffd36a, 0xff8a2a,
+            0xf0561a, 0xc0381a, 0x8a2a20, 0x141a2e, 0x263452, 0x3a4e70, 0x4a7fa8, 0x7a9a3a,
+        }.Select(Palette.Hex).ToArray();
 
         // Dân làng ban đầu (quyết định 2026-09-30: 3–4 người, có cả nam lẫn nữ, mỗi người một nghề).
         private static readonly (string name, Gender gender, string professionId, Vector2 position)[] StartingVillagers =
@@ -53,6 +65,7 @@ namespace PrehistoricTribe.EditorTools
         [MenuItem("Tools/Prehistoric/Build All (Content + Scene)")]
         public static void BuildAll()
         {
+            PixelTextureBuilder.BuildAll(); // thử nghiệm phong cách pixel (2026-10-02)
             GameContentBuilder.Build();
             Build();
         }
@@ -343,11 +356,13 @@ namespace PrehistoricTribe.EditorTools
         private static void CreateGround(Transform parent)
         {
             // Plane mặc định 10×10 → scale 6 = 60×60. Không cần collider: chuột raycast vào mặt phẳng toán học.
-            var ground = Part(parent, "Ground", PrimitiveType.Plane, Vector3.zero, new Vector3(6f, 1f, 6f), Palette.Grass);
+            // Cỏ pixel: mỗi ô texture 64 điểm ảnh phủ 4m (60m → lặp 15 lần).
+            var ground = Part(parent, "Ground", PrimitiveType.Plane, Vector3.zero, new Vector3(6f, 1f, 6f),
+                TexturedMat("GroundPixel", PixelTextureBuilder.Grass, new Vector2(15f, 15f)));
             ground.GetComponent<Renderer>().shadowCastingMode = ShadowCastingMode.Off;
 
             var camp = Part(parent, "CampGround", PrimitiveType.Cylinder, new Vector3(0f, -0.045f, 0f),
-                new Vector3(9f, 0.05f, 7.5f), Mat("CampGround", Palette.Hex(0x8a7a50)));
+                new Vector3(9f, 0.05f, 7.5f), TexturedMat("CampGroundPixel", PixelTextureBuilder.Dirt, new Vector2(4.5f, 3.75f)));
             camp.GetComponent<Renderer>().shadowCastingMode = ShadowCastingMode.Off;
         }
 
@@ -495,6 +510,17 @@ namespace PrehistoricTribe.EditorTools
             cam.clearFlags = CameraClearFlags.SolidColor; // hết nền trời Skybox (nợ polish ở PROGRESS.md)
             cam.backgroundColor = SkyColor;
             cameraGO.AddComponent<AudioListener>();
+
+            // Thử nghiệm phong cách pixel art (2026-10-02) — phím P bật/tắt.
+            var pixel = cameraGO.AddComponent<PixelArtCamera>();
+            var pixelMat = AssetDatabase.LoadAssetAtPath<Material>(PixelArtMaterialPath);
+            if (pixelMat == null)
+            {
+                pixelMat = new Material(Shader.Find("Hidden/PrehistoricTribe/PixelArt"));
+                AssetDatabase.CreateAsset(pixelMat, PixelArtMaterialPath);
+            }
+            SetPrivateField(pixel, "material", pixelMat);
+            SetPrivateField(pixel, "palette", PixelPalette);
 
             var follow = cameraGO.AddComponent<CameraFollow>();
             SetPrivateField(follow, "target", target);

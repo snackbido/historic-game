@@ -1331,9 +1331,9 @@ namespace PrehistoricTribe.EditorTools
             SetPrivateField(root.AddComponent<WaterSource>(), "radius", 0.95f); // M5d: nguồn nước cho ruộng
 
             var t = root.transform;
-            Part(t, "Shore", PrimitiveType.Cylinder, new Vector3(0f, 0.005f, 0f), new Vector3(2.3f, 0.01f, 2.1f), Mat("Sand", Palette.Hex(0xc9b27c)))
+            Part(t, "Shore", PrimitiveType.Cylinder, new Vector3(0f, 0.005f, 0f), new Vector3(2.3f, 0.01f, 2.1f), TexturedMat("SandPixel", PixelTextureBuilder.Sand, new Vector2(2f, 2f)))
                 .GetComponent<Renderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-            Part(t, "Water", PrimitiveType.Cylinder, new Vector3(0f, 0.02f, 0f), new Vector3(1.9f, 0.01f, 1.7f), Mat("Water", Palette.Hex(0x3f7fb0), emission: 0.15f))
+            Part(t, "Water", PrimitiveType.Cylinder, new Vector3(0f, 0.02f, 0f), new Vector3(1.9f, 0.01f, 1.7f), TexturedMat("WaterPixel", PixelTextureBuilder.Water, new Vector2(1f, 1f)))
                 .GetComponent<Renderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             var reed = Mat("Reed", Palette.Hex(0x6a8f3a));
             foreach (var p in new[] { new Vector3(0.85f, 0f, 0.3f), new Vector3(0.9f, 0f, 0.15f), new Vector3(-0.8f, 0f, -0.45f), new Vector3(-0.7f, 0f, 0.55f) })

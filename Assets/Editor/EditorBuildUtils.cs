@@ -42,6 +42,17 @@ namespace PrehistoricTribe.EditorTools
             return mat;
         }
 
+        /// <summary>Material có texture lát lặp (vd mặt đất pixel art): màu trắng để giữ nguyên màu texture.</summary>
+        public static Material TexturedMat(string name, Texture2D texture, Vector2 tiling)
+        {
+            Material mat = Mat(name, Color.white);
+            mat.mainTexture = texture;
+            mat.mainTextureScale = tiling;
+            if (mat.HasProperty("_Glossiness")) mat.SetFloat("_Glossiness", 0f);
+            EditorUtility.SetDirty(mat);
+            return mat;
+        }
+
         /// <summary>Primitive có sẵn của Unity (Cube 1×1×1, Sphere Ø1, Cylinder Ø1 cao 2), bỏ collider.</summary>
         public static GameObject Part(Transform parent, string name, PrimitiveType type, Vector3 localPosition,
             Vector3 localScale, Material material, Vector3 localEuler = default)
