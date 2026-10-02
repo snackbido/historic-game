@@ -53,8 +53,15 @@ namespace PrehistoricTribe
             amountRemaining -= amount;
             ResourceManager.Instance.AddResource(resourceType, amount);
 
+            bool isWood = resourceType != null && resourceType.id == "wood";
+            Vector3 at = transform.position + Vector3.up * (Regenerates ? 0.1f : 0.6f);
+            VfxManager.Play(Regenerates ? VfxKind.Splash : isWood ? VfxKind.WoodChips : VfxKind.Dust, at);
+
             if (amountRemaining <= 0 && !Regenerates)
+            {
+                if (isWood) VfxManager.Play(VfxKind.Leaves, transform.position + Vector3.up * 1.6f); // cây đổ
                 Destroy(gameObject);
+            }
         }
     }
 }

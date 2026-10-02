@@ -287,6 +287,7 @@ namespace PrehistoricTribe
             stage = CropStage.Seed;
             stageTimer = 0f;
             droughtTimer = 0f;
+            VfxManager.Play(VfxKind.Dust, transform.position);
             State = FarmPlotState.Growing;
             UpdateVisual();
             return true;
@@ -300,6 +301,7 @@ namespace PrehistoricTribe
             foreach (var yield in crop.harvestYield)
                 ResourceManager.Instance.AddResource(yield.type, HarvestAmount(yield.amount, multiplier));
 
+            VfxManager.Play(VfxKind.Harvest, transform.position + Vector3.up * 0.2f);
             ResetToUnplowed();
             return true;
         }
@@ -311,6 +313,7 @@ namespace PrehistoricTribe
         /// <summary>Một lượt làm cỏ. Trả về true khi ruộng đã sạch cỏ.</summary>
         public bool DoWeedWork()
         {
+            VfxManager.Play(VfxKind.Leaves, transform.position);
             SetWeeds(Weeds - WeedRemovedPerWork);
             return Weeds <= 0f;
         }
@@ -335,6 +338,7 @@ namespace PrehistoricTribe
         {
             if (State != FarmPlotState.Wild) return false;
             clearWorkDone++;
+            VfxManager.Play(VfxKind.Leaves, transform.position);
             if (clearWorkDone < clearWorkNeeded) return false;
 
             clearWorkDone = 0;
@@ -348,6 +352,7 @@ namespace PrehistoricTribe
         {
             if (State != FarmPlotState.Unplowed) return false;
             plowWorkDone++;
+            VfxManager.Play(VfxKind.Dust, transform.position);
             if (plowWorkDone < plowWorkNeeded) return false;
 
             plowWorkDone = 0;

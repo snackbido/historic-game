@@ -324,6 +324,7 @@ namespace PrehistoricTribe
             {
                 carrying = false;
                 plot.AddWater(plot.WaterPerTrip);
+                VfxManager.Play(VfxKind.Splash, plot.transform.position);
                 // Tự làm: gánh đến khi đủ nước rồi thôi; lệnh: làm tiếp các bước khác.
                 return continuous || plot.IsThirsty;
             }

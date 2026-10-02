@@ -123,11 +123,11 @@ Quyết định user: quy trình **vừa phải** (lúa ~6 bước: làm đất 
 - [x] D4 Cháy rừng: sét/lửa lan qua cây và lều — dân gánh nước dập lửa
 - [x] D5 Bầy sói đột kích: đêm cả bầy tràn vào trại theo đợt — chống bằng hàng rào, lính gác, đuốc
 
-## Milestone 7 — Polish & mở rộng
-- [ ] Âm thanh (SFX + nhạc nền)
-- [ ] Hiệu ứng hình ảnh (particle cho thu hoạch, xây dựng, thiên tai)
-- [ ] Cân bằng game (balance số liệu tài nguyên, thời gian, độ khó)
-- [ ] Menu chính, màn hình cài đặt
+## Milestone 7 — Polish & mở rộng (bắt đầu 2026-10-02; chia bước P1–P4, tự chọn mặc định vì user chưa có asset)
+- [x] P1 Hiệu ứng hình ảnh: particle dựng bằng code (`VfxManager`) cho chặt/đánh cá/cuốc/gặt/xây/sửa/sập/đánh nhau/dập lửa + mưa khi lũ, chớp khi sét
+- [ ] P2 Âm thanh: SFX + nhạc nền sinh bằng code (sóng 8-bit hợp phong cách pixel, như texture pixel) — thay bằng file thật sau
+- [ ] P3 Menu chính + cài đặt (âm lượng, bật/tắt pixel, chơi mới / tiếp tục / thoát)
+- [ ] P4 Cân bằng (đầu game 0 lương thực, chuỗi lúa dài mà ít gạo, thiên tai 2–3 ngày/lần có dày quá?) + lưu cây đã chặt — cần user chơi thử
 
 ## Nhật ký quyết định quan trọng (Decision Log)
 > Ghi lại các quyết định kỹ thuật/thiết kế lớn để không quên lý do tại sao chọn hướng này.
@@ -415,6 +415,13 @@ Quyết định user: quy trình **vừa phải** (lúa ~6 bước: làm đất 
 - `Editor/PixelTextureBuilder.cs` sinh texture pixel lát liền mạch bằng code (`Assets/Textures/Pixel`): cỏ 64×64 (khóm cỏ, hoa dại), đất trại 32×32 (sỏi), cát 16×16, nước 32×32 (gợn sóng); lọc Point, không mipmap. Dùng cho mặt đất, sân trại, bờ cát + mặt ao (`EditorBuildUtils.TexturedMat`). `BuildAll` sinh texture trước.
 - Chưa làm: nhân vật vẫn là khối 3D (bước sau nếu user thích: sprite pixel billboard — cần gói asset như Ninja Adventure (CC0) hoặc AI như PixelLab); camera vẫn phối cảnh (chưa orthographic/khóa điểm ảnh → có thể hơi rung khi di chuyển); chưa xem ban đêm.
 - 176/176 test pass (lần đầu `GrownUpChild_LeavesTheFamilyHut` lỗi do chờ 10s game hụt giờ — chập chờn, chạy lại pass).
+- **Hướng đồ họa do user tự thiết kế (tạm gác, ghi lại)**: user muốn tự làm cảnh + nhân vật, hỏi về Blender. Đã kiểm tra máy: iMac 2013 (i5-4570R, RAM 8GB, Intel Iris Pro 5200 driver 2017, ổ C còn ~4GB) → chạy được Blender cho low-poly: dùng **Blender 4.2 LTS bản portable cài ở ổ D**, khung nhìn Solid, không mở cùng lúc với Unity. Công cụ dựng nhanh đã giới thiệu: **BlenderMCP** (Claude điều khiển Blender trực tiếp, kèm Poly Haven/Sketchfab/Hyper3D Rodin), BlenderKit, Quaternius/Kenney ghép lại, Sapling Tree Gen / Rock Generator / A.N.T. Landscape / Geometry Nodes, Mixamo/Rigify; hoặc Claude viết script Python cho Blender. Còn treo: xuất bảng màu (.gpl/.png), cơ chế "có model của user thì dùng, không thì placeholder", camera orthographic chống rung.
+
+## Nhật ký phiên làm việc 2026-10-02 (phần 2 — M7/P1 hiệu ứng hạt)
+- `Core/VfxManager.cs`: mỗi loại hiệu ứng (`VfxKind`: mùn gỗ, lá, nước bắn, bụi, bụi lớn, gặt, lấp lánh, máu, hơi nước, sét) là một ParticleSystem dùng chung dựng bằng code; `VfxManager.Play(kind, pos)` phun một đợt (Emit) tại chỗ. Hạt vuông không texture (material `Assets/Materials/Particle.mat`, Legacy Particles/Alpha Blended) → qua hậu kỳ pixel thành điểm ảnh. Không có manager trong scene thì bỏ qua.
+- Gắn vào: chặt cây (mùn gỗ, cây đổ thì lá), đánh cá/gánh nước tưới (nước bắn), khai hoang/làm cỏ (lá), cày/gieo/cối giã (bụi), gặt (hạt vàng–xanh), xây xong (bụi lớn qua `OnBuildingPlaced`), nâng cấp (lấp lánh), sửa (bụi), sập (bụi lớn), người/thú bị đánh (máu, giãn 0,15s; chết thì bụi lớn), công trình hư do thiên tai (bụi, giãn 1,5s), dập lửa (hơi nước), sét đánh (tia sáng + đèn chớp 2 nhịp). Lũ lụt: mưa (hạt kéo dài, phủ 36m theo camera) suốt lúc lũ.
+- Lưu ý: hệ hạt đang dừng thì hạt Emit ra không cập nhật → `Play()` sau mỗi lần phun. Ảnh chụp chế độ edit chỉ thấy mưa (đợt hạt không mô phỏng ngoài Play) — test xác nhận hạt sống thật khi chạy.
+- Test: 6 test mới `Milestone7VfxTests.cs`. **182/182 test PlayMode pass**.
 
 ## Vấn đề đang tồn đọng (Known issues / Open questions)
 - [x] Chế độ combat: lai (2026-09-26) + chi tiết chỉ huy NPC theo nghề (2026-09-30)

@@ -96,10 +96,9 @@ namespace PrehistoricTribe
         /// <summary>Làm một lượt công. Trả về false nếu không có gì để làm.</summary>
         public bool DoWork()
         {
-            if (CanThresh) return Thresh();
-            if (CanHang) return Hang();
-            if (CanPound) return Pound();
-            return false;
+            bool worked = CanThresh ? Thresh() : CanHang ? Hang() : CanPound && Pound();
+            if (worked) VfxManager.Play(VfxKind.Dust, transform.position + Vector3.up * 0.4f);
+            return worked;
         }
 
         /// <summary>Lý do chưa làm được gì (cho người chơi bấm E), null = có việc.</summary>

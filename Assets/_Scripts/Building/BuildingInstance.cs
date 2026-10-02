@@ -147,6 +147,7 @@ namespace PrehistoricTribe
             ResourceAmount cost = RepairCost;
             if (cost.type != null && !ResourceManager.Instance.TrySpend(cost.type, cost.amount)) return false;
             Health.SetCurrent(Health.Current + Health.Max * RepairFractionPerWork);
+            VfxManager.Play(VfxKind.Dust, transform.position + Vector3.up * 0.5f);
             if (!IsDamaged) EventBus.RaiseNotification($"Đã sửa xong {LevelName}");
             return true;
         }
@@ -177,6 +178,7 @@ namespace PrehistoricTribe
                 model.transform.localScale = collapsed ? new Vector3(1.1f, 0.4f, 1.1f) : Vector3.one;
             }
             if (rubble != null) rubble.SetActive(collapsed);
+            if (collapsed) VfxManager.Play(VfxKind.BigDust, transform.position);
             foreach (var behaviour in GetComponents<Behaviour>())
                 if (behaviour is RiceMortar || behaviour is WaterWheel || behaviour is WaterSource || behaviour is Campfire ||
                     behaviour is UnityEngine.AI.NavMeshObstacle) // sập thì đi qua được (hàng rào bị phá), đuốc đổ thì tắt

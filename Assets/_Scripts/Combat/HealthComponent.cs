@@ -14,6 +14,7 @@ namespace PrehistoricTribe
         [SerializeField] private float regenDelay = 6f;
 
         private float lastDamageTime = float.NegativeInfinity;
+        private float lastVfxTime = float.NegativeInfinity;
 
         public float Max => maxHealth;
         public float Current { get; private set; }
@@ -58,6 +59,20 @@ namespace PrehistoricTribe
             OnChanged?.Invoke(this);
             OnDamaged?.Invoke(this, source);
             if (IsDead) OnDied?.Invoke(this);
+            PlayDamageVfx();
+        }
+
+        /// <summary>Hạt máu khi người/thú bị đánh, bụi khi công trình hư (thiên tai gây hư liên tục nên giãn nhịp).</summary>
+        private void PlayDamageVfx()
+        {
+            bool building = GetComponent<BuildingInstance>() != null;
+            if (building) { if (IsDead) return; } // công trình sập: BuildingInstance tự phun bụi lớn
+            else if (IsDead) { VfxManager.Play(VfxKind.BigDust, transform.position); return; }
+
+            float interval = building ? 1.5f : 0.15f;
+            if (Time.time - lastVfxTime < interval) return;
+            lastVfxTime = Time.time;
+            VfxManager.Play(building ? VfxKind.Dust : VfxKind.Hit, transform.position + Vector3.up * (building ? 0.5f : 0.7f));
         }
 
         public void Heal(float amount)

@@ -57,6 +57,7 @@ namespace PrehistoricTribe
         public override void OnBegin()
         {
             Clear();
+            VfxManager.SetRain(true);
             foreach (var pond in Ponds())
             {
                 var disc = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
@@ -116,6 +117,7 @@ namespace PrehistoricTribe
         private void Clear()
         {
             FloodRange = 0f;
+            VfxManager.SetRain(false);
             submerged.Clear();
             foreach (var disc in floodVisuals)
                 if (disc != null) Destroy(disc);

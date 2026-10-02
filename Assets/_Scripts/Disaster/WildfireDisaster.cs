@@ -61,6 +61,7 @@ namespace PrehistoricTribe
         public Fire Strike(MonoBehaviour target)
         {
             Fire fire = Fire.Ignite(target, FireSettings);
+            if (fire != null) VfxManager.Play(VfxKind.Lightning, target.transform.position + Vector3.up * 1.5f);
             if (fire != null) started = true;
             return fire;
         }

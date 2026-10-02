@@ -98,6 +98,7 @@ namespace PrehistoricTribe
         /// <summary>Dội nước / đập lửa. Trả về true nếu lửa đã tắt.</summary>
         public bool Douse(float amount)
         {
+            VfxManager.Play(VfxKind.Steam, transform.position + Vector3.up * 0.4f);
             Intensity -= amount;
             if (Intensity > 0f) return false;
             PutOut();

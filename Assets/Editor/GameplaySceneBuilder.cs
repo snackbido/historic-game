@@ -194,6 +194,8 @@ namespace PrehistoricTribe.EditorTools
                 "bầy sói kéo vào làng khi trời tối — vào lều, đứng gần lửa, người biết đánh ra chặn",
                 "Bầy sói đã rút về rừng", durationDays: 1f);
             SetPrivateField(raid, "wolf", AssetDatabase.LoadAssetAtPath<PredatorData>(GameContentBuilder.WolfDataPath));
+            // Milestone 7: hiệu ứng hạt (chặt, gặt, xây, đánh, mưa, sét…).
+            SetPrivateField(new GameObject("VfxManager").AddComponent<VfxManager>(), "particleMaterial", ParticleMaterial());
 
             var resources = new GameObject("ResourceNodes").transform;
             for (int i = 0; i < TreePositions.Length; i++)
@@ -497,6 +499,21 @@ namespace PrehistoricTribe.EditorTools
             GameContentBuilder.BuildHealthBar(playerGO, 1.4f);
             playerGO.AddComponent<PlayerInteraction>();
             return playerGO;
+        }
+
+        /// <summary>Hạt hình vuông, màu lấy từ màu hạt (vertex color), mờ dần được.</summary>
+        private static Material ParticleMaterial()
+        {
+            const string path = "Assets/Materials/Particle.mat";
+            var mat = AssetDatabase.LoadAssetAtPath<Material>(path);
+            if (mat == null)
+            {
+                mat = new Material(Shader.Find("Legacy Shaders/Particles/Alpha Blended"));
+                AssetDatabase.CreateAsset(mat, path);
+            }
+            mat.SetColor("_TintColor", new Color(0.5f, 0.5f, 0.5f, 0.5f)); // ×2 trong shader → giữ nguyên màu hạt
+            EditorUtility.SetDirty(mat);
+            return mat;
         }
 
         private static Camera CreateCamera(Transform target)
