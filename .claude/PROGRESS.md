@@ -127,7 +127,7 @@ Quyết định user: quy trình **vừa phải** (lúa ~6 bước: làm đất 
 - [x] P1 Hiệu ứng hình ảnh: particle dựng bằng code (`VfxManager`) cho chặt/đánh cá/cuốc/gặt/xây/sửa/sập/đánh nhau/dập lửa + mưa khi lũ, chớp khi sét
 - [x] P2a Nhạc nền đơn giản sinh bằng code (ngày/đêm) — user sẽ tự thay bằng nhạc riêng
 - [x] P2b Hiệu ứng âm thanh sinh bằng code (14 tiếng), thay được bằng file riêng
-- [ ] P3 Menu chính + cài đặt (âm lượng, bật/tắt pixel, chơi mới / tiếp tục / thoát)
+- [x] P3 Menu chính + tạm dừng (Esc) + cài đặt (âm lượng nhạc/tiếng động, pixel, toàn màn hình)
 - [ ] P4 Cân bằng (đầu game 0 lương thực, chuỗi lúa dài mà ít gạo, thiên tai 2–3 ngày/lần có dày quá?) + lưu cây đã chặt — cần user chơi thử
 
 ## Nhật ký quyết định quan trọng (Decision Log)
@@ -436,6 +436,13 @@ Quyết định user: quy trình **vừa phải** (lúa ~6 bước: làm đất 
 - `Core/SfxManager.cs`: 10 nguồn phát xoay vòng, nửa 3D (gần to xa nhỏ theo camera), lệch cao độ ±8% cho khỏi máy móc, cùng một tiếng cách nhau ≥0,08s; `Volume` lưu PlayerPrefs. Mưa = nguồn lặp riêng; lửa = AudioSource lặp gắn vào vật đang cháy (gỡ khi tắt).
 - Mỗi `VfxManager.Play` tự kèm tiếng mặc định theo loại hiệu ứng (đổi được bằng tham số): xây xong/sửa = búa, người/thú chết = Hit, sét = sấm (nghe khắp nơi). Sói đột kích kéo vào = tiếng hú; mở công nghệ = chuông.
 - Test: 5 test mới `Milestone7SfxTests.cs`. **189/189 test PlayMode pass**.
+
+## Nhật ký phiên làm việc 2026-10-02 (phần 5 — M7/P3 menu)
+- `UI/GameMenuUI.cs` (object `GameMenu` phủ toàn Canvas, tự dựng giao diện bằng code khi chạy): **menu chính** lúc vào game (tên "BỘ LẠC TIỀN SỬ" — tạm, chưa có tên chính thức; Chơi mới / Chơi tiếp (bản lưu, mờ nếu chưa có) / Cài đặt / Thoát + bảng phím tắt), **tạm dừng** bằng Esc (Chơi tiếp / Lưu game / Cài đặt / Về menu chính = nạp lại scene / Thoát), **cài đặt** (2 thanh âm lượng nhạc + tiếng động, nút Đồ họa pixel BẬT/TẮT, Toàn màn hình). Esc trong cài đặt = quay lại; Esc lúc đang cầm công trình để đặt thì chỉ hủy đặt, không mở menu.
+- Mở menu: `Time.timeScale` = 0 (đóng thì trả lại tốc độ cũ); `GameMenuUI.IsOpen` chặn phím/chuột của người chơi, chiến đấu, đặt công trình, chọn dân, F5/F9, P.
+- `PixelArtCamera.SavedPreference` (PlayerPrefs) — chế độ pixel nhớ giữa các lần chơi (phím P cũng lưu).
+- Scene builder đăng ký `Gameplay.unity` vào Build Settings (trước đây trống) — cần cho "Về menu chính" và để build game.
+- Test: `PlayModeTestBase` tắt menu chính (`ShowMainMenuOnStart = false`); 4 test mới `Milestone7MenuTests.cs`. **193/193 test PlayMode pass**. Ảnh chụp menu (canvas tạm đổi sang ScreenSpaceCamera) xác nhận bố cục + chữ tiếng Việt.
 
 ## Vấn đề đang tồn đọng (Known issues / Open questions)
 - [x] Chế độ combat: lai (2026-09-26) + chi tiết chỉ huy NPC theo nghề (2026-09-30)

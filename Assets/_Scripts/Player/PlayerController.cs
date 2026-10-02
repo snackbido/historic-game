@@ -22,6 +22,11 @@ namespace PrehistoricTribe
 
         private void Update()
         {
+            if (GameMenuUI.IsOpen)
+            {
+                moveInput = Vector3.zero;
+                return;
+            }
             moveInput = new Vector3(Input.GetAxisRaw("Horizontal"), 0f, Input.GetAxisRaw("Vertical"));
             if (moveInput.sqrMagnitude > 1f) moveInput.Normalize();
 

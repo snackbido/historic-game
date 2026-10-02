@@ -41,6 +41,7 @@ namespace PrehistoricTribe
 
         private void Update()
         {
+            if (GameMenuUI.IsOpen) return;
             if (Input.GetKeyDown(spearKey)) TryMeleeAttack();
             if (Input.GetKeyDown(stoneKey)) TryThrowStone();
         }

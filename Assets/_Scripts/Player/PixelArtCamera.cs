@@ -34,15 +34,30 @@ namespace PrehistoricTribe
         private const int MaxPalette = 48;
 
         public bool PixelModeOn { get; set; } = true;
+
+        private const string PrefKey = "pixel_mode";
+        /// <summary>Lựa chọn của người chơi (phím P / màn cài đặt), lưu giữa các lần chơi.</summary>
+        public static bool SavedPreference
+        {
+            get => PlayerPrefs.GetInt(PrefKey, 1) == 1;
+            set => PlayerPrefs.SetInt(PrefKey, value ? 1 : 0);
+        }
+
         public int PixelHeight => pixelHeight;
 
         private void OnEnable() => GetComponent<Camera>().depthTextureMode |= DepthTextureMode.Depth;
 
+        private void Start()
+        {
+            if (Application.isPlaying) PixelModeOn = SavedPreference;
+        }
+
         private void Update()
         {
-            if (Application.isPlaying && Input.GetKeyDown(toggleKey))
+            if (Application.isPlaying && !GameMenuUI.IsOpen && Input.GetKeyDown(toggleKey))
             {
                 PixelModeOn = !PixelModeOn;
+                SavedPreference = PixelModeOn;
                 EventBus.RaiseNotification(PixelModeOn ? "Đồ họa: pixel" : "Đồ họa: 3D thường");
             }
         }

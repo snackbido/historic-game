@@ -52,6 +52,7 @@ namespace PrehistoricTribe
 
         private void Update()
         {
+            if (GameMenuUI.IsOpen) return; // đang mở menu: không nhận lệnh trong game
             PruneSelection();
 
             BuildingPlacer placer = BuildingPlacer.Instance;

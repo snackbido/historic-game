@@ -293,6 +293,8 @@ namespace PrehistoricTribe.EditorTools
             CreateUI(buttonPrefab, wood, food, knowledge, new[] { sheaf, riceSeed, seedling, manure }, buildings, crops, techs, player.GetComponent<PlayerInteraction>());
 
             EditorSceneManager.SaveScene(scene, ScenePath);
+            // Scene phải có trong Build Settings thì menu "Về menu chính" mới nạp lại được (và bản build mới có scene).
+            EditorBuildSettings.scenes = new[] { new EditorBuildSettingsScene(ScenePath, true) };
             AssetDatabase.SaveAssets();
             Debug.Log($"[GameplaySceneBuilder] Da tao scene 2.5D tai {ScenePath}");
         }
@@ -613,6 +615,14 @@ namespace PrehistoricTribe.EditorTools
             CreateInteractionPrompt(canvasGO.transform, interaction);
             CreateSelectionPanel(canvasGO.transform, buttonPrefab);
             CreateBuildingInfoPanel(canvasGO.transform, buttonPrefab);
+            // M7/P3: menu chính / tạm dừng / cài đặt — phủ toàn màn hình, nằm trên cùng, tự dựng giao diện khi chạy.
+            var menuGO = new GameObject("GameMenu", typeof(RectTransform));
+            menuGO.transform.SetParent(canvasGO.transform, false);
+            var menuRect = (RectTransform)menuGO.transform;
+            menuRect.anchorMin = Vector2.zero;
+            menuRect.anchorMax = Vector2.one;
+            menuRect.offsetMin = menuRect.offsetMax = Vector2.zero;
+            menuGO.AddComponent<GameMenuUI>();
         }
 
         /// <summary>Bảng thông tin công trình (cùng chỗ với bảng "Đang chọn" — hai bảng không bao giờ hiện cùng lúc).</summary>

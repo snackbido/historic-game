@@ -15,6 +15,7 @@ namespace PrehistoricTribe
 
         private void Update()
         {
+            if (GameMenuUI.IsOpen) return; // đang mở menu: không nhận lệnh trong game
             Nearest = InteractableRegistry.FindNearest(transform.position, interactRadius + TargetExtent);
 
             if (Input.GetKeyDown(interactKey))
