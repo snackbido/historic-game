@@ -35,37 +35,25 @@ namespace PrehistoricTribe.Tests
         }
 
         [UnityTest]
-        public IEnumerator BuildMenuAndCropSelectionUI_RebuildOnTechUnlocked_ShowNewlyUnlockedOptions()
+        public IEnumerator Toolbar_ShowsStorageAndBerryLocked_ThenUnlockedAfterResearch()
         {
             var techFarming = AssetDatabase.LoadAssetAtPath<TechNode>("Assets/_Data/TechNode_Farming.asset");
             var knowledge = AssetDatabase.LoadAssetAtPath<ResourceTypeData>("Assets/_Data/ResourceType_Knowledge.asset");
-
-            var buildPanel = GameObject.Find("BuildPanel").transform;
-            var cropPanel = GameObject.Find("CropPanel").transform;
+            var storage = AssetDatabase.LoadAssetAtPath<BuildingData>("Assets/_Data/BuildingData_Storage.asset");
+            var berry = AssetDatabase.LoadAssetAtPath<CropData>("Assets/_Data/CropData_Berry.asset");
 
             yield return null;
-            int buildLockedBefore = LockedCount(buildPanel);
-            int cropLockedBefore = LockedCount(cropPanel);
-            Assert.Greater(buildLockedBefore, 0, "Locked buildings are listed (greyed) so players know they exist");
+            var toolbar = ToolbarUI.Instance;
+            Assert.AreEqual(UnlockState.Locked, toolbar.StateOf(storage), "Locked tools are shown greyed so players know they exist");
+            Assert.IsTrue(toolbar.IsShown(storage));
+            Assert.AreEqual(UnlockState.Locked, toolbar.StateOf(berry));
 
             ResourceManager.Instance.AddResource(knowledge, 100);
-            bool unlocked = TechManager.Instance.TryUnlock(techFarming);
-            Assert.IsTrue(unlocked);
+            Assert.IsTrue(TechManager.Instance.TryUnlock(techFarming));
             yield return null;
 
-            Assert.Less(LockedCount(buildPanel), buildLockedBefore, "BuildMenuUI should unlock Storage's button after tech unlock");
-            Assert.Less(LockedCount(cropPanel), cropLockedBefore, "CropSelectionUI should unlock Berry's button after tech unlock");
-        }
-
-        private static int LockedCount(Transform panel)
-        {
-            int count = 0;
-            foreach (Transform child in panel)
-            {
-                var button = child.GetComponent<UnityEngine.UI.Button>();
-                if (button != null && LockedEntry.IsLocked(button)) count++;
-            }
-            return count;
+            Assert.AreEqual(UnlockState.Unlocked, toolbar.StateOf(storage), "Storage becomes buildable after tech unlock");
+            Assert.AreEqual(UnlockState.Unlocked, toolbar.StateOf(berry), "Berry becomes plantable after tech unlock");
         }
 
         [UnityTest]

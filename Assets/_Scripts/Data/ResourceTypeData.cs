@@ -15,6 +15,8 @@ namespace PrehistoricTribe
         public string id;
         public string displayName;
         public ResourceCategory category;
+        [Tooltip("Icon trên dải tài nguyên (vẽ pixel bằng code)")]
+        public Sprite icon;
 
         [Header("Lương thực")]
         [Tooltip("Loại 'gộp': số lượng = tổng mọi loại lương thực; dùng trong chi phí để trả bằng loại nào cũng được (vd 5 Thức ăn)")]

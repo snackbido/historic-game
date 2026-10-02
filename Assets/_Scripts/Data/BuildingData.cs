@@ -24,6 +24,8 @@ namespace PrehistoricTribe
         public string id;
         public string displayName;
         public GameObject prefab;
+        [Tooltip("Icon trên thanh công cụ (sinh tự động từ model)")]
+        public Sprite icon;
         public Vector2Int footprint = Vector2Int.one;
         public List<ResourceAmount> costs = new List<ResourceAmount>();
 

@@ -20,6 +20,9 @@ namespace PrehistoricTribe
         [Tooltip("Mở khóa sẵn ngay từ đầu game, không cần tech")]
         public bool unlockedByDefault;
 
+        [Tooltip("Icon trên thanh công cụ (sinh tự động từ model cây chín)")]
+        public Sprite icon;
+
         [Tooltip("Trồng trên loại ruộng nào (lúa = ruộng nước)")]
         public FieldType fieldType = FieldType.Dry;
 

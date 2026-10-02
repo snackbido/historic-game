@@ -11,6 +11,9 @@ namespace PrehistoricTribe
         public List<ResourceAmount> cost = new List<ResourceAmount>();
         public List<TechNode> prerequisites = new List<TechNode>();
 
+        [Tooltip("Icon trên thanh công cụ (lấy theo thứ đầu tiên nó mở khóa)")]
+        public Sprite icon;
+
         [Tooltip("id của các BuildingData được mở khóa khi tech này hoàn thành")]
         public List<string> unlockedBuildingIds = new List<string>();
 

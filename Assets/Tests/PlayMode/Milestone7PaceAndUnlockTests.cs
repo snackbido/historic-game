@@ -34,23 +34,20 @@ namespace PrehistoricTribe.Tests
             notifications.Clear();
         }
 
-        private static Button ButtonStartingWith(string panel, string text) =>
-            GameObject.Find(panel).GetComponentsInChildren<Button>()
-                .First(b => b.GetComponentInChildren<TMP_Text>().text.StartsWith(text));
-
         // ─── Mở khóa ────────────────────────────────────────────────────────
         [UnityTest]
-        public IEnumerator LockedBuilding_IsListed_AndClickingSaysWhatToResearch()
+        public IEnumerator LockedBuilding_ClickingSaysWhatToResearch()
         {
             yield return null;
-            var levee = Asset<BuildingData>("Assets/_Data/BuildingData_Levee.asset");
-            Button button = ButtonStartingWith("BuildPanel", levee.displayName);
-            Assert.IsTrue(LockedEntry.IsLocked(button), "Levee starts locked but is shown");
+            var storage = Asset<BuildingData>("Assets/_Data/BuildingData_Storage.asset");
+            var farming = Asset<TechNode>("Assets/_Data/TechNode_Farming.asset");
+            ToolbarUI.Instance.Click(storage);
+            StringAssert.Contains(farming.displayName, notifications.Last(), "Names the tech that unlocks it");
 
-            button.onClick.Invoke();
-            string hint = notifications.Last();
-            StringAssert.Contains("Thủy lợi", hint, "Names the tech that unlocks it");
-            StringAssert.Contains("cần nghiên cứu trước", hint, "Irrigation itself needs earlier techs");
+            // Đê: công nghệ mở ra nó (Thủy lợi) còn cần công nghệ trước → gợi ý nói rõ.
+            string hint = TechManager.Instance.UnlockHint(Asset<BuildingData>("Assets/_Data/BuildingData_Levee.asset"));
+            StringAssert.Contains("Thủy lợi", hint);
+            StringAssert.Contains("cần nghiên cứu trước", hint);
         }
 
         [UnityTest]
@@ -66,17 +63,6 @@ namespace PrehistoricTribe.Tests
             Assert.IsTrue(TechManager.Instance.TryUnlock(farming));
             StringAssert.Contains("mở khóa:", notifications.Last());
             StringAssert.Contains(Asset<BuildingData>("Assets/_Data/BuildingData_Storage.asset").displayName, notifications.Last());
-        }
-
-        [UnityTest]
-        public IEnumerator TechPanel_ShowsCosts_AndLocksTechsWithMissingPrerequisites()
-        {
-            yield return null;
-            var farming = Asset<TechNode>("Assets/_Data/TechNode_Farming.asset");
-            var irrigation = Asset<TechNode>("Assets/_Data/TechNode_Irrigation.asset");
-            string farmingLabel = ButtonStartingWith("TechPanel", farming.displayName).GetComponentInChildren<TMP_Text>().text;
-            StringAssert.Contains(TechManager.CostText(farming.cost), farmingLabel, "Cost is on the button");
-            Assert.IsTrue(LockedEntry.IsLocked(ButtonStartingWith("TechPanel", irrigation.displayName)));
         }
 
         // ─── Nhịp độ ────────────────────────────────────────────────────────

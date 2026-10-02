@@ -71,8 +71,8 @@ namespace PrehistoricTribe
                 case MenuScreen.Settings: Show(settingsReturn); break;
                 case MenuScreen.Pause: Resume(); break;
                 case MenuScreen.None:
-                    // Esc đang dùng để hủy đặt công trình thì không mở menu.
-                    if (!placerWasPlacing) Open(MenuScreen.Pause);
+                    // Esc đang dùng để hủy đặt công trình / đóng bảng công cụ thì không mở menu.
+                    if (!placerWasPlacing && !ToolbarUI.PanelWasOpen) Open(MenuScreen.Pause);
                     break;
             }
         }

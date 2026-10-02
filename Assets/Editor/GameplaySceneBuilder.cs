@@ -69,6 +69,7 @@ namespace PrehistoricTribe.EditorTools
             MusicBuilder.BuildAll(); // nhạc nền sinh bằng code (M7/P2)
             SfxBuilder.BuildAll(); // tiếng động sinh bằng code (M7/P2b)
             GameContentBuilder.Build();
+            IconBuilder.BuildAll(); // icon thanh công cụ + tài nguyên (cần prefab vừa dựng)
             Build();
         }
 
@@ -597,26 +598,42 @@ namespace PrehistoricTribe.EditorTools
             var canvasGO = new GameObject("Canvas");
             var canvas = canvasGO.AddComponent<Canvas>();
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-            canvasGO.AddComponent<CanvasScaler>();
+            // Thiết kế lại UI (.claude/RE-DESIGNUI.md): co giãn theo màn hình, tham chiếu 1920×1080.
+            var scaler = canvasGO.AddComponent<CanvasScaler>();
+            scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+            scaler.referenceResolution = new Vector2(1920f, 1080f);
+            scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
+            scaler.matchWidthOrHeight = 0.5f;
             canvasGO.AddComponent<GraphicRaycaster>();
 
-            CreateResourceLabel(canvasGO.transform, "WoodLabel", new Vector2(20f, -20f), wood, "Wood: 0", 28f);
-            CreateResourceLabel(canvasGO.transform, "FoodLabel", new Vector2(20f, -55f), food, "Food: 0", 20f);
-            CreateFoodBreakdownLabel(canvasGO.transform, new Vector2(20f, -80f));
-            CreateResourceLabel(canvasGO.transform, "KnowledgeLabel", new Vector2(20f, -105f), knowledge, "Knowledge: 0", 20f);
-            CreatePopulationLabel(canvasGO.transform, new Vector2(20f, -135f));
-            // M5d/F3: thóc giống + mạ (vật tư nông nghiệp).
-            for (int i = 0; i < farmSupplies.Length; i++)
-                CreateResourceLabel(canvasGO.transform, $"{farmSupplies[i].id}Label", new Vector2(20f + i * 130f, -168f), farmSupplies[i], $"{farmSupplies[i].displayName}: 0", 17f);
+            // Dải tài nguyên trên cùng: Gỗ, Thức ăn, Tri thức (+ Dân số) luôn hiện; vật tư nông nghiệp chỉ hiện khi có.
+            var hud = UIObject("TopHUD", canvasGO.transform).AddComponent<HudUI>();
+            SetPrivateField(hud, "entries", new List<HudUI.Entry>
+            {
+                new HudUI.Entry { type = wood, alwaysShow = true, hint = "Chặt cây (E) — dùng để xây và sửa công trình" },
+                new HudUI.Entry { type = food, alwaysShow = true, hint = "Dân làng tự lấy ăn khi đói; đồ dễ hỏng để ngoài kho sẽ hỏng dần" },
+                new HudUI.Entry { type = knowledge, alwaysShow = true, hint = "Tự tăng theo thời gian — dùng để nghiên cứu (tab Nghiên cứu, phím T)" },
+                new HudUI.Entry { type = farmSupplies[0], hint = "Phơi khô ở cối giã rồi tuốt thành thóc" },
+                new HudUI.Entry { type = farmSupplies[1], hint = "Gieo ở ruộng mạ, hoặc giã thành gạo" },
+                new HudUI.Entry { type = farmSupplies[2], hint = "Cấy sang ruộng nước" },
+                new HudUI.Entry { type = farmSupplies[3], hint = "Bón ruộng để tăng sản lượng" },
+            });
+            SetPrivateField(hud, "peopleIcon", IconBuilder.People);
 
-            CreateBuildMenuPanel(canvasGO.transform, buttonPrefab, buildings);
-            CreateCropSelectionPanel(canvasGO.transform, buttonPrefab, crops);
-            CreateTechTreePanel(canvasGO.transform, buttonPrefab, techs);
-            CreateNotificationLabel(canvasGO.transform);
+            // Thanh công cụ cạnh dưới: tab Xây dựng / Trồng trọt / Nghiên cứu (thay 3 cột nút bên phải).
+            var toolbar = UIObject("BottomBar", canvasGO.transform).AddComponent<ToolbarUI>();
+            SetPrivateField(toolbar, "buildings", buildings);
+            SetPrivateField(toolbar, "crops", crops);
+            SetPrivateField(toolbar, "techs", techs);
+            SetPrivateField(toolbar, "lockSprite", IconBuilder.Lock);
+            SetPrivateField(toolbar, "badgeSprite", IconBuilder.Dot);
+
             CreateDisasterBanner(canvasGO.transform);
+            UIObject("Toast", canvasGO.transform).AddComponent<ToastUI>(); // thay dòng thông báo cũ
             CreateInteractionPrompt(canvasGO.transform, interaction);
             CreateSelectionPanel(canvasGO.transform, buttonPrefab);
             CreateBuildingInfoPanel(canvasGO.transform, buttonPrefab);
+            UIObject("Tooltip", canvasGO.transform).AddComponent<TooltipUI>(); // trên mọi bảng, dưới menu
             // M7/P3: menu chính / tạm dừng / cài đặt — phủ toàn màn hình, nằm trên cùng, tự dựng giao diện khi chạy.
             var menuGO = new GameObject("GameMenu", typeof(RectTransform));
             menuGO.transform.SetParent(canvasGO.transform, false);
@@ -627,6 +644,13 @@ namespace PrehistoricTribe.EditorTools
             menuGO.AddComponent<GameMenuUI>();
         }
 
+        private static GameObject UIObject(string name, Transform parent)
+        {
+            var go = new GameObject(name, typeof(RectTransform));
+            go.transform.SetParent(parent, false);
+            return go;
+        }
+
         /// <summary>Bảng thông tin công trình (cùng chỗ với bảng "Đang chọn" — hai bảng không bao giờ hiện cùng lúc).</summary>
         private static void CreateBuildingInfoPanel(Transform canvasTransform, Button buttonPrefab)
         {
@@ -634,7 +658,7 @@ namespace PrehistoricTribe.EditorTools
             rootGO.transform.SetParent(canvasTransform, false);
             var rootRect = rootGO.AddComponent<RectTransform>();
             rootRect.anchorMin = rootRect.anchorMax = rootRect.pivot = Vector2.zero;
-            rootRect.anchoredPosition = new Vector2(20f, 90f);
+            rootRect.anchoredPosition = new Vector2(20f, 235f); // trên dòng gợi ý + thanh công cụ cạnh dưới
             rootRect.sizeDelta = new Vector2(620f, 0f);
 
             var content = new GameObject("Content");
@@ -677,7 +701,7 @@ namespace PrehistoricTribe.EditorTools
             rootGO.transform.SetParent(canvasTransform, false);
             var rootRect = rootGO.AddComponent<RectTransform>();
             rootRect.anchorMin = rootRect.anchorMax = rootRect.pivot = Vector2.zero;
-            rootRect.anchoredPosition = new Vector2(20f, 90f);
+            rootRect.anchoredPosition = new Vector2(20f, 235f); // trên dòng gợi ý + thanh công cụ cạnh dưới
             rootRect.sizeDelta = new Vector2(700f, 0f);
 
             // Nội dung là object con: ẩn/hiện nó mà script ở object cha vẫn nghe sự kiện.
@@ -752,7 +776,7 @@ namespace PrehistoricTribe.EditorTools
             rect.anchorMin = new Vector2(0.5f, 0f);
             rect.anchorMax = new Vector2(0.5f, 0f);
             rect.pivot = new Vector2(0.5f, 0f);
-            rect.anchoredPosition = new Vector2(0f, 40f);
+            rect.anchoredPosition = new Vector2(0f, 185f); // ngay trên bảng công cụ (khi mở)
             rect.sizeDelta = new Vector2(900f, 40f);
             var tmp = labelGO.AddComponent<TextMeshProUGUI>();
             tmp.fontSize = 22f;
@@ -764,75 +788,6 @@ namespace PrehistoricTribe.EditorTools
             SetPrivateField(prompt, "interaction", interaction);
             SetPrivateField(prompt, "combat", interaction.GetComponent<PlayerCombat>());
             SetPrivateField(prompt, "label", tmp);
-        }
-
-        private static void CreateResourceLabel(Transform canvasTransform, string name, Vector2 anchoredPosition,
-            ResourceTypeData resource, string initialText, float fontSize)
-        {
-            var labelGO = new GameObject(name);
-            labelGO.transform.SetParent(canvasTransform, false);
-            var rect = labelGO.AddComponent<RectTransform>();
-            rect.anchorMin = new Vector2(0f, 1f);
-            rect.anchorMax = new Vector2(0f, 1f);
-            rect.pivot = new Vector2(0f, 1f);
-            rect.anchoredPosition = anchoredPosition;
-            rect.sizeDelta = new Vector2(300f, fontSize + 10f);
-            var tmp = labelGO.AddComponent<TextMeshProUGUI>();
-            tmp.fontSize = fontSize;
-            tmp.text = initialText;
-            var barUI = labelGO.AddComponent<ResourceBarUI>();
-            SetPrivateField(barUI, "displayedResource", resource);
-            SetPrivateField(barUI, "label", tmp);
-        }
-
-        private static void CreateFoodBreakdownLabel(Transform canvasTransform, Vector2 anchoredPosition)
-        {
-            var labelGO = new GameObject("FoodBreakdownLabel");
-            labelGO.transform.SetParent(canvasTransform, false);
-            var rect = labelGO.AddComponent<RectTransform>();
-            rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(0f, 1f);
-            rect.anchoredPosition = anchoredPosition;
-            rect.sizeDelta = new Vector2(700f, 24f);
-            var tmp = labelGO.AddComponent<TextMeshProUGUI>();
-            tmp.fontSize = 15f;
-            tmp.color = new Color(0.9f, 0.86f, 0.75f);
-            tmp.text = string.Empty;
-            SetPrivateField(labelGO.AddComponent<FoodBreakdownUI>(), "label", tmp);
-        }
-
-        private static void CreatePopulationLabel(Transform canvasTransform, Vector2 anchoredPosition)
-        {
-            var labelGO = new GameObject("PopulationLabel");
-            labelGO.transform.SetParent(canvasTransform, false);
-            var rect = labelGO.AddComponent<RectTransform>();
-            rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(0f, 1f);
-            rect.anchoredPosition = anchoredPosition;
-            rect.sizeDelta = new Vector2(400f, 30f);
-            var tmp = labelGO.AddComponent<TextMeshProUGUI>();
-            tmp.fontSize = 20f;
-            tmp.text = string.Empty;
-            SetPrivateField(labelGO.AddComponent<PopulationUI>(), "label", tmp);
-        }
-
-        private static void CreateNotificationLabel(Transform canvasTransform)
-        {
-            var labelGO = new GameObject("NotificationLabel");
-            labelGO.transform.SetParent(canvasTransform, false);
-            var rect = labelGO.AddComponent<RectTransform>();
-            rect.anchorMin = new Vector2(0.5f, 1f);
-            rect.anchorMax = new Vector2(0.5f, 1f);
-            rect.pivot = new Vector2(0.5f, 1f);
-            rect.anchoredPosition = new Vector2(0f, -20f);
-            rect.sizeDelta = new Vector2(1100f, 40f);
-            var tmp = labelGO.AddComponent<TextMeshProUGUI>();
-            tmp.fontSize = 24f;
-            tmp.enableAutoSizing = true; // gợi ý mở khóa có thể dài: tự thu nhỏ chữ cho vừa khung
-            tmp.fontSizeMin = 15f;
-            tmp.fontSizeMax = 24f;
-            tmp.alignment = TextAlignmentOptions.Center;
-            tmp.text = string.Empty;
-            var notificationUI = labelGO.AddComponent<NotificationUI>();
-            SetPrivateField(notificationUI, "label", tmp);
         }
 
         private static void ConfigureDisaster(DisasterEvent disaster, string id, string displayName, string warning,
@@ -863,63 +818,6 @@ namespace PrehistoricTribe.EditorTools
             tmp.alignment = TextAlignmentOptions.Center;
             tmp.text = string.Empty;
             SetPrivateField(labelGO.AddComponent<DisasterBannerUI>(), "label", tmp);
-        }
-
-        private static Transform CreatePanelContainer(Transform canvasTransform, string name, Vector2 anchoredPosition)
-        {
-            var panelGO = new GameObject(name);
-            panelGO.transform.SetParent(canvasTransform, false);
-            var rect = panelGO.AddComponent<RectTransform>();
-            rect.anchorMin = new Vector2(1f, 1f);
-            rect.anchorMax = new Vector2(1f, 1f);
-            rect.pivot = new Vector2(1f, 1f);
-            rect.anchoredPosition = anchoredPosition;
-            rect.sizeDelta = new Vector2(200f, 200f);
-
-            var layout = panelGO.AddComponent<VerticalLayoutGroup>();
-            layout.childAlignment = TextAnchor.UpperRight;
-            layout.spacing = 4f;
-            layout.childForceExpandHeight = false;
-            layout.childForceExpandWidth = false;
-
-            return panelGO.transform;
-        }
-
-        private static void CreateBuildMenuPanel(Transform canvasTransform, Button buttonPrefab, List<BuildingData> buildings)
-        {
-            var container = CreatePanelContainer(canvasTransform, "BuildPanel", new Vector2(-20f, -20f));
-            // M6: 12 công trình → xếp lưới 2 cột cho gọn.
-            Object.DestroyImmediate(container.GetComponent<VerticalLayoutGroup>());
-            var grid = container.gameObject.AddComponent<GridLayoutGroup>();
-            grid.cellSize = new Vector2(148f, 30f);
-            grid.spacing = new Vector2(4f, 4f);
-            grid.startCorner = GridLayoutGroup.Corner.UpperRight;
-            grid.childAlignment = TextAnchor.UpperRight;
-            grid.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
-            grid.constraintCount = 2;
-            ((RectTransform)container).sizeDelta = new Vector2(300f, 210f);
-            var ui = container.gameObject.AddComponent<BuildMenuUI>();
-            SetPrivateField(ui, "availableBuildings", buildings);
-            SetPrivateField(ui, "buttonPrefab", buttonPrefab);
-            SetPrivateField(ui, "buttonContainer", container);
-        }
-
-        private static void CreateCropSelectionPanel(Transform canvasTransform, Button buttonPrefab, List<CropData> crops)
-        {
-            var container = CreatePanelContainer(canvasTransform, "CropPanel", new Vector2(-20f, -250f));
-            var ui = container.gameObject.AddComponent<CropSelectionUI>();
-            SetPrivateField(ui, "availableCrops", crops);
-            SetPrivateField(ui, "buttonPrefab", buttonPrefab);
-            SetPrivateField(ui, "buttonContainer", container);
-        }
-
-        private static void CreateTechTreePanel(Transform canvasTransform, Button buttonPrefab, List<TechNode> techs)
-        {
-            var container = CreatePanelContainer(canvasTransform, "TechPanel", new Vector2(-20f, -420f));
-            var ui = container.gameObject.AddComponent<TechTreeUI>();
-            SetPrivateField(ui, "allTechs", techs);
-            SetPrivateField(ui, "entryButtonPrefab", buttonPrefab);
-            SetPrivateField(ui, "entryContainer", container);
         }
     }
 }

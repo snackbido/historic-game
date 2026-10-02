@@ -46,6 +46,10 @@ namespace PrehistoricTribe
             else seedByField[crop.fieldType] = crop;
         }
 
+        /// <summary>Giống này đang được chọn cho loại ruộng của nó (tô sáng nút trên thanh công cụ).</summary>
+        public bool IsSelected(CropData crop) =>
+            crop != null && seedByField.TryGetValue(crop.fieldType, out var selected) && selected == crop;
+
         /// <summary>Hạt giống sẽ gieo trên ruộng này (null = chưa chọn hạt nào hợp loại ruộng).</summary>
         public CropData CropFor(FarmPlot plot)
         {
