@@ -50,6 +50,11 @@ namespace PrehistoricTribe.EditorTools
             foreach (var path in written) ConfigureSprite(path);
 
             // ─── Gán vào dữ liệu ─────────────────────────────────────────────
+            // Nạp lại sau Refresh(): AssetDatabase.Refresh() có thể re-import và hủy
+            // các đối tượng asset đã load trước đó, khiến buildings/crops cũ trỏ vào
+            // object đã destroy (MissingReferenceException ở EditorUtility.SetDirty).
+            buildings = LoadAll<BuildingData>();
+            crops = LoadAll<CropData>();
             foreach (var building in buildings) Assign(building, $"Building_{building.id}");
             foreach (var crop in crops) Assign(crop, $"Crop_{crop.id}");
             foreach (var type in LoadAll<ResourceTypeData>()) Assign(type, $"Resource_{type.id}");

@@ -3,8 +3,8 @@
 > Cập nhật file này sau mỗi buổi làm việc: đánh dấu việc đã xong, ghi chú vấn đề gặp phải, quyết định đã chốt.
 
 ## Trạng thái hiện tại
-- **Giai đoạn**: Bản Unity đã chuyển sang **2.5D** (2026-09-30, nhánh `feat/unity-2.5d`): logic M1-4 giữ nguyên, 10/10 test PlayMode pass trên scene 3D mới. Còn thiếu xác nhận input/UI trực quan bằng người thật (Milestone 5 chưa bắt đầu). Có thêm bản web Three.js ở `web/` (nhánh `feat/web-threejs`)
-- **Cập nhật lần cuối**: 2026-09-30
+- **Giai đoạn**: Bản Unity đã chuyển sang **2.5D** (2026-09-30). Milestone 5, 5b, 5c, 5d, 6 đã **hoàn tất**; Milestone 7 (Polish) đang làm dở (P1-P4a xong, UI redesign P... vừa xong + đã build/test lại được ngày 2026-10-03, xem nhật ký phiên). **205/205 test PlayMode pass**. Repo đã chọn tiếp tục theo nhánh `feat/m5-npc` thay vì dòng 2D isometric cũ trên `master` (xem nhật ký phiên 2026-10-03). Có thêm bản web Three.js ở `web/` (nhánh `feat/web-threejs`, không cập nhật tiếp song song với bản Unity nữa)
+- **Cập nhật lần cuối**: 2026-10-03
 
 ## Milestone 0 — Setup môi trường
 - [x] Cài Unity Hub
@@ -453,7 +453,7 @@ Quyết định user: quy trình **vừa phải** (lúa ~6 bước: làm đất 
 - Lưu ý kỹ thuật: perl `s|…|…|` mà trong mẫu có `\|` thì thành phép "hoặc" → chèn nhầm lên đầu file (gặp 2 lần, đã sửa). Khi mẫu có dấu `|` hay backtick thì dùng Edit tool.
 - Test: sửa test M4 (đếm nút "(khóa)" thay vì số nút), 5 test mới `Milestone7PaceAndUnlockTests.cs`. **198/198 test PlayMode pass**.
 
-## Nhật ký phiên làm việc 2026-10-02 (phần 7 — làm lại UI theo `.claude/RE-DESIGNUI.md`) — ⚠️ CHƯA BUILD / CHƯA CHẠY TEST
+## Nhật ký phiên làm việc 2026-10-02 (phần 7 — làm lại UI theo `.claude/RE-DESIGNUI.md`) — ✅ đã build/test xong (2026-10-03, xem phần 8)
 - User yêu cầu đọc `RE-DESIGNUI.md` và làm lại UI. Code đã viết xong và commit theo yêu cầu user ("commit và push trước") **trước khi build/test** vì Unity Editor đang mở dự án (batch mode bị khóa, MCP không kết nối). Việc tiếp theo bắt buộc: đóng Editor → Build All → chạy toàn bộ test → chụp ảnh UI → sửa lỗi.
 - Canvas Scaler: Scale With Screen Size 1920×1080, match 0.5. Bỏ 3 cột nút bên phải (`BuildMenuUI`, `CropSelectionUI`, `TechTreeUI`, `LockedEntry` đã xóa) và các nhãn chữ tài nguyên (`ResourceBarUI` xóa; `NotificationUI` xóa → thay bằng toast).
 - `UI/ToolbarUI.cs` (object `BottomBar`): 3 tab Xây dựng / Trồng trọt / Nghiên cứu ở cạnh dưới, phím **B / G / T** (tài liệu đề xuất B/F/R nhưng F = đâm giáo, R = ném đá). Một bảng mỗi lúc, bấm lại / Esc đóng (Esc lúc bảng mở không mở menu tạm dừng: `ToolbarUI.PanelWasOpen`); bảng ẩn khi đang đặt công trình. Ô icon 96×96, nhãn tự co + "…". 4 trạng thái (`Tech/UnlockRules.cs`: Ẩn / Khóa / Sẵn sàng / Đã mở) — công trình/giống đi theo trạng thái công nghệ mở ra chúng; chỉ tính lại khi tài nguyên/công nghệ đổi. Chấm đỏ trên tab có mục Sẵn sàng; công nghệ vừa Sẵn sàng → toast "Có thể nghiên cứu: …" (một lần mỗi công nghệ, bấm → mở tab Nghiên cứu, kèm tiếng chuông).
@@ -462,7 +462,15 @@ Quyết định user: quy trình **vừa phải** (lúa ~6 bước: làm đất 
 - `UI/HudUI.cs` (object `TopHUD`): ô icon + số; Gỗ / Thức ăn / Tri thức / Dân số luôn hiện, Lúa bó / Thóc / Mạ / Phân bón chỉ hiện khi > 0; sức chứa + từng loại lương thực + nhà ở/người đói vào tooltip; số nháy xanh/đỏ khi đổi.
 - `Editor/IconBuilder.cs` (chạy trong Build All, sau GameContentBuilder): chụp model công trình + cây chín thành icon 64px (nền trong suốt, viền tối, lọc Point), vẽ pixel 16×16 cho tài nguyên / ổ khóa / chấm đỏ; gán vào trường `icon` mới của BuildingData / CropData / TechNode (lấy icon thứ nó mở) / ResourceTypeData. Icon riêng: PNG cùng tên trong `Assets/Textures/Icons/Custom/`.
 - Dời: dòng gợi ý tương tác y 40 → 185, bảng "Đang chọn" / thông tin công trình y 90 → 235 (trên vùng thanh công cụ).
-- Test: thay test M4 menu bằng test thanh công cụ; sửa 2 test P4a; 8 test mới `Milestone7ToolbarTests.cs` (chưa chạy).
+- Test: thay test M4 menu bằng test thanh công cụ; sửa 2 test P4a; 8 test mới `Milestone7ToolbarTests.cs` — **đã chạy, xem phần 8**.
+
+## Nhật ký phiên làm việc 2026-10-03 (phần 8 — chuyển hướng repo + build/test UI redesign còn treo)
+- **Bối cảnh quan trọng**: phiên này (Claude Sonnet 5) phát hiện repo đã rẽ nhánh — có 1 dòng phát triển khác trên `master` (2D isometric + Villager NPC, làm bởi phiên Sonnet 5 trước đó ngày 2026-09-27) tách biệt hoàn toàn với dòng 2.5D này (bắt đầu từ `feat/web-threejs` → `feat/unity-2.5d` → `feat/save-and-interaction-hints` → `feat/m5-npc`, làm bởi phiên Opus 5.5 từ 2026-09-29 tới nay). Cả 2 dòng cùng tách ra từ commit `23cc8c8`. **User đã quyết định (2026-10-03): tiếp tục theo hướng `feat/m5-npc`** (nhiều nội dung hơn hẳn — gần xong M5-M7) thay vì dòng isometric 2D trên `master`. Dòng 2D isometric trên `master` tạm dừng, không xóa, có thể xem lại sau nếu cần.
+- **Việc bắt buộc còn treo từ phiên trước** (ghi rõ trong "phần 7" ở trên): code UI redesign đã commit nhưng **chưa build/chưa test**. Chạy `Tools/Prehistoric/Build All` qua batch mode (`Unity.exe -batchmode -nographics -executeMethod ...BuildAll`) → **lỗi**: `MissingReferenceException` tại `IconBuilder.Assign()` khi gán icon cho `BuildingData`/`CropData`.
+- **Nguyên nhân**: `IconBuilder.BuildAll()` nạp danh sách `buildings`/`crops` một lần ở đầu hàm, nhưng gọi `AssetDatabase.Refresh()` ở giữa hàm (để import icon .png vừa ghi ra) — `Refresh()` khiến các asset reference đã nạp trước đó bị hủy/nạp lại, nên vòng lặp gán icon ở cuối hàm dùng phải reference cũ đã chết.
+- **Đã sửa**: nạp lại `buildings = LoadAll<BuildingData>(); crops = LoadAll<CropData>();` **sau** `AssetDatabase.Refresh()`, ngay trước khi dùng để gán icon — `Assets/Editor/IconBuilder.cs`.
+- **Đã xác nhận**: `Tools/Prehistoric/Build All` chạy sạch qua batch mode (content + scene 2.5D dựng xong, không exception). Chạy toàn bộ `-runTests -testPlatform PlayMode` → **205/205 test pass**, không lỗi nào khác ngoài cái đã sửa.
+- **Còn thiếu**: xác nhận trực quan layout UI mới (toolbar 3 tab, HUD, tooltip, toast) bằng mắt — không mở được Unity Editor GUI trong phiên này để chụp ảnh qua Unity MCP (không có Unity.exe nào đang chạy). Cần user tự mở Editor, bấm Play, xem qua các tab B/G/T, tooltip, toast thông báo có hiển thị đúng như mô tả trong "phần 7" không.
 
 ## Vấn đề đang tồn đọng (Known issues / Open questions)
 - [x] Chế độ combat: lai (2026-09-26) + chi tiết chỉ huy NPC theo nghề (2026-09-30)
