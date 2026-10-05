@@ -561,6 +561,27 @@ Quyết định user: quy trình **vừa phải** (lúa ~6 bước: làm đất 
   ortho từ trên) trước khi đưa bất kỳ model có "thân cao" nào vào vòng quay ngẫu nhiên** — đo lệch tâm hình học
   (bounds) không đủ để bắt lỗi "thân cong theo chiều đứng".
 
+## Nhật ký phiên làm việc 2026-10-05 (phần 17 — đá cũng "nằm lật", quay lại vẽ tay luôn cả đá)
+- User: "kể cả đá cũng bị nằm lật giống như cây, vì vậy việc chỉ thay mỗi cây là không khả thi". Đúng — model đá
+  trong gói (giống model cây) cũng được tạc theo một hướng "tự nhiên" riêng của chúng, không phải lúc nào mặt rộng
+  nhất của khối đá cũng thẳng theo trục lên của model; chỉ xoay quanh trục Y (yaw) như code đang làm thì không sửa
+  được, vì đó là hướng nghiêng có sẵn trong chính hình khối, không phải do lỗi xoay.
+- **Quyết định nhất quán với phần 16**: đá quay lại vẽ tay (`AddRock`, `AddPebbles` — lấy lại từ git history cùng
+  cách đã làm cho cây). Áp dụng ở cả 2 chỗ sinh đá: vòng lặp đá chính trong `BuildDecor` (chân núi/bờ sông/bãi biển
+  + đá dưới tán cây) và vòng cung đá quanh thác nước trong `BuildWaterfall`. Sỏi nhỏ (trước dùng đá thật thu nhỏ)
+  đổi sang `AddPebbles` — gộp theo ô 16m như khúc gỗ/lau sậy (đổi thứ tự: sinh sỏi xong rồi mới gộp `Props_*` một
+  lần, tránh phải gộp lại nhiều lần).
+- Bush/Grass/Flowers **vẫn giữ model thật** — khối tròn/thấp không có trục "lên" bắt buộc như cây/đá nên không gặp
+  kiểu lỗi "tạc lệch hướng" này, chưa có báo cáo gì sai.
+- `NatureAssetBuilder.Setup()` không còn setup FBX đá nữa (giống cây, đỡ build). Thêm `SetupRocks()` song song với
+  `SetupTreeFamily()` để dùng sau nếu muốn đặt tay đá model thật làm điểm nhấn.
+- **213/213 test pass**. Ảnh xác nhận: `Screenshots/rockfix-2026-10-05/` — đặc biệt cận cảnh đá quanh thác nước và
+  chân núi (chỗ đá dày nhất) đều đứng/nằm tự nhiên, không còn thấy mặt đá "lật".
+- **Kết luận chung cho cả gói model Quaternius đã dùng lần này**: chỉ còn Bush/Grass/Flowers dùng model thật; toàn
+  bộ Cây và Đá (hai loại có "hướng đúng" rõ ràng) đã quay về vẽ tay. Nếu sau này muốn thử lại model thật cho cây/đá
+  (gói khác hoặc gói này), **bắt buộc phải duyệt qua "gallery" đúng góc camera game trước khi đưa vào vòng quay
+  ngẫu nhiên** (bài học phần 16), không chỉ dựa vào đo bounds hay nhìn nhanh một vài ảnh.
+
 ## Vấn đề đang tồn đọng (Known issues / Open questions)
 - [x] Chế độ combat: lai (2026-09-26) + chi tiết chỉ huy NPC theo nghề (2026-09-30)
 - [ ] Chưa có tên chính thức cho dự án

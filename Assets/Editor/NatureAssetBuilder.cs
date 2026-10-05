@@ -55,14 +55,16 @@ namespace PrehistoricTribe.EditorTools
         public static void Setup()
         {
             var materials = EnsureMaterials();
-            // Broadleaf/Birch/Pine/Maple/DeadTree KHÔNG còn setup (2026-10-05): LandscapeBuilder không sinh cây
-            // bằng model nữa — toàn bộ model cây trong gói có thân hơi cong tự nhiên, ở góc camera nghiêng của
-            // game nhìn như đổ (xem log sửa lỗi "cây ngả đổ"), nên cây quay lại vẽ tay (AddPine/AddBroadleaf/...
-            // trong LandscapeBuilder.cs) — chắc chắn thẳng đứng. Giữ nguyên field/import-setup bên dưới làm hạ
-            // tầng sẵn có, phòng khi muốn đặt tay 1-2 cây làm điểm nhấn (không sinh ngẫu nhiên).
+            // Broadleaf/Birch/Pine/Maple/DeadTree/Rocks KHÔNG còn setup (2026-10-05): LandscapeBuilder không sinh
+            // cây hay đá bằng model nữa — cả hai đều có con "tạc lệch" theo hướng gốc của model (thân cây cong,
+            // hoặc mặt đá tự nhiên không hướng lên), lộ ra ở góc camera nghiêng của game dù nhìn từ trên thì tưởng
+            // ổn (xem log sửa lỗi "cây/đá ngả đổ"). Cây và đá quay lại vẽ tay (AddPine/AddBroadleaf/.../AddRock
+            // trong LandscapeBuilder.cs) — chắc chắn đúng hướng vì tự dựng hình. Bush/Grass/Flowers không có
+            // hướng "đúng/sai" rõ ràng (khối tròn/thấp, không có trục thẳng đứng bắt buộc) nên vẫn dùng model thật.
+            // Giữ nguyên field/import-setup bên dưới làm hạ tầng sẵn có, phòng khi muốn đặt tay 1-2 cây/đá model
+            // thật làm điểm nhấn có chủ đích (không sinh ngẫu nhiên) — xem SetupTreeFamily/SetupRocks.
             EnsureImportSettings(Bush, "Bush", materials);
             EnsureImportSettings(BushFlowering, "BushFlowering", materials);
-            EnsureImportSettings(Rocks, "Rocks", materials);
             EnsureImportSettings(Grass, "Grass", materials);
             EnsureImportSettings(Flowers, "Flowers", materials);
         }
@@ -78,6 +80,9 @@ namespace PrehistoricTribe.EditorTools
             };
             EnsureImportSettings(names, family, materials);
         }
+
+        /// <summary>Gọi khi cần dùng model đá thật có chủ đích (không sinh ngẫu nhiên) — tự thiết lập vật liệu/import.</summary>
+        public static void SetupRocks() => EnsureImportSettings(Rocks, "Rocks", EnsureMaterials());
 
         private static Dictionary<string, Material> EnsureMaterials()
         {

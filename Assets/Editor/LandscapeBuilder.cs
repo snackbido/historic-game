@@ -218,7 +218,7 @@ namespace PrehistoricTribe.EditorTools
             NatureAssetBuilder.Setup();
             BuildGround(root, heights, material, linear);
             BuildWater(root);
-            BuildWaterfall(root);
+            BuildWaterfall(root, material, linear);
             BuildDecor(root, material, linear);
             return terrain;
         }
@@ -313,7 +313,7 @@ namespace PrehistoricTribe.EditorTools
         /// người dùng gửi 2026-10-05 (bố cục quá trống trải quanh trại).</summary>
         private static readonly Vector2 WaterfallBase = PondCenter + new Vector2(0f, 3.4f);
 
-        private static void BuildWaterfall(Transform root)
+        private static void BuildWaterfall(Transform root, Material material, bool linear)
         {
             var rng = new System.Random(4242);
             float R() => (float)rng.NextDouble();
@@ -321,9 +321,12 @@ namespace PrehistoricTribe.EditorTools
 
             var fallsRoot = new GameObject("Waterfall").transform;
             fallsRoot.SetParent(root, false);
+            var rockMesh = new MeshBuilder(linear);
 
             // Vòng cung đá lớn quanh ba phía, chừa khe hở rộng quay ra ao (hướng -Z, góc 180°) cho nước đổ xuống.
             // Đá đặt xa tâm hơn bán kính tối đa của chính nó để chắc chắn còn khe trống ở giữa (không bị đá nuốt mất).
+            // Vẽ tay (2026-10-05, cùng lý do loại cây model thật): đá trong gói cũng có con nằm nghiêng theo hướng
+            // "tự nhiên" của model, không phải lúc nào mặt rộng nhất cũng hướng lên — AddRock luôn đặt đúng.
             float[] angles = { -150f, -115f, -75f, 75f, 115f, 150f };
             foreach (float a0 in angles)
             {
@@ -332,12 +335,7 @@ namespace PrehistoricTribe.EditorTools
                 float rad = a * Mathf.Deg2Rad;
                 Vector2 p = WaterfallBase + new Vector2(Mathf.Sin(rad), Mathf.Cos(rad)) * dist;
                 float h = Height(p.x, p.y);
-                var rockPrefab = NatureAssetBuilder.Pick(NatureAssetBuilder.Rocks, rng);
-                var go = (GameObject)Object.Instantiate(rockPrefab, new Vector3(p.x, h, p.y), Quaternion.Euler(0f, R() * 360f, 0f), fallsRoot);
-                go.name = rockPrefab.name;
-                go.transform.localScale = Vector3.one * (1.6f + R() * 1.1f);
-                foreach (var r in go.GetComponentsInChildren<Renderer>(true)) r.shadowCastingMode = ShadowCastingMode.On;
-                SetStaticRecursive(go);
+                AddRock(rockMesh, new Vector3(p.x, h, p.y), 1.1f + R() * 0.9f, rng, mossy: R() < 0.4f);
             }
 
             // Mặt nước đổ: tấm phẳng dựng gần đứng trong khe (đặt hẳn về phía ao, tránh bị đá che), trải từ
@@ -364,14 +362,11 @@ namespace PrehistoricTribe.EditorTools
             {
                 Vector2 p = WaterfallBase + new Vector2((R() - 0.5f) * 1.2f, -0.6f - R() * 0.6f);
                 float h = Height(p.x, p.y);
-                var rockPrefab = NatureAssetBuilder.Pick(NatureAssetBuilder.Rocks, rng);
-                var go = (GameObject)Object.Instantiate(rockPrefab, new Vector3(p.x, h, p.y), Quaternion.Euler(0f, R() * 360f, 0f), fallsRoot);
-                go.name = rockPrefab.name;
-                go.transform.localScale = Vector3.one * (0.3f + R() * 0.25f);
-                foreach (var r in go.GetComponentsInChildren<Renderer>(true)) r.shadowCastingMode = ShadowCastingMode.Off;
-                go.AddComponent<NavMeshModifier>().ignoreFromBuild = true;
-                SetStaticRecursive(go);
+                AddRock(rockMesh, new Vector3(p.x, h, p.y), 0.3f + R() * 0.25f, rng, mossy: false);
             }
+
+            var rockGO = MeshObject(fallsRoot, "WaterfallRocks", rockMesh.ToMesh("WaterfallRocks"), material, castShadows: true);
+            rockGO.isStatic = true;
         }
 
         // ─── Cây cỏ, đá ──────────────────────────────────────────────────────
@@ -454,10 +449,10 @@ namespace PrehistoricTribe.EditorTools
                     var bush = NatureAssetBuilder.Pick(R() < 0.3f ? NatureAssetBuilder.BushFlowering : NatureAssetBuilder.Bush, rng);
                     Spawn(bush, at + new Vector3((R() - 0.5f) * 2f, 0f, (R() - 0.5f) * 2f), 0.3f + R() * 0.25f, R() * 360f, castShadow: true, blockNav: true);
                 }
-                if (R() < 0.08f) Spawn(NatureAssetBuilder.Pick(NatureAssetBuilder.Rocks, rng), at + new Vector3(1f, 0f, -0.6f), 0.3f + R() * 0.25f, R() * 360f, castShadow: true, blockNav: true);
+                if (R() < 0.08f) AddRock(treeChunk, at + new Vector3(1f, 0f, -0.6f), 0.35f + R() * 0.3f, rng, mossy: true);
             }
 
-            // Đá: chân núi, bờ sông, bãi biển, lác đác trên đồng bằng.
+            // Đá: chân núi, bờ sông, bãi biển, lác đác trên đồng bằng. Vẽ tay (lý do: xem AddRock ở BuildWaterfall).
             for (int i = 0; i < 900; i++)
             {
                 var p = new Vector2((R() * 2f - 1f) * (MapHalf - 1f), (R() * 2f - 1f) * (MapHalf - 1f));
@@ -469,10 +464,11 @@ namespace PrehistoricTribe.EditorTools
                 bool beach = p.y < -20f && p.y > -32f && p.x > 8f;
                 float chance = mountainFoot ? 0.5f : riverbank ? 0.35f : beach ? 0.45f : 0.03f;
                 if (R() > chance) continue;
-                var at = new Vector3(p.x, h, p.y);
+                var at = new Vector3(p.x, h - 0.08f, p.y);
                 float size = mountainFoot ? 0.5f + R() * 1.4f : 0.25f + R() * 0.6f;
-                Spawn(NatureAssetBuilder.Pick(NatureAssetBuilder.Rocks, rng), at, size, R() * 360f, castShadow: true, blockNav: true);
-                if (R() < 0.5f) Spawn(NatureAssetBuilder.Pick(NatureAssetBuilder.Rocks, rng), at + new Vector3(size * 0.9f, 0f, size * 0.4f), size * 0.5f, R() * 360f, castShadow: true, blockNav: true);
+                MeshBuilder rockChunk = Chunk(propChunks, at);
+                AddRock(rockChunk, at, size, rng, mossy: !beach && R() < 0.4f);
+                if (R() < 0.5f) AddRock(rockChunk, at + new Vector3(size * 0.9f, 0f, size * 0.4f), size * 0.5f, rng, mossy: false);
             }
 
             // Khúc gỗ đổ trong rừng, lau sậy ven sông: vẫn vẽ tay, gộp theo ô.
@@ -492,13 +488,9 @@ namespace PrehistoricTribe.EditorTools
                 if (h < WaterLevel + 0.15f && h > WaterLevel - 0.35f && riverDist < 4f)
                     AddReeds(Chunk(propChunks, new Vector3(p.x, h, p.y)), new Vector3(p.x, h, p.y), rng);
             }
-            foreach (var pair in propChunks)
-            {
-                var go = MeshObject(decor, $"Props_{pair.Key.x}_{pair.Key.y}", pair.Value.ToMesh($"Props_{pair.Key.x}_{pair.Key.y}"), material, castShadows: true);
-                go.isStatic = true;
-            }
 
             // Cỏ, hoa (model thật, nhiều, nhỏ): đồng bằng + ven rừng. Không chắn đường, không đổ bóng (đỡ máy yếu).
+            // Sỏi vẽ tay như đá (gộp chung propChunks) — chạy TRƯỚC khi gộp Props_* bên dưới để không sinh thêm ô lẻ.
             for (int i = 0; i < 2600; i++)
             {
                 var p = new Vector2((R() * 2f - 1f) * (MapHalf - 1f), (R() * 2f - 1f) * (MapHalf - 1f));
@@ -509,11 +501,17 @@ namespace PrehistoricTribe.EditorTools
                 if (h < WaterLevel + 0.3f) continue;
                 if (PathDistance(p) < 0.9f || Vector2.Distance(p, new Vector2(0f, -2f)) < 4.5f) continue;
                 var at = new Vector3(p.x, h, p.y);
-                if (p.y < -21f) { if (R() < 0.12f) Spawn(NatureAssetBuilder.Pick(NatureAssetBuilder.Rocks, rng), at, 0.1f + R() * 0.12f, R() * 360f, castShadow: false, blockNav: false); continue; }
+                if (p.y < -21f) { if (R() < 0.12f) AddPebbles(Chunk(propChunks, at), at, rng); continue; }
                 float roll = R();
                 if (roll < 0.72f) Spawn(NatureAssetBuilder.Pick(NatureAssetBuilder.Grass, rng), at, 0.7f + R() * 0.5f, R() * 360f, castShadow: false, blockNav: false);
                 else if (roll < 0.9f) Spawn(NatureAssetBuilder.Pick(NatureAssetBuilder.Flowers, rng), at, 0.8f + R() * 0.5f, R() * 360f, castShadow: false, blockNav: false);
-                else Spawn(NatureAssetBuilder.Pick(NatureAssetBuilder.Rocks, rng), at, 0.1f + R() * 0.12f, R() * 360f, castShadow: false, blockNav: false);
+                else AddPebbles(Chunk(propChunks, at), at, rng);
+            }
+
+            foreach (var pair in propChunks)
+            {
+                var go = MeshObject(decor, $"Props_{pair.Key.x}_{pair.Key.y}", pair.Value.ToMesh($"Props_{pair.Key.x}_{pair.Key.y}"), material, castShadows: true);
+                go.isStatic = true;
             }
         }
 
@@ -565,6 +563,24 @@ namespace PrehistoricTribe.EditorTools
             Quaternion q = Quaternion.Euler(0f, yaw, 0f);
             b.AddCylinder(at + Vector3.up * 0.9f * scale, 0.05f * scale, 0.6f * scale, 4, TrunkDark, yaw, q * Quaternion.Euler(0f, 0f, 50f));
             b.AddCylinder(at + Vector3.up * 1.05f * scale, 0.04f * scale, 0.5f * scale, 4, TrunkDark, yaw, q * Quaternion.Euler(0f, 0f, -45f));
+        }
+
+        // ─── Đá vẽ tay (phục hồi 2026-10-05 — đá model gói cũng có con "nằm nghiêng" theo hướng tạc gốc, giống cây) ──
+        private static void AddRock(MeshBuilder b, Vector3 at, float size, System.Random rng, bool mossy)
+        {
+            float t = (float)rng.NextDouble();
+            Color c = t < 0.33f ? RockDark : t < 0.75f ? Rock : RockLight;
+            b.AddBlob(at + Vector3.up * size * 0.25f, new Vector3(size, size * (0.55f + t * 0.3f), size * (0.8f + t * 0.3f)), c, rng, 0, jitter: 0.28f);
+            if (mossy) b.AddBlob(at + Vector3.up * size * 0.55f, new Vector3(size * 0.6f, size * 0.2f, size * 0.6f), MossStone, rng, 0, jitter: 0.2f);
+        }
+
+        private static void AddPebbles(MeshBuilder b, Vector3 at, System.Random rng)
+        {
+            for (int i = 0; i < 3; i++)
+            {
+                Vector3 off = new Vector3(((float)rng.NextDouble() - 0.5f) * 0.5f, 0.02f, ((float)rng.NextDouble() - 0.5f) * 0.5f);
+                b.AddBlob(at + off, new Vector3(0.08f, 0.04f, 0.07f), (float)rng.NextDouble() < 0.5f ? Rock : RockLight, rng, 0);
+            }
         }
 
         // ─── Hình dạng vẽ tay còn lại (gói model không có khúc gỗ đổ / lau sậy) ──
