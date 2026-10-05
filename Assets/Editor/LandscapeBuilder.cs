@@ -439,10 +439,13 @@ namespace PrehistoricTribe.EditorTools
                 GameObject prefab; float baseScale;
                 // Tỷ lệ theo nhân vật/nhà cao ~1,1m (phản hồi 2026-10-05: cây trước đó cao 3-5m, lấn át nhà) —
                 // giờ cây cao khoảng 1,6-2,6m, lớn hơn người rõ rệt nhưng không nuốt chửng khu trại.
+                // MapleTree + cả họ BirchTree bỏ khỏi vòng quay (2026-10-05, phản hồi playtest "cây ngả đổ" — xác
+                // nhận bằng ảnh chụp đúng góc camera trong game, không phải nhìn thẳng từ trên xuống): các model này
+                // được tạc thân hơi cong tự nhiên (như bạch dương thật) — nhìn thẳng từ trên xuống thì tán vẫn nằm
+                // gần tâm nên tưởng ổn, nhưng ở góc camera nghiêng 52° của game, nhất là khi đứng gần, thân cong đó
+                // "duỗi" ra theo chiều màn hình và nhìn như cây đổ. Pine/Normal/DeadTree thân thẳng nên không bị.
                 if (h > 3.5f || pick < 0.45f) { prefab = NatureAssetBuilder.Pick(NatureAssetBuilder.Pine, rng); baseScale = 0.42f; }
-                else if (pick < 0.85f) { prefab = NatureAssetBuilder.Pick(NatureAssetBuilder.Broadleaf, rng); baseScale = 0.33f; }
-                else if (pick < 0.93f) { prefab = NatureAssetBuilder.Pick(NatureAssetBuilder.Birch, rng); baseScale = 0.42f; }
-                else if (pick < 0.97f) { prefab = NatureAssetBuilder.Pick(NatureAssetBuilder.Maple, rng); baseScale = 0.33f; }
+                else if (pick < 0.97f) { prefab = NatureAssetBuilder.Pick(NatureAssetBuilder.Broadleaf, rng); baseScale = 0.33f; }
                 else { prefab = NatureAssetBuilder.Pick(NatureAssetBuilder.DeadTree, rng); baseScale = 0.37f; }
                 Spawn(prefab, at, baseScale * variety, yaw, castShadow: true, blockNav: true);
 

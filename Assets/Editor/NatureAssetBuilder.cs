@@ -16,11 +16,15 @@ namespace PrehistoricTribe.EditorTools
         private const string TexturesFolder = "Assets/Environment/QuaterniusNature/Textures";
         private const string MaterialFolder = "Assets/Materials/Generated/Nature";
 
-        public static readonly string[] Broadleaf = { "NormalTree_1", "NormalTree_2", "NormalTree_3", "NormalTree_4", "NormalTree_5" };
+        // NormalTree_3 bỏ: tán lệch tâm ~0,6m (cùng mức MapleTree_3) — xem ảnh "tree-gallery" trong phiên sửa lỗi.
+        public static readonly string[] Broadleaf = { "NormalTree_1", "NormalTree_2", "NormalTree_4", "NormalTree_5" };
         public static readonly string[] Birch = { "BirchTree_1", "BirchTree_2", "BirchTree_3", "BirchTree_4", "BirchTree_5" };
-        public static readonly string[] Pine = { "PineTree_1", "PineTree_2", "PineTree_3", "PineTree_4", "PineTree_5" };
+        // PineTree_4 bỏ: tán lệch tâm ~1,3m ở kích thước gốc (model được tạc nghiêng hẳn), đứng trong game nhìn như đổ.
+        public static readonly string[] Pine = { "PineTree_1", "PineTree_2", "PineTree_3", "PineTree_5" };
+        // Cả 3 biến thể Maple đều lệch tâm nặng (~0,6-1,1m) — không dùng, xem LandscapeBuilder.BuildDecor.
         public static readonly string[] Maple = { "MapleTree_1", "MapleTree_2", "MapleTree_3" };
-        public static readonly string[] DeadTree = { "DeadTree_1", "DeadTree_4", "DeadTree_7", "DeadTree_9" };
+        // DeadTree_7 bỏ: lệch tâm ~1,1m, nhìn như đổ hẳn (khác với dáng "gãy cành" tự nhiên chấp nhận được của DeadTree_4).
+        public static readonly string[] DeadTree = { "DeadTree_1", "DeadTree_4", "DeadTree_9" };
         public static readonly string[] Bush = { "Bush", "Bush_Small", "Bush_Large" };
         public static readonly string[] BushFlowering = { "Bush_Flowers", "Bush_Small_Flowers", "Bush_Large_Flowers" };
         public static readonly string[] Rocks = { "Rock_1", "Rock_2", "Rock_3", "Rock_4", "Rock_5" };
