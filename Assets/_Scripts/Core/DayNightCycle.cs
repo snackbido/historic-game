@@ -27,14 +27,16 @@ namespace PrehistoricTribe
         [SerializeField] private Camera sceneCamera;
 
         [Header("Màu & độ sáng")]
-        [SerializeField] private Color daySunColor = new Color(1f, 0.9f, 0.76f);
+        // Tông ấm hơn (2026-10-05, theo ảnh mẫu người dùng gửi): nắng vàng đậm, trời/sương ngả kem-vàng thay vì
+        // xanh nhạt lạnh, ambient ngả vàng nhẹ thay vì xám trung tính — cho cảnh có cảm giác "chiều vàng" ấm cúng.
+        [SerializeField] private Color daySunColor = new Color(1f, 0.82f, 0.56f);
         [SerializeField] private Color duskSunColor = new Color(1f, 0.55f, 0.3f);
         [SerializeField] private Color moonColor = new Color(0.55f, 0.65f, 1f);
-        [SerializeField] private float daySunIntensity = 1f;
+        [SerializeField] private float daySunIntensity = 1.15f;
         [SerializeField] private float moonIntensity = 0.18f;
-        [SerializeField] private Color dayAmbient = new Color(0.42f, 0.42f, 0.4f);
+        [SerializeField] private Color dayAmbient = new Color(0.47f, 0.41f, 0.32f);
         [SerializeField] private Color nightAmbient = new Color(0.1f, 0.12f, 0.2f);
-        [SerializeField] private Color daySky = new Color(0.81f, 0.89f, 0.9f);
+        [SerializeField] private Color daySky = new Color(0.93f, 0.83f, 0.64f);
         [SerializeField] private Color duskSky = new Color(0.85f, 0.6f, 0.45f);
         [SerializeField] private Color nightSky = new Color(0.04f, 0.06f, 0.12f);
 

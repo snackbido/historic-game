@@ -64,6 +64,9 @@ namespace PrehistoricTribe.EditorTools
             new Bump { c = new Vector2(13f, -12f), amp = 2.2f, sigma = 3.8f },
             new Bump { c = new Vector2(-12f, -15f), amp = 1.8f, sigma = 3.4f },
             new Bump { c = new Vector2(14f, 8f), amp = 1.6f, sigma = 3.4f },
+            // Mô đất cho vách thác sau ao (khớp WaterfallBase = PondCenter + (0, 3.4)) — đất nhô lên để đá + thác
+            // có chỗ đứng thật, không phải đá đặt nổi trên bãi cỏ phẳng.
+            new Bump { c = new Vector2(4.5f, 9.4f), amp = 2.6f, sigma = 2.3f },
         };
 
         // ─── Bảng màu (dùng chung với NatureAssetBuilder qua LandscapePalette, để mặt đất và model luôn đồng bộ) ─
@@ -215,6 +218,7 @@ namespace PrehistoricTribe.EditorTools
             NatureAssetBuilder.Setup();
             BuildGround(root, heights, material, linear);
             BuildWater(root);
+            BuildWaterfall(root);
             BuildDecor(root, material, linear);
             return terrain;
         }
@@ -305,6 +309,71 @@ namespace PrehistoricTribe.EditorTools
             modifier.ignoreFromBuild = true;
         }
 
+        /// <summary>Vách đá nhỏ + thác nước ngay sau ao cá (gần trại) — điểm nhấn gần camp, theo ảnh mẫu
+        /// người dùng gửi 2026-10-05 (bố cục quá trống trải quanh trại).</summary>
+        private static readonly Vector2 WaterfallBase = PondCenter + new Vector2(0f, 3.4f);
+
+        private static void BuildWaterfall(Transform root)
+        {
+            var rng = new System.Random(4242);
+            float R() => (float)rng.NextDouble();
+            float groundH = Height(WaterfallBase.x, WaterfallBase.y);
+
+            var fallsRoot = new GameObject("Waterfall").transform;
+            fallsRoot.SetParent(root, false);
+
+            // Vòng cung đá lớn quanh ba phía, chừa khe hở rộng quay ra ao (hướng -Z, góc 180°) cho nước đổ xuống.
+            // Đá đặt xa tâm hơn bán kính tối đa của chính nó để chắc chắn còn khe trống ở giữa (không bị đá nuốt mất).
+            float[] angles = { -150f, -115f, -75f, 75f, 115f, 150f };
+            foreach (float a0 in angles)
+            {
+                float a = a0 + (R() - 0.5f) * 12f;
+                float dist = 2.3f + R() * 0.9f;
+                float rad = a * Mathf.Deg2Rad;
+                Vector2 p = WaterfallBase + new Vector2(Mathf.Sin(rad), Mathf.Cos(rad)) * dist;
+                float h = Height(p.x, p.y);
+                var rockPrefab = NatureAssetBuilder.Pick(NatureAssetBuilder.Rocks, rng);
+                var go = (GameObject)Object.Instantiate(rockPrefab, new Vector3(p.x, h, p.y), Quaternion.Euler(0f, R() * 360f, 0f), fallsRoot);
+                go.name = rockPrefab.name;
+                go.transform.localScale = Vector3.one * (1.6f + R() * 1.1f);
+                foreach (var r in go.GetComponentsInChildren<Renderer>(true)) r.shadowCastingMode = ShadowCastingMode.On;
+                SetStaticRecursive(go);
+            }
+
+            // Mặt nước đổ: tấm phẳng dựng gần đứng trong khe (đặt hẳn về phía ao, tránh bị đá che), trải từ
+            // đỉnh mô đất xuống mặt ao.
+            var fallMat = EditorBuildUtils.TexturedMat("WaterfallPixel", PixelTextureBuilder.Water, new Vector2(1f, 2.5f));
+            float pondH = Height(PondCenter.x, PondCenter.y);
+            float fallHeight = Mathf.Max(1.3f, groundH - pondH);
+            float fallCenterY = (groundH + pondH) * 0.5f;
+            // Dựng 2 mặt quay ngược nhau (thay vì 1 mặt một chiều) — Standard shader cắt mặt sau, nên không phải
+            // đoán đúng chiều xoay mới thấy được nước từ góc camera.
+            Vector3 fallPos = new Vector3(WaterfallBase.x, fallCenterY, WaterfallBase.y - 2.7f);
+            Vector3 fallScale = new Vector3(0.17f, 0.01f, fallHeight * 0.12f);
+            foreach (float yaw in new[] { 0f, 180f })
+            {
+                var fallGO = EditorBuildUtils.Part(fallsRoot, "WaterfallSheet", PrimitiveType.Plane, fallPos, fallScale, fallMat,
+                    new Vector3(100f, yaw, 0f));
+                fallGO.GetComponent<Renderer>().shadowCastingMode = ShadowCastingMode.Off;
+                fallGO.AddComponent<NavMeshModifier>().ignoreFromBuild = true;
+                fallGO.AddComponent<WaterfallScroll>();
+            }
+
+            // Bọt nước nơi thác đổ xuống ao: vài phiến đá cuội nhỏ quanh chân thác.
+            for (int i = 0; i < 4; i++)
+            {
+                Vector2 p = WaterfallBase + new Vector2((R() - 0.5f) * 1.2f, -0.6f - R() * 0.6f);
+                float h = Height(p.x, p.y);
+                var rockPrefab = NatureAssetBuilder.Pick(NatureAssetBuilder.Rocks, rng);
+                var go = (GameObject)Object.Instantiate(rockPrefab, new Vector3(p.x, h, p.y), Quaternion.Euler(0f, R() * 360f, 0f), fallsRoot);
+                go.name = rockPrefab.name;
+                go.transform.localScale = Vector3.one * (0.3f + R() * 0.25f);
+                foreach (var r in go.GetComponentsInChildren<Renderer>(true)) r.shadowCastingMode = ShadowCastingMode.Off;
+                go.AddComponent<NavMeshModifier>().ignoreFromBuild = true;
+                SetStaticRecursive(go);
+            }
+        }
+
         // ─── Cây cỏ, đá ──────────────────────────────────────────────────────
         private static readonly Vector2[] KeepClear =
         {
@@ -316,6 +385,7 @@ namespace PrehistoricTribe.EditorTools
         {
             if (Vector2.Distance(p, VillageCenter) < 9f + extra) return true; // khu làng để trống cho xây
             if (Vector2.Distance(p, PondCenter) < 2.8f + extra) return true;
+            if (Vector2.Distance(p, WaterfallBase) < 5.2f + extra) return true; // chừa chỗ cho vách đá + thác
             foreach (var k in KeepClear) if (Vector2.Distance(p, k) < 2.5f + extra) return true;
             if (PathDistance(p) < 1.6f + extra) return true;
             return false;
@@ -367,18 +437,20 @@ namespace PrehistoricTribe.EditorTools
                 float yaw = R() * 360f;
                 float pick = R();
                 GameObject prefab; float baseScale;
-                if (h > 3.5f || pick < 0.45f) { prefab = NatureAssetBuilder.Pick(NatureAssetBuilder.Pine, rng); baseScale = 0.6f; }
-                else if (pick < 0.85f) { prefab = NatureAssetBuilder.Pick(NatureAssetBuilder.Broadleaf, rng); baseScale = 0.5f; }
-                else if (pick < 0.93f) { prefab = NatureAssetBuilder.Pick(NatureAssetBuilder.Birch, rng); baseScale = 0.65f; }
-                else if (pick < 0.97f) { prefab = NatureAssetBuilder.Pick(NatureAssetBuilder.Maple, rng); baseScale = 0.5f; }
-                else { prefab = NatureAssetBuilder.Pick(NatureAssetBuilder.DeadTree, rng); baseScale = 0.55f; }
+                // Tỷ lệ theo nhân vật/nhà cao ~1,1m (phản hồi 2026-10-05: cây trước đó cao 3-5m, lấn át nhà) —
+                // giờ cây cao khoảng 1,6-2,6m, lớn hơn người rõ rệt nhưng không nuốt chửng khu trại.
+                if (h > 3.5f || pick < 0.45f) { prefab = NatureAssetBuilder.Pick(NatureAssetBuilder.Pine, rng); baseScale = 0.42f; }
+                else if (pick < 0.85f) { prefab = NatureAssetBuilder.Pick(NatureAssetBuilder.Broadleaf, rng); baseScale = 0.33f; }
+                else if (pick < 0.93f) { prefab = NatureAssetBuilder.Pick(NatureAssetBuilder.Birch, rng); baseScale = 0.42f; }
+                else if (pick < 0.97f) { prefab = NatureAssetBuilder.Pick(NatureAssetBuilder.Maple, rng); baseScale = 0.33f; }
+                else { prefab = NatureAssetBuilder.Pick(NatureAssetBuilder.DeadTree, rng); baseScale = 0.37f; }
                 Spawn(prefab, at, baseScale * variety, yaw, castShadow: true, blockNav: true);
 
                 // Bụi dưới tán, đá rêu lác đác.
                 if (R() < 0.35f)
                 {
                     var bush = NatureAssetBuilder.Pick(R() < 0.3f ? NatureAssetBuilder.BushFlowering : NatureAssetBuilder.Bush, rng);
-                    Spawn(bush, at + new Vector3((R() - 0.5f) * 2f, 0f, (R() - 0.5f) * 2f), 0.4f + R() * 0.35f, R() * 360f, castShadow: true, blockNav: true);
+                    Spawn(bush, at + new Vector3((R() - 0.5f) * 2f, 0f, (R() - 0.5f) * 2f), 0.3f + R() * 0.25f, R() * 360f, castShadow: true, blockNav: true);
                 }
                 if (R() < 0.08f) Spawn(NatureAssetBuilder.Pick(NatureAssetBuilder.Rocks, rng), at + new Vector3(1f, 0f, -0.6f), 0.3f + R() * 0.25f, R() * 360f, castShadow: true, blockNav: true);
             }

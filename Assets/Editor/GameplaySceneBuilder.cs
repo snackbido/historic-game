@@ -44,7 +44,7 @@ namespace PrehistoricTribe.EditorTools
             { "Start_Campfire", "Start_Shelter", "Start_Storage", "Start_FarmPlot", "StartArea_Center" };
         private static readonly string[] SkipColliderPrefixes = { "River", "Stream", "Sea", "Waterfall" };
 
-        private static readonly Color SkyColor = new Color(0.81f, 0.89f, 0.9f);
+        private static readonly Color SkyColor = new Color(0.93f, 0.83f, 0.64f); // tông chiều vàng, khớp daySky của DayNightCycle
         private const string PixelArtMaterialPath = "Assets/Materials/PixelArt.mat";
 
         /// <summary>Bảng màu đất – rừng – nước cho phong cách pixel (khung hình bị ép về các màu này).</summary>
@@ -340,7 +340,7 @@ namespace PrehistoricTribe.EditorTools
         private static Light SetupLighting()
         {
             RenderSettings.ambientMode = AmbientMode.Flat;
-            RenderSettings.ambientLight = new Color(0.42f, 0.42f, 0.4f);
+            RenderSettings.ambientLight = new Color(0.47f, 0.41f, 0.32f); // khớp dayAmbient của DayNightCycle
             RenderSettings.fog = true;
             RenderSettings.fogMode = FogMode.Linear;
             RenderSettings.fogColor = SkyColor;
@@ -350,8 +350,8 @@ namespace PrehistoricTribe.EditorTools
             var sunGO = new GameObject("Sun");
             var sun = sunGO.AddComponent<Light>();
             sun.type = LightType.Directional;
-            sun.color = new Color(1f, 0.9f, 0.76f);
-            sun.intensity = 1f;
+            sun.color = new Color(1f, 0.82f, 0.56f); // khớp daySunColor của DayNightCycle — chiều vàng ấm
+            sun.intensity = 1.15f;
             sun.shadows = LightShadows.Soft;
             sunGO.transform.rotation = Quaternion.Euler(50f, -30f, 0f);
             return sun;

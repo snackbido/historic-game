@@ -514,6 +514,16 @@ Quyết định user: quy trình **vừa phải** (lúa ~6 bước: làm đất 
 - Ảnh so sánh (`Screenshots/landscape-2026-10-05/` ảnh mới + scratchpad `land-*.png`): rừng giờ có tán lá thật nhiều lớp, bụi có hoa, đá có hình khối tự nhiên, cây phong lá vàng/đỏ tạo điểm nhấn — khác hẳn khối hình đơn sắc phần 12. Đang chờ user xem và đánh giá.
 - Chưa làm: cây thu hoạch được (`Tree.prefab`) và ô ruộng vẫn kiểu cũ (có thể đồng bộ tiếp theo hướng này nếu user ưng); sông/biển chưa là nguồn nước/chỗ câu cá.
 
+## Nhật ký phiên làm việc 2026-10-05 (phần 14 — bố cục/ánh sáng/tỷ lệ, thêm thác nước gần trại)
+- User chê bản phần 13 (model thật nhưng bố cục/màu/tỷ lệ chưa ổn, mặt đất vẫn trông giả) và gửi 1 ảnh mẫu (tranh 2D isometric vẽ tay, bóng nướng sẵn — khác hẳn kiến trúc 3D hiện tại). Đã giải thích rõ: đúng y hệt ảnh cần quay lại 2D sprite (kiến trúc đã dừng ở master 3/10) — user chọn **giữ 3D, làm bản cải tiến trước rồi mới quyết** tiếp.
+- **Màu/ánh sáng** (`DayNightCycle.cs`, `GameplaySceneBuilder.SetupLighting`): `daySunColor`/`daySky`/`dayAmbient` chuyển từ tông xanh nhạt lạnh sang vàng ấm (nắng chiều), `daySunIntensity` 1→1.15. Test `Night_IsDark...Day_IsBright` vẫn qua (chỉ so sánh ngưỡng, không so màu chính xác).
+- **Tỷ lệ cây** (`LandscapeBuilder.BuildDecor`): phát hiện nhà/nhân vật cao ~1,1m nhưng cây (nhập từ gói Quaternius phần 13) cao 3-5m — lấn át hẳn khu trại. Giảm `baseScale` từng loại cây (~30%) để cây cao khoảng 1,6-2,6m — lớn hơn người rõ nhưng không nuốt chửng nhà. Bụi cũng giảm nhẹ.
+- **Thác nước sau ao cá** (`LandscapeBuilder.BuildWaterfall`, mới): thêm một mô đất nhỏ (bump riêng trong `Hills`, cao ~2,6m) ngay sau `PondCenter`, xếp đá lớn (model Quaternius, phóng to) thành vòng cung chừa khe hở quay ra ao, một tấm nước dựng gần đứng trong khe (2 mặt ngược chiều để chắc chắn thấy được dù đoán sai hướng xoay) cuộn UV dọc bằng component mới `WaterfallScroll.cs` (không cần shader riêng). Vài đá cuội nhỏ ở chân thác làm "bọt nước". Loại trừ vùng này khỏi chỗ cây/đá trang trí tự nhiên sinh ra (mở rộng `Blocked()`).
+  - Thử lần đầu: đá quá to/quá gần tâm nên **nuốt mất khe hở** (không thấy thác) — tăng khoảng cách đặt đá, giảm kích thước đá, dời tấm nước ra xa hẳn về phía ao → thấy rõ dòng thác nối từ vách đá xuống ao.
+- **Thử hàng rào quanh 2 ô vườn khởi đầu** (`GameplaySceneBuilder.cs`) để bớt trống trải — **làm hỏng 4 test nông nghiệp** (`FarmerOnPlot_*`, `IdleFarmer_*`: nông dân không tới được ruộng để trồng/tưới, hàng rào chắn lối tiếp cận) → **revert ngay**, không đáng đánh đổi lấy một chi tiết trang trí.
+- **213/213 test PlayMode pass** sau khi revert hàng rào. Ảnh: `Screenshots/landscape-2026-10-05-v3/` (góc chơi, trại nhìn rộng pixel/3D có thác, cận cảnh thác, toàn cảnh đảo tông màu mới, gò đồi).
+- **Vẫn chưa giải quyết** (đúng như đã báo trước với user — nằm ngoài phạm vi vòng này): "mặt đất vẫn trông giả" — nền vẫn là mesh màu-đỉnh tự dựng, chưa có texture ảnh thật. User đã được giải thích 3 hướng (Unity Terrain + texture thật / chỉ đổi shader giữ mesh / ghép model-kit địa hình) nhưng chưa chọn — đang chờ user xem ảnh phần 14 trước.
+
 ## Vấn đề đang tồn đọng (Known issues / Open questions)
 - [x] Chế độ combat: lai (2026-09-26) + chi tiết chỉ huy NPC theo nghề (2026-09-30)
 - [ ] Chưa có tên chính thức cho dự án
