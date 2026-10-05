@@ -24,7 +24,6 @@ namespace PrehistoricTribe
         // Terrain Blender thật (2026-10-03) có đồi núi, nhưng MeshCollider không lồi (convex=false) trên mesh
         // terrain này bị lỗi engine Unity: raycast luôn trượt khi xoay đúng hướng hiển thị (đã kiểm chứng kỹ,
         // xem ghi chú trong PROGRESS.md) — dùng lại mặt phẳng toán học y=0 để BuildingPlacer vẫn hoạt động.
-        private static readonly Plane GroundPlane = new Plane(Vector3.up, Vector3.zero);
         private static readonly Color ValidPreviewColor = new Color(0.6f, 0.85f, 0.4f);
         private static readonly Color InvalidPreviewColor = new Color(0.9f, 0.45f, 0.35f);
 
@@ -114,22 +113,20 @@ namespace PrehistoricTribe
             if (cam == null) return false;
 
             Ray ray = cam.ScreenPointToRay(Input.mousePosition);
-            if (!GroundPlane.Raycast(ray, out float enter)) return false;
+            if (!WorldTerrain.Raycast(ray, out Vector3 point)) return false; // mặt đất có đồi núi (không có địa hình → y = 0)
 
-            cell = grid.WorldToCell(ray.GetPoint(enter));
+            cell = grid.WorldToCell(point);
             return true;
         }
 
         /// <summary>Ô lưới chứa điểm này (vd tìm ruộng nằm sát mương).</summary>
         public Vector3Int WorldToCell(Vector3 position) => grid.WorldToCell(position);
 
-        /// <summary>Tâm ô trên mặt đất (y = 0), không phụ thuộc cellSize trục đứng của Grid.</summary>
-        private Vector3 CellToGround(Vector3Int cell)
-        {
-            Vector3 center = grid.GetCellCenterWorld(cell);
-            center.y = 0f;
-            return center;
-        }
+        /// <summary>Tâm ô đặt trên mặt đất (theo độ cao địa hình), không phụ thuộc cellSize trục đứng của Grid.</summary>
+        private Vector3 CellToGround(Vector3Int cell) => WorldTerrain.Ground(grid.GetCellCenterWorld(cell));
+
+        /// <summary>Chênh cao trong một ô quá chừng này (m) thì coi là dốc, không xây được.</summary>
+        private const float MaxBuildHeightRange = 0.6f;
 
         private bool CanPlace(Vector3Int cell) => PlacementBlocker(selectedBuilding, cell) == null;
 
@@ -145,6 +142,8 @@ namespace PrehistoricTribe
 
             Vector3 center = CellToGround(cell);
             if (WaterSource.IsOnWater(center, WaterClearance)) return "Không xây đè lên mặt nước";
+            if (WorldTerrain.IsUnderwater(center.x, center.z, 0.1f)) return "Không xây dưới nước (sông, biển)";
+            if (WorldTerrain.HeightRange(center, 1f) > MaxBuildHeightRange) return "Đất quá dốc — chọn chỗ bằng phẳng hơn";
             // Cần nguồn nước lớn (ao, mương) — giếng không đủ nước cho ruộng ngập.
             if (data.requiresWaterWithin > 0f && !WaterSource.AnyWithin(center, data.requiresWaterWithin, forPaddy: true, naturalOnly: data.requiresOpenWater))
                 return data.requiresOpenWater

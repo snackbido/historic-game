@@ -14,7 +14,6 @@ namespace PrehistoricTribe
     {
         public static SelectionManager Instance { get; private set; }
 
-        private static readonly Plane GroundPlane = new Plane(Vector3.up, Vector3.zero);
 
         [Tooltip("Kéo quá số pixel này mới tính là kéo khung (nhỏ hơn là click)")]
         [SerializeField] private float dragThreshold = 8f;
@@ -346,10 +345,8 @@ namespace PrehistoricTribe
             Camera cam = Camera.main;
             if (cam == null) return false;
 
-            Ray ray = cam.ScreenPointToRay(screenPosition);
-            if (!GroundPlane.Raycast(ray, out float enter)) return false;
-            point = ray.GetPoint(enter);
-            return true;
+            // Mặt đất có đồi núi: dò theo lưới độ cao (không có địa hình → mặt phẳng y = 0).
+            return WorldTerrain.Raycast(cam.ScreenPointToRay(screenPosition), out point);
         }
 
         public static List<Vector3> FormationOffsets(int count, float spacing)

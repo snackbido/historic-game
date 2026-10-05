@@ -39,13 +39,27 @@ namespace PrehistoricTribe
 
         private void FixedUpdate()
         {
-            body.MovePosition(body.position + moveInput * moveSpeed * Time.fixedDeltaTime);
+            Vector3 step = moveInput * moveSpeed * Time.fixedDeltaTime;
+            Vector3 next = body.position + step;
+            // Địa hình đồi núi: vách quá dốc / nước sâu / mép bản đồ thì không bước tới — thử trượt dọc theo một trục
+            // để không bị "dính" khi đi chéo vào sườn núi hay bờ sông.
+            if (!WorldTerrain.IsWalkable(next.x, next.z))
+            {
+                Vector3 alongX = body.position + new Vector3(step.x, 0f, 0f);
+                Vector3 alongZ = body.position + new Vector3(0f, 0f, step.z);
+                next = WorldTerrain.IsWalkable(alongX.x, alongX.z) ? alongX
+                    : WorldTerrain.IsWalkable(alongZ.x, alongZ.z) ? alongZ
+                    : body.position;
+            }
+            body.linearVelocity = Vector3.zero; // va vào nhà/rào không bị đẩy trôi hay nảy lên
+            body.MovePosition(WorldTerrain.Ground(next)); // bám mặt đất (leo dốc / xuống dốc)
         }
 
         public Vector3 GetPosition() => body.position;
 
         public void SetPosition(Vector3 position)
         {
+            position = WorldTerrain.Ground(position);
             body.position = position;
             transform.position = position;
         }

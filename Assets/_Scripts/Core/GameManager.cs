@@ -156,7 +156,7 @@ namespace PrehistoricTribe
                 AnimalData animalData = TamingSystem.Instance.FindAnimal(entry.animalId);
                 if (animalData == null || animalData.prefab == null) continue;
 
-                var position = new Vector3(entry.x, 0f, entry.z);
+                var position = WorldTerrain.Ground(new Vector3(entry.x, 0f, entry.z));
                 var rotation = Quaternion.Euler(0f, entry.rotationY, 0f);
                 GameObject go = Instantiate(animalData.prefab, position, rotation);
                 if (!string.IsNullOrEmpty(entry.objectName)) go.name = entry.objectName;

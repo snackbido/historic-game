@@ -229,7 +229,7 @@ namespace PrehistoricTribe
             if (data.prefab == null) return;
 
             Vector2 offset = Random.insideUnitCircle;
-            Vector3 spawnPosition = transform.position + new Vector3(offset.x, 0f, offset.y);
+            Vector3 spawnPosition = WorldTerrain.Ground(transform.position + new Vector3(offset.x, 0f, offset.y));
             GameObject offspring = Instantiate(data.prefab, spawnPosition, Quaternion.identity);
             offspring.GetComponent<AnimalController>()?.InitializeAsTamed(data);
         }

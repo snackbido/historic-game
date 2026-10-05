@@ -172,9 +172,10 @@ namespace PrehistoricTribe.EditorTools
             // được một mảng nhỏ xa khu trại. Tạm quay lại nền phẳng cho tới khi có hướng giải quyết khác
             // (vd Unity Terrain + heightmap thay vì MeshCollider). File FBX + CreateBlenderTerrain() vẫn giữ
             // nguyên trong code để dùng lại sau, chỉ không gọi trong luồng Build() mặc định.
+            // 2026-10-05: địa hình có đồi núi, sông, biển + cây cỏ theo .claude/LANDSCAPE_DESIGN.md (LandscapeBuilder) —
+            // độ cao lấy từ lưới (WorldTerrain), không qua collider. Grounded() bên dưới đặt mọi thứ lên mặt đất này.
             Transform terrainRoot = null;
-            CreateGround(environment);
-            CreateDecorForest(environment);
+            LandscapeBuilder.Build(environment);
             BakeNavMesh(environment.gameObject);
 
             var rmGO = new GameObject("ResourceManager");
@@ -343,8 +344,8 @@ namespace PrehistoricTribe.EditorTools
             RenderSettings.fog = true;
             RenderSettings.fogMode = FogMode.Linear;
             RenderSettings.fogColor = SkyColor;
-            RenderSettings.fogStartDistance = 25f;
-            RenderSettings.fogEndDistance = 55f;
+            RenderSettings.fogStartDistance = 32f; // địa hình rộng 96m: lùi sương mù để thấy núi, biển khi kéo camera xa
+            RenderSettings.fogEndDistance = 80f;
 
             var sunGO = new GameObject("Sun");
             var sun = sunGO.AddComponent<Light>();
@@ -485,7 +486,7 @@ namespace PrehistoricTribe.EditorTools
         }
 
         private static Vector3 Grounded(float x, float z, float extraHeight = 0f) =>
-            new Vector3(x, SampleGroundHeight(x, z) + extraHeight, z);
+            new Vector3(x, WorldTerrain.HeightAt(x, z) + extraHeight, z);
 
         /// <summary>
         /// Terrain thật có suối/sông cắt ngang nên vài điểm trong cụm trại ban đầu rơi đúng ngoài NavMesh
@@ -637,11 +638,10 @@ namespace PrehistoricTribe.EditorTools
         {
             var playerGO = new GameObject("Player") { tag = "Player" };
             var rb = playerGO.AddComponent<Rigidbody>();
-            // Dự định bật trọng lực + leo dốc thật khi có terrain Blender (2026-10-03), nhưng MeshCollider
-            // không lồi của terrain này bị lỗi engine Unity (raycast/va chạm trượt toàn bộ khi xoay đúng
-            // hướng hiển thị — đã kiểm chứng kỹ, xem PROGRESS.md). Giữ lại di chuyển phẳng cho an toàn.
+            // Đồi núi (2026-10-05): không trọng lực, không collider mặt đất — PlayerController tự đặt độ cao theo
+            // WorldTerrain mỗi bước vật lý. Trục Y để tự do (không khóa) thì MovePosition mới lên/xuống dốc được.
             rb.useGravity = false;
-            rb.constraints = RigidbodyConstraints.FreezeRotation | RigidbodyConstraints.FreezePositionY;
+            rb.constraints = RigidbodyConstraints.FreezeRotation;
             rb.interpolation = RigidbodyInterpolation.Interpolate;
             var col = playerGO.AddComponent<CapsuleCollider>();
             col.center = new Vector3(0f, 0.5f, 0f);

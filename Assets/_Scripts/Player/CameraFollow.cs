@@ -13,7 +13,7 @@ namespace PrehistoricTribe
 
         [SerializeField] private float distance = 13f;
         [SerializeField] private float minDistance = 7f;
-        [SerializeField] private float maxDistance = 24f;
+        [SerializeField] private float maxDistance = 30f;
         [SerializeField] private float zoomStep = 1.2f;
 
         private void Start()

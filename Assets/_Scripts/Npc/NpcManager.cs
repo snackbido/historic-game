@@ -329,7 +329,7 @@ namespace PrehistoricTribe
             var loaded = new List<NpcController>();
             foreach (var entry in saved)
             {
-                var position = new Vector3(entry.x, 0f, entry.z);
+                var position = WorldTerrain.Ground(new Vector3(entry.x, 0f, entry.z));
                 var rotation = Quaternion.Euler(0f, entry.rotationY, 0f);
                 NpcController npc = Instantiate(npcPrefab, position, rotation);
                 npc.LoadFromSaveData(entry, FindProfession(entry.professionId));

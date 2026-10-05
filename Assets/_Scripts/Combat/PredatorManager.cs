@@ -44,7 +44,7 @@ namespace PrehistoricTribe
                 PredatorData data = FindPredator(entry.predatorId);
                 if (data == null || data.prefab == null) continue;
 
-                GameObject go = Instantiate(data.prefab, new Vector3(entry.x, 0f, entry.z), Quaternion.identity);
+                GameObject go = Instantiate(data.prefab, WorldTerrain.Ground(new Vector3(entry.x, 0f, entry.z)), Quaternion.identity);
                 if (!string.IsNullOrEmpty(entry.objectName)) go.name = entry.objectName;
                 go.GetComponent<PredatorAI>()?.LoadFromSaveData(entry, data);
             }
