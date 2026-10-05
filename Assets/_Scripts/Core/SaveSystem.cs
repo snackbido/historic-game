@@ -7,7 +7,7 @@ namespace PrehistoricTribe
     [System.Serializable]
     public class SaveData
     {
-        public const int CurrentVersion = 5;
+        public const int CurrentVersion = 6;
 
         // Không gán giá trị mặc định: save cũ (chưa có field này) đọc ra 0 → biết là bản cũ,
         // tránh hiểu nhầm danh sách vật nuôi rỗng là "không còn con nào" rồi xóa hết.
@@ -40,6 +40,8 @@ namespace PrehistoricTribe
         public List<CanalSaveData> canals = new List<CanalSaveData>();
         // M6 (save cũ thiếu → saved = false → hẹn thiên tai đầu tiên như game mới)
         public DisasterSaveData disaster = new DisasterSaveData();
+        // M7 (save cũ < 6 → giữ nguyên cây trong scene): cây còn sống + số gỗ/cá còn lại
+        public List<ResourceNodeSaveData> resourceNodes = new List<ResourceNodeSaveData>();
     }
 
     public static class SaveSystem

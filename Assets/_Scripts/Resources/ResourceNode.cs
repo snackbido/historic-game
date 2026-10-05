@@ -63,5 +63,35 @@ namespace PrehistoricTribe
                 Destroy(gameObject);
             }
         }
+
+        // ─── Lưu / tải (M7) ─────────────────────────────────────────────────
+        public ResourceNodeSaveData GetSaveData() => new ResourceNodeSaveData
+        {
+            objectName = name,
+            resourceId = resourceType != null ? resourceType.id : null,
+            x = transform.position.x,
+            y = transform.position.y,
+            z = transform.position.z,
+            rotationY = transform.eulerAngles.y,
+            amount = amountRemaining
+        };
+
+        /// <summary>Đặt lại số còn lại theo bản lưu (cây chặt dở, ao vơi cá).</summary>
+        public void LoadFromSaveData(ResourceNodeSaveData data)
+        {
+            if (data == null) return;
+            amountRemaining = Mathf.Max(0, data.amount);
+            regenTimer = 0f;
+        }
+    }
+
+    [System.Serializable]
+    public class ResourceNodeSaveData
+    {
+        public string objectName;
+        public string resourceId;
+        public float x, y, z;
+        public float rotationY;
+        public int amount;
     }
 }

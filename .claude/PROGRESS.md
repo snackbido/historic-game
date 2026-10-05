@@ -129,7 +129,8 @@ Quyết định user: quy trình **vừa phải** (lúa ~6 bước: làm đất 
 - [x] P2b Hiệu ứng âm thanh sinh bằng code (14 tiếng), thay được bằng file riêng
 - [x] P3 Menu chính + tạm dừng (Esc) + cài đặt (âm lượng nhạc/tiếng động, pixel, toàn màn hình)
 - [x] P4a Sau chơi thử (user: "nhịp độ hơi nhanh", "chức năng cần điều kiện thì báo cần làm gì để mở"): nhịp độ chỉnh được + gợi ý mở khóa
-- [ ] P4 Cân bằng (đầu game 0 lương thực, chuỗi lúa dài mà ít gạo, thiên tai 2–3 ngày/lần có dày quá?) + lưu cây đã chặt — cần user chơi thử
+- [x] Lưu cây đã chặt (save v6) — 2026-10-05
+- [ ] P4 Cân bằng (đầu game 0 lương thực, chuỗi lúa dài mà ít gạo, thiên tai 2–3 ngày/lần có dày quá?) — cần user chơi thử
 
 ## Nhật ký quyết định quan trọng (Decision Log)
 > Ghi lại các quyết định kỹ thuật/thiết kế lớn để không quên lý do tại sao chọn hướng này.
@@ -487,12 +488,17 @@ Quyết định user: quy trình **vừa phải** (lúa ~6 bước: làm đất 
 - Đã làm được phần "Còn thiếu" của phần 8 — xác nhận trực quan UI bằng ảnh chụp batch mode (canvas tạm ScreenSpaceCamera): dải tài nguyên có icon, thanh tab + chấm đỏ, ô khóa có ổ khóa, ô Sẵn sàng viền vàng nhấp nháy, toast "Có thể nghiên cứu: Nông nghiệp (mở Kho, Giếng, Cây mọng, Rau)", tooltip điều kiện ×/√ + "đang có N".
 - Sửa `TooltipUI.ToLocal`: canvas không phải overlay thì đổi toạ độ qua camera của canvas (trước đây luôn dùng null → tooltip lệch khi canvas gắn camera). Mẹo chụp ảnh UI: gán `cam.targetTexture` **trước** khi tính vị trí UI, không thì Unity dùng kích thước màn hình ảo của batch mode.
 
+## Nhật ký phiên làm việc 2026-10-05 (phần 11 — lưu cây đã chặt)
+- `SaveData` lên **v6**: thêm `resourceNodes` (`ResourceNodeSaveData`: tên, loại tài nguyên, vị trí, hướng xoay, số còn lại) cho mọi `ResourceNode` còn sống (cây + ao cá).
+- Tải (`GameManager.LoadResourceNodes`, chỉ khi save ≥ 6 — save cũ giữ nguyên cây trong scene): khớp theo tên — node trong scene không có trong bản lưu → đã bị chặt hết → tắt ngay + Destroy; có → đặt lại số gỗ/cá (`ResourceNode.LoadFromSaveData`). Cây có trong bản lưu mà ván hiện tại đã chặt mất (chặt **sau** lúc lưu rồi F9) → tạo lại từ `Tree.prefab` (`GameManager.treePrefab`, scene builder gán) đúng tên, vị trí, hướng.
+- Test: 3 test mới `Milestone7TreeSaveTests.cs` (cây chặt dở giữ số gỗ; cây chặt sau khi lưu → tải lại có cây; cây đã đổ trước khi lưu → "Chơi tiếp" vào scene mới vẫn không mọc lại). **208/208 test PlayMode pass**.
+
 ## Vấn đề đang tồn đọng (Known issues / Open questions)
 - [x] Chế độ combat: lai (2026-09-26) + chi tiết chỉ huy NPC theo nghề (2026-09-30)
 - [ ] Chưa có tên chính thức cho dự án
 - [ ] Milestone 2-4: đã xác nhận logic (test tự động) + Console sạch khi Play thật, nhưng chưa có ai tự tay bấm phím/chuột thật để xác nhận input (`PlayerInteraction`, `BuildingPlacer`) và chưa xác nhận trực quan layout UI (công cụ chụp ảnh hiện tại không thấy được Canvas ScreenSpaceOverlay)
 - [x] Save/load trạng thái FarmPlot + vật nuôi (+ tech đã mở khóa) — xong 2026-09-30 (`saveVersion` 2)
-- [ ] Save/load chưa lưu cây (ResourceNode) đã bị chặt: tải game sẽ không hồi lại cây đã mất trong phiên, và cây đã chặt dở vẫn đầy gỗ
+- [x] Save/load lưu cây (ResourceNode) đã bị chặt — xong 2026-10-05 (save v6, xem phần 11). Còn thiếu nhỏ: gốc cây cháy đen (`CharredStump`, chỉ trang trí) không được lưu — tải game thì cây cháy rụi biến mất, không còn gốc
 - [x] Save/load (F5/F9) của Milestone 1 đã test trong Play mode thật (2026-09-26) — đúng
 - [x] Camera dùng Skybox clear flags gây nền trời không hợp — đã đổi Solid Color khi chuyển 2.5D (2026-09-30)
 - [ ] Máy 8GB + pagefile nằm trên ổ C gần đầy: Unity batch mode crash "paging file is too small"/"Out of memory" khi bộ nhớ ảo trống < ~4GB (gặp lại 2026-09-30). Cách sửa tận gốc: chuyển pagefile sang ổ D (còn ~33GB). Tạm thời: đóng Edge/app nặng trước khi chạy Unity

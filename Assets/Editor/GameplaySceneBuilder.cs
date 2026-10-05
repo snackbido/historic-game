@@ -320,6 +320,8 @@ namespace PrehistoricTribe.EditorTools
             SetPrivateField(gameManager, "player", player.GetComponent<PlayerController>());
             SetPrivateField(gameManager, "resourceManager", rm);
             SetPrivateField(gameManager, "buildingPlacer", placer);
+            // Tải game: cây đã chặt sau lúc lưu được tạo lại từ prefab (nạp lại — tham chiếu cũ có thể đã mất sau bake NavMesh).
+            SetPrivateField(gameManager, "treePrefab", AssetDatabase.LoadAssetAtPath<GameObject>(GameContentBuilder.TreePrefabPath));
             gameManagerGO.AddComponent<SaveLoadHotkeys>();
 
             // Nạp lại: tạo asset NavMesh phía trên làm tham chiếu prefab (component) đã nạp trước đó mất hiệu lực.
