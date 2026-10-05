@@ -432,22 +432,21 @@ namespace PrehistoricTribe.EditorTools
                 float chance = density > 0.05f ? density * 1.05f : 0.025f;
                 if (R() > chance) continue;
 
-                var at = new Vector3(p.x, h, p.y);
-                float variety = 0.85f + R() * 0.7f;
+                var at = new Vector3(p.x, h - 0.05f, p.y);
+                float scale = 0.85f + R() * 0.7f;
                 float yaw = R() * 360f;
                 float pick = R();
-                GameObject prefab; float baseScale;
-                // Tỷ lệ theo nhân vật/nhà cao ~1,1m (phản hồi 2026-10-05: cây trước đó cao 3-5m, lấn át nhà) —
-                // giờ cây cao khoảng 1,6-2,6m, lớn hơn người rõ rệt nhưng không nuốt chửng khu trại.
-                // MapleTree + cả họ BirchTree bỏ khỏi vòng quay (2026-10-05, phản hồi playtest "cây ngả đổ" — xác
-                // nhận bằng ảnh chụp đúng góc camera trong game, không phải nhìn thẳng từ trên xuống): các model này
-                // được tạc thân hơi cong tự nhiên (như bạch dương thật) — nhìn thẳng từ trên xuống thì tán vẫn nằm
-                // gần tâm nên tưởng ổn, nhưng ở góc camera nghiêng 52° của game, nhất là khi đứng gần, thân cong đó
-                // "duỗi" ra theo chiều màn hình và nhìn như cây đổ. Pine/Normal/DeadTree thân thẳng nên không bị.
-                if (h > 3.5f || pick < 0.45f) { prefab = NatureAssetBuilder.Pick(NatureAssetBuilder.Pine, rng); baseScale = 0.42f; }
-                else if (pick < 0.97f) { prefab = NatureAssetBuilder.Pick(NatureAssetBuilder.Broadleaf, rng); baseScale = 0.33f; }
-                else { prefab = NatureAssetBuilder.Pick(NatureAssetBuilder.DeadTree, rng); baseScale = 0.37f; }
-                Spawn(prefab, at, baseScale * variety, yaw, castShadow: true, blockNav: true);
+                // Cây CHÍNH vẽ tay, không dùng model gói (2026-10-05, phản hồi playtest "cây ngả đổ", lặp lại 2 lần
+                // sau khi đã loại Maple rồi cả họ Birch): gallery chụp đúng góc camera nghiêng 52° của game cho thấy
+                // phần lớn model cây trong gói — kể cả Pine/Normal tưởng ổn qua kiểm tra lệch tâm nhìn từ trên xuống —
+                // đều có thân hơi cong tự nhiên, "duỗi" thành nhìn-như-đổ ở góc camera thật, nhất là khi đứng gần.
+                // Chỉ rock/bush/grass/flower (không có "thân" nên không bị) còn dùng model thật; cây quay lại vẽ tay
+                // như bản gốc — chắc chắn luôn thẳng đứng vì tự dựng hình, đổi lại là ít chi tiết hơn model thật.
+                MeshBuilder treeChunk = Chunk(propChunks, at);
+                if (h > 3.5f || pick < 0.45f) AddPine(treeChunk, at, scale, yaw, R());
+                else if (pick < 0.88f) AddBroadleaf(treeChunk, at, scale, yaw, rng);
+                else if (pick < 0.96f) AddBirch(treeChunk, at, scale, yaw, rng);
+                else AddDeadTree(treeChunk, at, scale, yaw);
 
                 // Bụi dưới tán, đá rêu lác đác.
                 if (R() < 0.35f)
@@ -530,6 +529,42 @@ namespace PrehistoricTribe.EditorTools
             float dx = Height(p.x + d, p.y) - Height(p.x - d, p.y);
             float dz = Height(p.x, p.y + d) - Height(p.x, p.y - d);
             return Mathf.Atan(Mathf.Sqrt(dx * dx + dz * dz) / (2f * d)) * Mathf.Rad2Deg;
+        }
+
+        // ─── Hình dạng cây vẽ tay (phục hồi 2026-10-05 — xem lý do ở vòng lặp sinh cây phía trên) ───────────
+        private static void AddPine(MeshBuilder b, Vector3 at, float scale, float yaw, float shade)
+        {
+            Color dark = Color.Lerp(PineDark, Pine, shade * 0.5f), mid = Color.Lerp(Pine, PineLight, shade * 0.4f);
+            b.AddCylinder(at, 0.13f * scale, 0.6f * scale, 6, TrunkDark, yaw);
+            b.AddCone(at + Vector3.up * 0.45f * scale, 0.75f * scale, 1.0f * scale, 7, dark, yaw);
+            b.AddCone(at + Vector3.up * 0.95f * scale, 0.6f * scale, 0.9f * scale, 7, mid, yaw + 20f);
+            b.AddCone(at + Vector3.up * 1.42f * scale, 0.4f * scale, 0.8f * scale, 6, Color.Lerp(mid, PineLight, 0.5f), yaw + 40f);
+        }
+
+        private static void AddBroadleaf(MeshBuilder b, Vector3 at, float scale, float yaw, System.Random rng)
+        {
+            float R() => (float)rng.NextDouble();
+            bool autumn = R() < 0.12f;
+            Color leaf = autumn ? LeafAutumn : Color.Lerp(LeafDark, Leaf, R());
+            b.AddCylinder(at, 0.14f * scale, 1.0f * scale, 6, TrunkColor, yaw);
+            Vector3 crown = at + Vector3.up * 1.35f * scale;
+            b.AddBlob(crown, new Vector3(0.85f, 0.7f, 0.85f) * scale, leaf, rng, 1);
+            b.AddBlob(crown + new Vector3(0.45f, 0.25f, 0.2f) * scale, new Vector3(0.55f, 0.5f, 0.55f) * scale, Color.Lerp(leaf, LeafLight, 0.45f), rng, 1);
+            b.AddBlob(crown + new Vector3(-0.35f, 0.15f, -0.35f) * scale, new Vector3(0.5f, 0.45f, 0.5f) * scale, leaf * 0.9f, rng, 1);
+        }
+
+        private static void AddBirch(MeshBuilder b, Vector3 at, float scale, float yaw, System.Random rng)
+        {
+            b.AddCylinder(at, 0.09f * scale, 1.5f * scale, 6, BirchBark, yaw);
+            b.AddBlob(at + Vector3.up * 1.7f * scale, new Vector3(0.5f, 0.75f, 0.5f) * scale, LeafLight, rng, 1);
+        }
+
+        private static void AddDeadTree(MeshBuilder b, Vector3 at, float scale, float yaw)
+        {
+            b.AddCylinder(at, 0.11f * scale, 1.3f * scale, 5, TrunkDark, yaw);
+            Quaternion q = Quaternion.Euler(0f, yaw, 0f);
+            b.AddCylinder(at + Vector3.up * 0.9f * scale, 0.05f * scale, 0.6f * scale, 4, TrunkDark, yaw, q * Quaternion.Euler(0f, 0f, 50f));
+            b.AddCylinder(at + Vector3.up * 1.05f * scale, 0.04f * scale, 0.5f * scale, 4, TrunkDark, yaw, q * Quaternion.Euler(0f, 0f, -45f));
         }
 
         // ─── Hình dạng vẽ tay còn lại (gói model không có khúc gỗ đổ / lau sậy) ──

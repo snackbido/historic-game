@@ -537,6 +537,30 @@ Quyết định user: quy trình **vừa phải** (lúa ~6 bước: làm đất 
 - **213/213 test pass** sau mỗi bước sửa. Ảnh xác nhận cuối: `Screenshots/treefix-2026-10-05/` — đúng vị trí từng có cây đổ, giờ sạch.
 - Việc còn lại nếu muốn: tìm thêm biến thể cây khác (vd cây rụng lá/autumn) để thay thế phần đa dạng màu đã mất khi bỏ Maple + Birch, nhưng cần kiểm tra bằng đúng quy trình trên (đo gallery theo góc camera thật, không chỉ nhìn từ trên xuống) trước khi thêm vào.
 
+## Nhật ký phiên làm việc 2026-10-05 (phần 16 — "cây ngả đổ" vẫn còn, quay lại vẽ tay cho riêng cây)
+- User gửi ảnh thứ 2: vẫn thấy cây (dáng như Pine) nằm nghiêng. Lần này dựng hẳn một "gallery" toàn bộ 29 loại
+  decor đang dùng (cây, bụi, đá, cỏ, hoa), chụp **đúng góc camera nghiêng 52° thật của game** (bài học phần 15 —
+  không dùng ortho từ trên) để rà một lần cho dứt điểm thay vì bắt lỗi từng con.
+- Kết quả: **đá, bụi, cỏ, hoa đều ổn** (không có "thân" nên không bị cong/nghiêng). Nhưng phát hiện vấn đề nặng hơn
+  tưởng: không chỉ Birch — **PineTree_2** nghiêng hẳn cả cây, và **toàn bộ 4 biến thể NormalTree còn lại (1,2,4,5)**
+  đều có thân hơi cong rõ rệt ở góc này (dù kiểm tra lệch tâm nhìn từ trên ở phần 15 nói là "ổn"). Tức là phần lớn
+  model CÂY trong gói — không riêng Birch — được tạc với thân hơi cong tự nhiên, chỉ lộ ra ở góc camera gần/nghiêng
+  của game, kiểu lỗi mà cách đo "lệch tâm nhìn từ trên" không bắt được.
+- **Quyết định**: không tiếp tục loại từng biến thể (đã làm 2 lần, vẫn sót) — **đưa cây (Pine/Broadleaf/Birch/Maple/
+  DeadTree) quay lại vẽ tay bằng code như bản gốc** (lấy nguyên hàm `AddPine/AddBroadleaf/AddBirch/AddDeadTree` từ
+  commit trước khi đổi sang model, qua `git show <commit>^:...`), đảm bảo luôn thẳng đứng vì tự dựng hình, không
+  phụ thuộc hình dạng gốc của model bên ngoài. **Vẫn giữ model thật cho đá/bụi/cỏ/hoa** (xác nhận an toàn, không có
+  vấn đề "thân cong"). Khôi phục luôn phần trộn màu lá thu tự nhiên trong `AddBroadleaf` (12% cây lá vàng) — bù lại
+  phần đa dạng màu bị mất khi trước đó bỏ Maple.
+- `NatureAssetBuilder.Setup()` không còn setup FBX cây (Broadleaf/Birch/Pine/Maple/DeadTree) nữa — đỡ thời gian
+  build. Thêm `SetupTreeFamily(family)` để dùng sau nếu muốn đặt tay 1-2 cây model thật làm điểm nhấn có chủ đích
+  (không sinh ngẫu nhiên, nên không gặp lại lỗi góc camera).
+- **213/213 test pass**. Chụp lại đúng kiểu góc camera gần/xa như lúc phát hiện lỗi — toàn bộ cây đứng thẳng.
+  Ảnh: `Screenshots/treefix2-2026-10-05/`.
+- Bài học cho các lần nhập model sau: **phải duyệt bằng "gallery" chụp đúng góc camera thật của game (không phải
+  ortho từ trên) trước khi đưa bất kỳ model có "thân cao" nào vào vòng quay ngẫu nhiên** — đo lệch tâm hình học
+  (bounds) không đủ để bắt lỗi "thân cong theo chiều đứng".
+
 ## Vấn đề đang tồn đọng (Known issues / Open questions)
 - [x] Chế độ combat: lai (2026-09-26) + chi tiết chỉ huy NPC theo nghề (2026-09-30)
 - [ ] Chưa có tên chính thức cho dự án

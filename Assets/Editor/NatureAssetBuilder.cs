@@ -55,16 +55,28 @@ namespace PrehistoricTribe.EditorTools
         public static void Setup()
         {
             var materials = EnsureMaterials();
-            EnsureImportSettings(Broadleaf, "Broadleaf", materials);
-            EnsureImportSettings(Birch, "Birch", materials);
-            EnsureImportSettings(Pine, "Pine", materials);
-            EnsureImportSettings(Maple, "Maple", materials);
-            EnsureImportSettings(DeadTree, "DeadTree", materials);
+            // Broadleaf/Birch/Pine/Maple/DeadTree KHÔNG còn setup (2026-10-05): LandscapeBuilder không sinh cây
+            // bằng model nữa — toàn bộ model cây trong gói có thân hơi cong tự nhiên, ở góc camera nghiêng của
+            // game nhìn như đổ (xem log sửa lỗi "cây ngả đổ"), nên cây quay lại vẽ tay (AddPine/AddBroadleaf/...
+            // trong LandscapeBuilder.cs) — chắc chắn thẳng đứng. Giữ nguyên field/import-setup bên dưới làm hạ
+            // tầng sẵn có, phòng khi muốn đặt tay 1-2 cây làm điểm nhấn (không sinh ngẫu nhiên).
             EnsureImportSettings(Bush, "Bush", materials);
             EnsureImportSettings(BushFlowering, "BushFlowering", materials);
             EnsureImportSettings(Rocks, "Rocks", materials);
             EnsureImportSettings(Grass, "Grass", materials);
             EnsureImportSettings(Flowers, "Flowers", materials);
+        }
+
+        /// <summary>Gọi khi cần dùng model cây thật có chủ đích (không sinh ngẫu nhiên) — tự thiết lập vật liệu/import.</summary>
+        public static void SetupTreeFamily(string family)
+        {
+            var materials = EnsureMaterials();
+            var names = family switch
+            {
+                "Broadleaf" => Broadleaf, "Birch" => Birch, "Pine" => Pine, "Maple" => Maple, "DeadTree" => DeadTree,
+                _ => System.Array.Empty<string>(),
+            };
+            EnsureImportSettings(names, family, materials);
         }
 
         private static Dictionary<string, Material> EnsureMaterials()
