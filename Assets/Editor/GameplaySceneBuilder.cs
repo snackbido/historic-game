@@ -33,6 +33,17 @@ namespace PrehistoricTribe.EditorTools
 
         private const string NavMeshAssetPath = "Assets/_Scenes/Gameplay_NavMesh.asset";
 
+        // ─── Terrain Blender thật (2026-10-03): thay nền phẳng bằng địa hình núi/sông thật ─────
+        private const string TerrainFbxPath = "Assets/_ImportedBlender/PrehistoricTerrain.fbx";
+        private const string GroundLayerName = "Ground";
+        private const string GroundPhysicMaterialPath = "Assets/Materials/GroundFriction.physicMaterial";
+        private static readonly string[] GroundMeshNames =
+            { "Terrain_Main", "MountainPeak_01", "MountainPeak_03", "MountainPeak_04", "MountainPeak_05" };
+        // Marker Blender chỉ để định vị (trại/ruộng khởi đầu) — ẩn đi, game tự dựng model thật tại đúng vị trí đó.
+        private static readonly string[] HiddenMarkerNames =
+            { "Start_Campfire", "Start_Shelter", "Start_Storage", "Start_FarmPlot", "StartArea_Center" };
+        private static readonly string[] SkipColliderPrefixes = { "River", "Stream", "Sea", "Waterfall" };
+
         private static readonly Color SkyColor = new Color(0.81f, 0.89f, 0.9f);
         private const string PixelArtMaterialPath = "Assets/Materials/PixelArt.mat";
 
@@ -55,8 +66,17 @@ namespace PrehistoricTribe.EditorTools
             ("Suối", Gender.Female, "scout", new Vector2(0.4f, -4.6f)),
         };
 
-        // Cùng bố cục với bản web (web/src/data/gameData.js): (x, z) trên mặt đất.
-        private static readonly Vector2[] TreePositions =
+        // Vị trí cây gỗ thu hoạch được = 8 điểm "Resource_Wood_*" do người thiết kế đặt trong Blender.
+        // Lấy tọa độ thật lúc dựng scene (FindBlenderMarkerPosition) thay vì tự quy đổi trục Blender→Unity
+        // bằng tay — dễ sai dấu/trục khi FBX export (đã từng sai, xem log 2026-10-03).
+        private static readonly string[] WoodMarkerNames =
+        {
+            "Resource_Wood_001", "Resource_Wood_002", "Resource_Wood_003", "Resource_Wood_004",
+            "Resource_Wood_005", "Resource_Wood_006", "Resource_Wood_007", "Resource_Wood_008",
+        };
+        // Dùng khi terrain Blender đang tắt (xem ghi chú ở CreateBlenderTerrain) — cùng bố cục với bản web
+        // (web/src/data/gameData.js): (x, z) trên mặt đất, gần trại.
+        private static readonly Vector2[] FallbackTreePositions =
         {
             new Vector2(2f, 1f), new Vector2(4.5f, 2.5f), new Vector2(-1.5f, 3f), new Vector2(6f, -0.5f),
             new Vector2(-5f, 2f), new Vector2(1f, 4.5f), new Vector2(7f, 3.5f), new Vector2(-6.5f, -3.5f),
@@ -147,6 +167,12 @@ namespace PrehistoricTribe.EditorTools
 
             Light sun = SetupLighting();
             var environment = new GameObject("Environment").transform;
+            // Terrain Blender thật (2026-10-03) thử nghiệm: hiển thị đúng hướng nhưng MeshCollider không lồi
+            // bị lỗi engine Unity (raycast/va chạm trượt toàn bộ — đã kiểm chứng kỹ) và NavMesh bake chỉ phủ
+            // được một mảng nhỏ xa khu trại. Tạm quay lại nền phẳng cho tới khi có hướng giải quyết khác
+            // (vd Unity Terrain + heightmap thay vì MeshCollider). File FBX + CreateBlenderTerrain() vẫn giữ
+            // nguyên trong code để dùng lại sau, chỉ không gọi trong luồng Build() mặc định.
+            Transform terrainRoot = null;
             CreateGround(environment);
             CreateDecorForest(environment);
             BakeNavMesh(environment.gameObject);
@@ -168,7 +194,8 @@ namespace PrehistoricTribe.EditorTools
             var cycle = new GameObject("DayNightCycle").AddComponent<DayNightCycle>();
             SetPrivateField(cycle, "sun", sun);
             SetPrivateField(cycle, "sceneCamera", mainCamera);
-            CreateCampfire(new Vector3(0f, 0f, -2f));
+            Vector3 campfirePos = FindBlenderMarkerPosition(terrainRoot, "Start_Campfire") ?? Grounded(0f, -2f);
+            CreateCampfire(campfirePos);
             // Milestone 6: lịch thiên tai (các loại thiên tai gắn thêm vào object này ở D2–D5).
             var disasters = new GameObject("DisasterManager");
             disasters.AddComponent<DisasterManager>();
@@ -210,11 +237,15 @@ namespace PrehistoricTribe.EditorTools
             SetPrivateField(music, "nightMusic", MusicBuilder.Resolve("Night"));
 
             var resources = new GameObject("ResourceNodes").transform;
-            for (int i = 0; i < TreePositions.Length; i++)
+            for (int i = 0; i < FallbackTreePositions.Length; i++)
             {
+                Vector3? markerPos = FindBlenderMarkerPosition(terrainRoot, WoodMarkerNames[i]);
+                Vector3 groundXZ = markerPos.HasValue
+                    ? Grounded(markerPos.Value.x, markerPos.Value.z)
+                    : Grounded(FallbackTreePositions[i].x, FallbackTreePositions[i].y);
                 var tree = (GameObject)PrefabUtility.InstantiatePrefab(treePrefab, resources);
                 tree.name = i == 0 ? "Tree" : $"Tree_{i}";
-                tree.transform.position = new Vector3(TreePositions[i].x, 0f, TreePositions[i].y);
+                tree.transform.position = groundXZ;
                 tree.transform.rotation = Quaternion.Euler(0f, i * 47f, 0f);
             }
 
@@ -222,7 +253,7 @@ namespace PrehistoricTribe.EditorTools
             var pondPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(GameContentBuilder.PondPrefabPath);
             var pond = (GameObject)PrefabUtility.InstantiatePrefab(pondPrefab, resources);
             pond.name = "FishingPond";
-            pond.transform.position = new Vector3(4.5f, 0f, 6f);
+            pond.transform.position = Grounded(4.5f, 6f);
 
             var gridGO = new GameObject("Grid");
             var grid = gridGO.AddComponent<Grid>();
@@ -248,17 +279,17 @@ namespace PrehistoricTribe.EditorTools
 
             CreateInteractionHighlight(player.GetComponent<PlayerInteraction>());
 
-            CreateFarmPlot("FarmPlot_1", new Vector3(-2f, 0f, -1.5f));
-            CreateFarmPlot("FarmPlot_2", new Vector3(-3.2f, 0f, -1.5f));
+            CreateFarmPlot("FarmPlot_1", Grounded(-2f, -1.5f));
+            CreateFarmPlot("FarmPlot_2", Grounded(-3.2f, -1.5f));
 
             var boarInstance = (GameObject)PrefabUtility.InstantiatePrefab(boarData.prefab);
             boarInstance.name = "WildBoar";
-            boarInstance.transform.SetPositionAndRotation(new Vector3(3f, 0f, -1.5f), Quaternion.Euler(0f, 200f, 0f));
+            boarInstance.transform.SetPositionAndRotation(Grounded(3f, -1.5f), Quaternion.Euler(0f, 200f, 0f));
             SetPrivateField(boarInstance.GetComponent<AnimalController>(), "data", boarData);
 
             var goatInstance = (GameObject)PrefabUtility.InstantiatePrefab(goatData.prefab);
             goatInstance.name = "Goat";
-            goatInstance.transform.SetPositionAndRotation(new Vector3(-5f, 0f, -6.5f), Quaternion.Euler(0f, 160f, 0f));
+            goatInstance.transform.SetPositionAndRotation(Grounded(-5f, -6.5f), Quaternion.Euler(0f, 160f, 0f));
             SetPrivateField(goatInstance.GetComponent<AnimalController>(), "data", goatData);
 
             // Nạp lại: tạo asset NavMesh ở trên có thể làm tham chiếu prefab cũ mất hiệu lực.
@@ -371,6 +402,123 @@ namespace PrehistoricTribe.EditorTools
             SetPrivateField(campfire, "flames", flames);
         }
 
+        /// <summary>
+        /// Dựng địa hình thật lấy từ Blender (núi, sông, cây, đá — export qua Blender MCP 2026-10-03),
+        /// thay cho nền phẳng + rừng trang trí sinh bằng code trước đây. Gắn MeshCollider cho vật lý/raycast
+        /// đặt công trình; riêng Terrain_Main + 4 đỉnh núi vào layer "Ground" để lấy cao độ chính xác
+        /// (không tính cây/đá/mặt nước, tránh lấy nhầm độ cao ngọn cây làm mặt đất).
+        /// </summary>
+        private static Transform CreateBlenderTerrain(Transform parent)
+        {
+            // FBX mặc định import với Read/Write tắt (tiết kiệm RAM) → gán MeshCollider.sharedMesh vẫn chạy
+            // không lỗi nhưng collider rỗng, mọi raycast xuống đất đều trượt (đã gặp thực tế 2026-10-03).
+            // Bật Read/Write + reimport nếu asset chưa bật, trước khi nạp/instantiate.
+            if (AssetImporter.GetAtPath(TerrainFbxPath) is ModelImporter modelImporter && !modelImporter.isReadable)
+            {
+                modelImporter.isReadable = true;
+                modelImporter.SaveAndReimport();
+            }
+
+            var fbx = AssetDatabase.LoadAssetAtPath<GameObject>(TerrainFbxPath);
+            if (fbx == null)
+            {
+                Debug.LogError($"[GameplaySceneBuilder] Khong tim thay terrain Blender tai {TerrainFbxPath} — dung nen phang tam thoi.");
+                CreateGround(parent);
+                CreateDecorForest(parent);
+                return parent;
+            }
+
+            var terrainGO = (GameObject)PrefabUtility.InstantiatePrefab(fbx, parent);
+            terrainGO.name = "BlenderTerrain";
+            // Sửa lệch trục khi export/import FBX: Terrain_Main đo được cao 200 đơn vị (trục Y) và chỉ sâu
+            // 24.41 (trục Z) — ngược hẳn một nền đất (phải thấp, rộng). Xoay -90° quanh X đưa trục "lên" và
+            // "sâu" về đúng chỗ cho cả 244 object con cùng lúc (xác nhận bằng renderer.bounds thực đo trong Unity).
+            terrainGO.transform.rotation = Quaternion.Euler(-90f, 0f, 0f);
+            int groundLayer = LayerMask.NameToLayer(GroundLayerName);
+            if (groundLayer < 0)
+                Debug.LogWarning($"[GameplaySceneBuilder] Chua co layer '{GroundLayerName}' — lay cao do se khong hoat dong dung.");
+
+            foreach (var filter in terrainGO.GetComponentsInChildren<MeshFilter>(true))
+            {
+                var go = filter.gameObject;
+                if (System.Array.IndexOf(HiddenMarkerNames, go.name) >= 0)
+                {
+                    go.SetActive(false);
+                    continue;
+                }
+                if (System.Array.Exists(SkipColliderPrefixes, p => go.name.StartsWith(p)))
+                    continue; // mặt nước (sông/suối/biển/thác): chỉ hình ảnh, không va chạm
+
+                var collider = go.AddComponent<MeshCollider>();
+                collider.sharedMesh = filter.sharedMesh;
+                go.isStatic = true;
+
+                if (groundLayer >= 0 && System.Array.IndexOf(GroundMeshNames, go.name) >= 0)
+                {
+                    go.layer = groundLayer;
+                    collider.material = GroundPhysicMaterial();
+                }
+            }
+
+            Physics.SyncTransforms(); // để Grounded()/SampleGroundHeight() raycast đúng ngay trong cùng lệnh dựng scene
+            return terrainGO.transform;
+        }
+
+        /// <summary>Tìm transform theo tên trong cây con terrain Blender (vd Start_Campfire) để lấy đúng tọa độ nhà thiết kế đặt.</summary>
+        private static Vector3? FindBlenderMarkerPosition(Transform root, string name)
+        {
+            if (root == null) return null; // terrain Blender đang tắt trong Build() mặc định (xem ghi chú ở CreateBlenderTerrain)
+            foreach (var t in root.GetComponentsInChildren<Transform>(true))
+                if (t.name == name) return t.position;
+            return null;
+        }
+
+        /// <summary>Cao độ mặt đất thật tại (x, z), bằng raycast xuống chỉ vào layer "Ground" (núi/nền, không tính cây/đá).</summary>
+        private static float SampleGroundHeight(float x, float z, float fallback = 0f)
+        {
+            int mask = LayerMask.GetMask(GroundLayerName);
+            if (mask != 0 && Physics.Raycast(new Vector3(x, 500f, z), Vector3.down, out RaycastHit hit, 1000f, mask))
+                return hit.point.y;
+            return fallback;
+        }
+
+        private static Vector3 Grounded(float x, float z, float extraHeight = 0f) =>
+            new Vector3(x, SampleGroundHeight(x, z) + extraHeight, z);
+
+        /// <summary>
+        /// Terrain thật có suối/sông cắt ngang nên vài điểm trong cụm trại ban đầu rơi đúng ngoài NavMesh
+        /// (thử nhiều điểm thấy lệch, 2026-10-03). Snap về điểm NavMesh gần nhất thay vì dò tọa độ tay —
+        /// NpcController/PredatorAI cần đứng đúng trên NavMesh mới tạo agent được.
+        /// </summary>
+        private static Vector3 SnapToNavMesh(Vector3 desired, float maxDistance = 8f)
+        {
+            if (UnityEngine.AI.NavMesh.SamplePosition(desired, out var hit, maxDistance, UnityEngine.AI.NavMesh.AllAreas))
+                return hit.position;
+            Debug.LogWarning($"[GameplaySceneBuilder] Khong tim thay NavMesh gan {desired} trong {maxDistance}m.");
+            return desired;
+        }
+
+        private static PhysicsMaterial groundPhysicMaterial;
+        private static PhysicsMaterial GroundPhysicMaterial()
+        {
+            if (groundPhysicMaterial != null) return groundPhysicMaterial;
+            groundPhysicMaterial = AssetDatabase.LoadAssetAtPath<PhysicsMaterial>(GroundPhysicMaterialPath);
+            if (groundPhysicMaterial == null)
+            {
+                groundPhysicMaterial = new PhysicsMaterial("GroundFriction")
+                {
+                    dynamicFriction = 1f,
+                    staticFriction = 1f,
+                    frictionCombine = PhysicsMaterialCombine.Maximum,
+                    bounciness = 0f,
+                    bounceCombine = PhysicsMaterialCombine.Minimum,
+                };
+                AssetDatabase.CreateAsset(groundPhysicMaterial, GroundPhysicMaterialPath);
+            }
+            return groundPhysicMaterial;
+        }
+
+        /// <summary>Nền phẳng dự phòng — chỉ dùng khi chưa export/chưa có terrain Blender.</summary>
         private static void CreateGround(Transform parent)
         {
             // Plane mặc định 10×10 → scale 6 = 60×60. Không cần collider: chuột raycast vào mặt phẳng toán học.
@@ -431,7 +579,7 @@ namespace PrehistoricTribe.EditorTools
                 var instance = (GameObject)PrefabUtility.InstantiatePrefab(prefab.gameObject, parent);
                 var npc = instance.GetComponent<NpcController>();
                 npc.name = $"Npc_{npcName}";
-                npc.transform.SetPositionAndRotation(new Vector3(position.x, 0f, position.y), Quaternion.Euler(0f, 180f, 0f));
+                npc.transform.SetPositionAndRotation(SnapToNavMesh(Grounded(position.x, position.y)), Quaternion.Euler(0f, 180f, 0f));
                 SetPrivateField(npc, "npcName", npcName);
                 SetPrivateField(npc, "gender", gender);
                 SetPrivateField(npc, "profession", professions.Find(p => p.id == professionId));
@@ -458,7 +606,7 @@ namespace PrehistoricTribe.EditorTools
                 return;
             }
 
-            var denCenter = new Vector3(-10f, 0f, 9.5f);
+            var denCenter = Grounded(-10f, 9.5f);
             var den = new GameObject("WolfDen").transform;
             den.position = denCenter;
             var rock = Mat("DenRock", Palette.Hex(0x7d7a74));
@@ -476,7 +624,7 @@ namespace PrehistoricTribe.EditorTools
             {
                 var wolf = (GameObject)PrefabUtility.InstantiatePrefab(wolfData.prefab);
                 wolf.name = i == 0 ? "Wolf" : $"Wolf_{i}";
-                wolf.transform.SetPositionAndRotation(positions[i], Quaternion.Euler(0f, 150f + i * 40f, 0f));
+                wolf.transform.SetPositionAndRotation(SnapToNavMesh(positions[i]), Quaternion.Euler(0f, 150f + i * 40f, 0f));
             }
 
             var manager = new GameObject("PredatorManager").AddComponent<PredatorManager>();
@@ -487,6 +635,9 @@ namespace PrehistoricTribe.EditorTools
         {
             var playerGO = new GameObject("Player") { tag = "Player" };
             var rb = playerGO.AddComponent<Rigidbody>();
+            // Dự định bật trọng lực + leo dốc thật khi có terrain Blender (2026-10-03), nhưng MeshCollider
+            // không lồi của terrain này bị lỗi engine Unity (raycast/va chạm trượt toàn bộ khi xoay đúng
+            // hướng hiển thị — đã kiểm chứng kỹ, xem PROGRESS.md). Giữ lại di chuyển phẳng cho an toàn.
             rb.useGravity = false;
             rb.constraints = RigidbodyConstraints.FreezeRotation | RigidbodyConstraints.FreezePositionY;
             rb.interpolation = RigidbodyInterpolation.Interpolate;

@@ -21,6 +21,9 @@ namespace PrehistoricTribe
     {
         public static BuildingPlacer Instance { get; private set; }
 
+        // Terrain Blender thật (2026-10-03) có đồi núi, nhưng MeshCollider không lồi (convex=false) trên mesh
+        // terrain này bị lỗi engine Unity: raycast luôn trượt khi xoay đúng hướng hiển thị (đã kiểm chứng kỹ,
+        // xem ghi chú trong PROGRESS.md) — dùng lại mặt phẳng toán học y=0 để BuildingPlacer vẫn hoạt động.
         private static readonly Plane GroundPlane = new Plane(Vector3.up, Vector3.zero);
         private static readonly Color ValidPreviewColor = new Color(0.6f, 0.85f, 0.4f);
         private static readonly Color InvalidPreviewColor = new Color(0.9f, 0.45f, 0.35f);
