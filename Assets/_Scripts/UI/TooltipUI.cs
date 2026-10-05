@@ -89,8 +89,11 @@ namespace PrehistoricTribe
 
         private static Vector2 ToLocal(RectTransform canvasRect, Vector3 world)
         {
-            Vector2 screen = RectTransformUtility.WorldToScreenPoint(null, world);
-            RectTransformUtility.ScreenPointToLocalPointInRectangle(canvasRect, screen, null, out Vector2 local);
+            // Canvas phủ màn hình: không cần camera; canvas gắn camera (vd lúc chụp ảnh kiểm tra) thì phải dùng camera đó.
+            Canvas canvas = canvasRect.GetComponentInParent<Canvas>();
+            Camera cam = canvas != null && canvas.renderMode != RenderMode.ScreenSpaceOverlay ? canvas.worldCamera : null;
+            Vector2 screen = RectTransformUtility.WorldToScreenPoint(cam, world);
+            RectTransformUtility.ScreenPointToLocalPointInRectangle(canvasRect, screen, cam, out Vector2 local);
             return local;
         }
     }

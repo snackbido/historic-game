@@ -36,6 +36,8 @@ namespace PrehistoricTribe.EditorTools
                 written.Add(SavePng($"{Folder}/{pair.Key}.png", Draw(pair.Value)));
 
             // ─── Model 3D ────────────────────────────────────────────────────
+            // Mở scene trống sẽ dọn asset không còn ai giữ khỏi bộ nhớ → lưu dữ liệu vừa sửa trước, nạp lại sau.
+            AssetDatabase.SaveAssets();
             var buildings = LoadAll<BuildingData>();
             var crops = LoadAll<CropData>();
             var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
@@ -50,6 +52,8 @@ namespace PrehistoricTribe.EditorTools
             foreach (var path in written) ConfigureSprite(path);
 
             // ─── Gán vào dữ liệu ─────────────────────────────────────────────
+            buildings = LoadAll<BuildingData>();
+            crops = LoadAll<CropData>();
             foreach (var building in buildings) Assign(building, $"Building_{building.id}");
             foreach (var crop in crops) Assign(crop, $"Crop_{crop.id}");
             foreach (var type in LoadAll<ResourceTypeData>()) Assign(type, $"Resource_{type.id}");

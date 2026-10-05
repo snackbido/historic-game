@@ -453,7 +453,7 @@ Quyết định user: quy trình **vừa phải** (lúa ~6 bước: làm đất 
 - Lưu ý kỹ thuật: perl `s|…|…|` mà trong mẫu có `\|` thì thành phép "hoặc" → chèn nhầm lên đầu file (gặp 2 lần, đã sửa). Khi mẫu có dấu `|` hay backtick thì dùng Edit tool.
 - Test: sửa test M4 (đếm nút "(khóa)" thay vì số nút), 5 test mới `Milestone7PaceAndUnlockTests.cs`. **198/198 test PlayMode pass**.
 
-## Nhật ký phiên làm việc 2026-10-02 (phần 7 — làm lại UI theo `.claude/RE-DESIGNUI.md`) — ⚠️ CHƯA BUILD / CHƯA CHẠY TEST
+## Nhật ký phiên làm việc 2026-10-02 (phần 7 — làm lại UI theo `.claude/RE-DESIGNUI.md`) — đã build + test 2026-10-05
 - User yêu cầu đọc `RE-DESIGNUI.md` và làm lại UI. Code đã viết xong và commit theo yêu cầu user ("commit và push trước") **trước khi build/test** vì Unity Editor đang mở dự án (batch mode bị khóa, MCP không kết nối). Việc tiếp theo bắt buộc: đóng Editor → Build All → chạy toàn bộ test → chụp ảnh UI → sửa lỗi.
 - Canvas Scaler: Scale With Screen Size 1920×1080, match 0.5. Bỏ 3 cột nút bên phải (`BuildMenuUI`, `CropSelectionUI`, `TechTreeUI`, `LockedEntry` đã xóa) và các nhãn chữ tài nguyên (`ResourceBarUI` xóa; `NotificationUI` xóa → thay bằng toast).
 - `UI/ToolbarUI.cs` (object `BottomBar`): 3 tab Xây dựng / Trồng trọt / Nghiên cứu ở cạnh dưới, phím **B / G / T** (tài liệu đề xuất B/F/R nhưng F = đâm giáo, R = ném đá). Một bảng mỗi lúc, bấm lại / Esc đóng (Esc lúc bảng mở không mở menu tạm dừng: `ToolbarUI.PanelWasOpen`); bảng ẩn khi đang đặt công trình. Ô icon 96×96, nhãn tự co + "…". 4 trạng thái (`Tech/UnlockRules.cs`: Ẩn / Khóa / Sẵn sàng / Đã mở) — công trình/giống đi theo trạng thái công nghệ mở ra chúng; chỉ tính lại khi tài nguyên/công nghệ đổi. Chấm đỏ trên tab có mục Sẵn sàng; công nghệ vừa Sẵn sàng → toast "Có thể nghiên cứu: …" (một lần mỗi công nghệ, bấm → mở tab Nghiên cứu, kèm tiếng chuông).
@@ -462,7 +462,8 @@ Quyết định user: quy trình **vừa phải** (lúa ~6 bước: làm đất 
 - `UI/HudUI.cs` (object `TopHUD`): ô icon + số; Gỗ / Thức ăn / Tri thức / Dân số luôn hiện, Lúa bó / Thóc / Mạ / Phân bón chỉ hiện khi > 0; sức chứa + từng loại lương thực + nhà ở/người đói vào tooltip; số nháy xanh/đỏ khi đổi.
 - `Editor/IconBuilder.cs` (chạy trong Build All, sau GameContentBuilder): chụp model công trình + cây chín thành icon 64px (nền trong suốt, viền tối, lọc Point), vẽ pixel 16×16 cho tài nguyên / ổ khóa / chấm đỏ; gán vào trường `icon` mới của BuildingData / CropData / TechNode (lấy icon thứ nó mở) / ResourceTypeData. Icon riêng: PNG cùng tên trong `Assets/Textures/Icons/Custom/`.
 - Dời: dòng gợi ý tương tác y 40 → 185, bảng "Đang chọn" / thông tin công trình y 90 → 235 (trên vùng thanh công cụ).
-- Test: thay test M4 menu bằng test thanh công cụ; sửa 2 test P4a; 8 test mới `Milestone7ToolbarTests.cs` (chưa chạy).
+- Test: thay test M4 menu bằng test thanh công cụ; sửa 2 test P4a; 8 test mới `Milestone7ToolbarTests.cs`.
+- 2026-10-05 (Editor đã đóng): build lần đầu lỗi `MissingReferenceException` trong `IconBuilder.Assign` — mở scene trống để chụp model làm Unity dọn các BuildingData/CropData đang nạp → sửa: `SaveAssets()` trước khi mở scene, nạp lại danh sách sau khi chụp. **205/205 test PlayMode pass**. Ảnh chụp (canvas tạm ScreenSpaceCamera) xác nhận: dải tài nguyên có icon, thanh tab + chấm đỏ, ô khóa có ổ khóa, ô Sẵn sàng viền vàng, toast "Có thể nghiên cứu…". Tooltip lúc đầu bị đặt sai chỗ trong ảnh chụp → `TooltipUI.ToLocal` dùng camera của canvas khi canvas không phải overlay (và ảnh chụp phải gán targetTexture trước khi tính vị trí UI); chụp lại thấy tooltip nằm đúng phía trên ô.
 
 ## Vấn đề đang tồn đọng (Known issues / Open questions)
 - [x] Chế độ combat: lai (2026-09-26) + chi tiết chỉ huy NPC theo nghề (2026-09-30)
