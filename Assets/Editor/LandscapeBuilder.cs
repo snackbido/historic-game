@@ -66,20 +66,19 @@ namespace PrehistoricTribe.EditorTools
             new Bump { c = new Vector2(14f, 8f), amp = 1.6f, sigma = 3.4f },
         };
 
-        // ─── Bảng màu (theo LANDSCAPE_DESIGN §2.2, khớp texture pixel sẵn có) ─
-        private static readonly Color GrassDark = Hex(0x3f6b2a), GrassMid = Hex(0x4f8a33), GrassLight = Hex(0x5f9a3a), GrassYellow = Hex(0x7cb446);
-        private static readonly Color ForestFloor = Hex(0x355c25), ForestFloorLight = Hex(0x41692b);
-        private static readonly Color Dirt = Hex(0x806440), DirtDark = Hex(0x6e5434), DryDirt = Hex(0x93764c);
-        private static readonly Color Sand = Hex(0xc9b27c), SandLight = Hex(0xd8c48f), WetSand = Hex(0xa8935f), Mud = Hex(0x5c4a32);
-        private static readonly Color RockDark = Hex(0x5e5a55), Rock = Hex(0x7d7a74), RockLight = Hex(0xa39d90), MossStone = Hex(0x6b7a55);
-        private static readonly Color TrunkColor = Hex(0x6b4a2b), TrunkDark = Hex(0x4e3520), BirchBark = Hex(0xd8d2c0);
-        private static readonly Color PineDark = Hex(0x2f5a2c), Pine = Hex(0x3b6e33), PineLight = Hex(0x4f8a3a);
-        private static readonly Color LeafDark = Hex(0x3f7a2e), Leaf = Hex(0x56963a), LeafLight = Hex(0x74b048), LeafAutumn = Hex(0xa8a03a);
-        private static readonly Color Reed = Hex(0x8a9a48), ReedTop = Hex(0x7a5a32);
-        private static readonly Color[] FlowerColors = { Hex(0xf2e27a), Hex(0xf4f0e0), Hex(0xe9a0b0), Hex(0xb08ad8) };
+        // ─── Bảng màu (dùng chung với NatureAssetBuilder qua LandscapePalette, để mặt đất và model luôn đồng bộ) ─
+        private static readonly Color GrassDark = LandscapePalette.GrassDark, GrassMid = LandscapePalette.GrassMid, GrassLight = LandscapePalette.GrassLight, GrassYellow = LandscapePalette.GrassYellow;
+        private static readonly Color ForestFloor = LandscapePalette.ForestFloor, ForestFloorLight = LandscapePalette.ForestFloorLight;
+        private static readonly Color Dirt = LandscapePalette.Dirt, DirtDark = LandscapePalette.DirtDark, DryDirt = LandscapePalette.DryDirt;
+        private static readonly Color Sand = LandscapePalette.Sand, SandLight = LandscapePalette.SandLight, WetSand = LandscapePalette.WetSand, Mud = LandscapePalette.Mud;
+        private static readonly Color RockDark = LandscapePalette.RockDark, Rock = LandscapePalette.Rock, RockLight = LandscapePalette.RockLight, MossStone = LandscapePalette.MossStone;
+        private static readonly Color TrunkColor = LandscapePalette.TrunkColor, TrunkDark = LandscapePalette.TrunkDark, BirchBark = LandscapePalette.BirchBark;
+        private static readonly Color PineDark = LandscapePalette.PineDark, Pine = LandscapePalette.Pine, PineLight = LandscapePalette.PineLight;
+        private static readonly Color LeafDark = LandscapePalette.LeafDark, Leaf = LandscapePalette.Leaf, LeafLight = LandscapePalette.LeafLight, LeafAutumn = LandscapePalette.LeafAutumn;
+        private static readonly Color Reed = LandscapePalette.Reed, ReedTop = LandscapePalette.ReedTop;
+        private static readonly Color[] FlowerColors = LandscapePalette.FlowerColors;
 
-        private static Color Hex(int rgb) =>
-            new Color(((rgb >> 16) & 0xff) / 255f, ((rgb >> 8) & 0xff) / 255f, (rgb & 0xff) / 255f);
+        private static Color Hex(int rgb) => LandscapePalette.Hex(rgb);
 
         // ─── Độ cao ──────────────────────────────────────────────────────────
         public static float Height(float x, float z)
@@ -213,6 +212,7 @@ namespace PrehistoricTribe.EditorTools
             var terrain = root.gameObject.AddComponent<WorldTerrain>();
             terrain.Configure(Resolution, Cell, new Vector2(-MapHalf, -MapHalf), heights, WaterLevel);
 
+            NatureAssetBuilder.Setup();
             BuildGround(root, heights, material, linear);
             BuildWater(root);
             BuildDecor(root, material, linear);
@@ -321,10 +321,10 @@ namespace PrehistoricTribe.EditorTools
             return false;
         }
 
+        /// <summary>Khúc gỗ đổ và lau sậy vẫn vẽ bằng tay (gói model không có) — gộp theo ô 16m như trước.</summary>
         private static void BuildDecor(Transform root, Material material, bool linear)
         {
-            var chunks = new Dictionary<Vector2Int, MeshBuilder>();      // cây, đá, khúc gỗ (đổ bóng, chắn NavMesh)
-            var smallChunks = new Dictionary<Vector2Int, MeshBuilder>(); // cỏ, hoa, lau, sỏi (không bóng, bỏ qua NavMesh)
+            var propChunks = new Dictionary<Vector2Int, MeshBuilder>(); // khúc gỗ, lau (đổ bóng nhẹ / không chắn đường)
             MeshBuilder Chunk(Dictionary<Vector2Int, MeshBuilder> map, Vector3 p)
             {
                 var key = new Vector2Int(Mathf.FloorToInt(p.x / ChunkSize), Mathf.FloorToInt(p.z / ChunkSize));
@@ -332,8 +332,22 @@ namespace PrehistoricTribe.EditorTools
                 return b;
             }
 
+            var decor = new GameObject("Decor").transform;
+            decor.SetParent(root, false);
             var rng = new System.Random(2026);
             float R() => (float)rng.NextDouble();
+
+            GameObject Spawn(GameObject prefab, Vector3 pos, float scale, float yaw, bool castShadow, bool blockNav)
+            {
+                var go = (GameObject)Object.Instantiate(prefab, pos, Quaternion.Euler(0f, yaw, 0f), decor);
+                go.name = prefab.name;
+                go.transform.localScale = Vector3.one * scale;
+                foreach (var r in go.GetComponentsInChildren<Renderer>(true))
+                    r.shadowCastingMode = castShadow ? ShadowCastingMode.On : ShadowCastingMode.Off;
+                if (!blockNav) go.AddComponent<NavMeshModifier>().ignoreFromBuild = true;
+                SetStaticRecursive(go);
+                return go;
+            }
 
             // Cây: lưới thưa có xê dịch, xác suất theo mật độ rừng; rải lác đác trên đồng bằng.
             for (float z = -MapHalf + 1f; z < MapHalf - 1f; z += 2.3f)
@@ -348,19 +362,25 @@ namespace PrehistoricTribe.EditorTools
                 float chance = density > 0.05f ? density * 1.05f : 0.025f;
                 if (R() > chance) continue;
 
-                var at = new Vector3(p.x, h - 0.05f, p.y);
-                float scale = 0.85f + R() * 0.7f;
+                var at = new Vector3(p.x, h, p.y);
+                float variety = 0.85f + R() * 0.7f;
                 float yaw = R() * 360f;
                 float pick = R();
-                MeshBuilder chunk = Chunk(chunks, at);
-                if (h > 3.5f || pick < 0.45f) AddPine(chunk, at, scale, yaw, R());
-                else if (pick < 0.88f) AddBroadleaf(chunk, at, scale, yaw, rng);
-                else if (pick < 0.96f) AddBirch(chunk, at, scale, yaw, rng);
-                else AddDeadTree(chunk, at, scale, yaw);
+                GameObject prefab; float baseScale;
+                if (h > 3.5f || pick < 0.45f) { prefab = NatureAssetBuilder.Pick(NatureAssetBuilder.Pine, rng); baseScale = 0.6f; }
+                else if (pick < 0.85f) { prefab = NatureAssetBuilder.Pick(NatureAssetBuilder.Broadleaf, rng); baseScale = 0.5f; }
+                else if (pick < 0.93f) { prefab = NatureAssetBuilder.Pick(NatureAssetBuilder.Birch, rng); baseScale = 0.65f; }
+                else if (pick < 0.97f) { prefab = NatureAssetBuilder.Pick(NatureAssetBuilder.Maple, rng); baseScale = 0.5f; }
+                else { prefab = NatureAssetBuilder.Pick(NatureAssetBuilder.DeadTree, rng); baseScale = 0.55f; }
+                Spawn(prefab, at, baseScale * variety, yaw, castShadow: true, blockNav: true);
 
                 // Bụi dưới tán, đá rêu lác đác.
-                if (R() < 0.35f) AddBush(chunk, at + new Vector3((R() - 0.5f) * 2f, 0f, (R() - 0.5f) * 2f), 0.5f + R() * 0.4f, rng, R() < 0.15f);
-                if (R() < 0.08f) AddRock(chunk, at + new Vector3(1f, 0f, -0.6f), 0.35f + R() * 0.3f, rng, mossy: true);
+                if (R() < 0.35f)
+                {
+                    var bush = NatureAssetBuilder.Pick(R() < 0.3f ? NatureAssetBuilder.BushFlowering : NatureAssetBuilder.Bush, rng);
+                    Spawn(bush, at + new Vector3((R() - 0.5f) * 2f, 0f, (R() - 0.5f) * 2f), 0.4f + R() * 0.35f, R() * 360f, castShadow: true, blockNav: true);
+                }
+                if (R() < 0.08f) Spawn(NatureAssetBuilder.Pick(NatureAssetBuilder.Rocks, rng), at + new Vector3(1f, 0f, -0.6f), 0.3f + R() * 0.25f, R() * 360f, castShadow: true, blockNav: true);
             }
 
             // Đá: chân núi, bờ sông, bãi biển, lác đác trên đồng bằng.
@@ -375,55 +395,58 @@ namespace PrehistoricTribe.EditorTools
                 bool beach = p.y < -20f && p.y > -32f && p.x > 8f;
                 float chance = mountainFoot ? 0.5f : riverbank ? 0.35f : beach ? 0.45f : 0.03f;
                 if (R() > chance) continue;
-                var at = new Vector3(p.x, h - 0.08f, p.y);
+                var at = new Vector3(p.x, h, p.y);
                 float size = mountainFoot ? 0.5f + R() * 1.4f : 0.25f + R() * 0.6f;
-                MeshBuilder chunk = Chunk(chunks, at);
-                AddRock(chunk, at, size, rng, mossy: !beach && R() < 0.4f);
-                if (R() < 0.5f) AddRock(chunk, at + new Vector3(size * 0.9f, 0f, size * 0.4f), size * 0.5f, rng, mossy: false);
+                Spawn(NatureAssetBuilder.Pick(NatureAssetBuilder.Rocks, rng), at, size, R() * 360f, castShadow: true, blockNav: true);
+                if (R() < 0.5f) Spawn(NatureAssetBuilder.Pick(NatureAssetBuilder.Rocks, rng), at + new Vector3(size * 0.9f, 0f, size * 0.4f), size * 0.5f, R() * 360f, castShadow: true, blockNav: true);
             }
 
-            // Khúc gỗ đổ trong rừng.
+            // Khúc gỗ đổ trong rừng, lau sậy ven sông: vẫn vẽ tay, gộp theo ô.
             for (int i = 0; i < 24; i++)
             {
                 var p = new Vector2((R() * 2f - 1f) * 44f, (R() * 2f - 1f) * 44f);
                 if (ForestDensity(p) < 0.3f || Blocked(p, 0f)) continue;
                 float h = Height(p.x, p.y);
                 if (h < WaterLevel + 0.3f || SlopeDeg(p) > 20f) continue;
-                AddLog(Chunk(chunks, new Vector3(p.x, h, p.y)), new Vector3(p.x, h + 0.12f, p.y), 0.9f + R() * 0.8f, R() * 180f);
+                AddLog(Chunk(propChunks, new Vector3(p.x, h, p.y)), new Vector3(p.x, h + 0.12f, p.y), 0.9f + R() * 0.8f, R() * 180f);
+            }
+            for (int i = 0; i < 500; i++)
+            {
+                var p = new Vector2((R() * 2f - 1f) * (MapHalf - 1f), (R() * 2f - 1f) * (MapHalf - 1f));
+                float h = Height(p.x, p.y);
+                float riverDist = DistanceToPolyline(p, River, out _);
+                if (h < WaterLevel + 0.15f && h > WaterLevel - 0.35f && riverDist < 4f)
+                    AddReeds(Chunk(propChunks, new Vector3(p.x, h, p.y)), new Vector3(p.x, h, p.y), rng);
+            }
+            foreach (var pair in propChunks)
+            {
+                var go = MeshObject(decor, $"Props_{pair.Key.x}_{pair.Key.y}", pair.Value.ToMesh($"Props_{pair.Key.x}_{pair.Key.y}"), material, castShadows: true);
+                go.isStatic = true;
             }
 
-            // Cỏ, hoa, sỏi (nhỏ, nhiều): đồng bằng + ven rừng; lau sậy ven sông.
+            // Cỏ, hoa (model thật, nhiều, nhỏ): đồng bằng + ven rừng. Không chắn đường, không đổ bóng (đỡ máy yếu).
             for (int i = 0; i < 2600; i++)
             {
                 var p = new Vector2((R() * 2f - 1f) * (MapHalf - 1f), (R() * 2f - 1f) * (MapHalf - 1f));
                 float h = Height(p.x, p.y);
                 if (h > 6f || SlopeDeg(p) > 30f) continue;
                 float riverDist = DistanceToPolyline(p, River, out _);
-                var at = new Vector3(p.x, h, p.y);
-                MeshBuilder chunk = Chunk(smallChunks, at);
-                if (h < WaterLevel + 0.15f && h > WaterLevel - 0.35f && riverDist < 4f) { AddReeds(chunk, at, rng); continue; }
+                if (h < WaterLevel + 0.3f && riverDist < 4f) continue; // chỗ đó đã có lau sậy
                 if (h < WaterLevel + 0.3f) continue;
                 if (PathDistance(p) < 0.9f || Vector2.Distance(p, new Vector2(0f, -2f)) < 4.5f) continue;
-                if (p.y < -21f) { if (R() < 0.15f) AddPebbles(chunk, at, rng); continue; }
+                var at = new Vector3(p.x, h, p.y);
+                if (p.y < -21f) { if (R() < 0.12f) Spawn(NatureAssetBuilder.Pick(NatureAssetBuilder.Rocks, rng), at, 0.1f + R() * 0.12f, R() * 360f, castShadow: false, blockNav: false); continue; }
                 float roll = R();
-                if (roll < 0.72f) AddGrassTuft(chunk, at, rng);
-                else if (roll < 0.9f) AddFlower(chunk, at, rng);
-                else AddPebbles(chunk, at, rng);
+                if (roll < 0.72f) Spawn(NatureAssetBuilder.Pick(NatureAssetBuilder.Grass, rng), at, 0.7f + R() * 0.5f, R() * 360f, castShadow: false, blockNav: false);
+                else if (roll < 0.9f) Spawn(NatureAssetBuilder.Pick(NatureAssetBuilder.Flowers, rng), at, 0.8f + R() * 0.5f, R() * 360f, castShadow: false, blockNav: false);
+                else Spawn(NatureAssetBuilder.Pick(NatureAssetBuilder.Rocks, rng), at, 0.1f + R() * 0.12f, R() * 360f, castShadow: false, blockNav: false);
             }
+        }
 
-            var decor = new GameObject("Decor").transform;
-            decor.SetParent(root, false);
-            foreach (var pair in chunks)
-            {
-                var go = MeshObject(decor, $"Nature_{pair.Key.x}_{pair.Key.y}", pair.Value.ToMesh($"Nature_{pair.Key.x}_{pair.Key.y}"), material, castShadows: true);
-                go.isStatic = true;
-            }
-            foreach (var pair in smallChunks)
-            {
-                var go = MeshObject(decor, $"Grass_{pair.Key.x}_{pair.Key.y}", pair.Value.ToMesh($"Grass_{pair.Key.x}_{pair.Key.y}"), material, castShadows: false);
-                go.isStatic = true;
-                go.AddComponent<NavMeshModifier>().ignoreFromBuild = true; // cỏ hoa không chắn đường
-            }
+        private static void SetStaticRecursive(GameObject go)
+        {
+            go.isStatic = true;
+            foreach (Transform child in go.transform) SetStaticRecursive(child.gameObject);
         }
 
         private static float SlopeDeg(Vector2 p)
@@ -434,96 +457,11 @@ namespace PrehistoricTribe.EditorTools
             return Mathf.Atan(Mathf.Sqrt(dx * dx + dz * dz) / (2f * d)) * Mathf.Rad2Deg;
         }
 
-        // ─── Hình dạng (low-poly, mỗi mặt một màu) ───────────────────────────
-        private static void AddPine(MeshBuilder b, Vector3 at, float scale, float yaw, float shade)
-        {
-            Color dark = Color.Lerp(PineDark, Pine, shade * 0.5f), mid = Color.Lerp(Pine, PineLight, shade * 0.4f);
-            b.AddCylinder(at, 0.13f * scale, 0.6f * scale, 6, TrunkDark, yaw);
-            b.AddCone(at + Vector3.up * 0.45f * scale, 0.75f * scale, 1.0f * scale, 7, dark, yaw);
-            b.AddCone(at + Vector3.up * 0.95f * scale, 0.6f * scale, 0.9f * scale, 7, mid, yaw + 20f);
-            b.AddCone(at + Vector3.up * 1.42f * scale, 0.4f * scale, 0.8f * scale, 6, Color.Lerp(mid, PineLight, 0.5f), yaw + 40f);
-        }
-
-        private static void AddBroadleaf(MeshBuilder b, Vector3 at, float scale, float yaw, System.Random rng)
-        {
-            float R() => (float)rng.NextDouble();
-            bool autumn = R() < 0.12f;
-            Color leaf = autumn ? LeafAutumn : Color.Lerp(LeafDark, Leaf, R());
-            b.AddCylinder(at, 0.14f * scale, 1.0f * scale, 6, TrunkColor, yaw);
-            Vector3 crown = at + Vector3.up * 1.35f * scale;
-            b.AddBlob(crown, new Vector3(0.85f, 0.7f, 0.85f) * scale, leaf, rng, 1);
-            b.AddBlob(crown + new Vector3(0.45f, 0.25f, 0.2f) * scale, new Vector3(0.55f, 0.5f, 0.55f) * scale, Color.Lerp(leaf, LeafLight, 0.45f), rng, 1);
-            b.AddBlob(crown + new Vector3(-0.35f, 0.15f, -0.35f) * scale, new Vector3(0.5f, 0.45f, 0.5f) * scale, leaf * 0.9f, rng, 1);
-        }
-
-        private static void AddBirch(MeshBuilder b, Vector3 at, float scale, float yaw, System.Random rng)
-        {
-            b.AddCylinder(at, 0.09f * scale, 1.5f * scale, 6, BirchBark, yaw);
-            b.AddBlob(at + Vector3.up * 1.7f * scale, new Vector3(0.5f, 0.75f, 0.5f) * scale, LeafLight, rng, 1);
-        }
-
-        private static void AddDeadTree(MeshBuilder b, Vector3 at, float scale, float yaw)
-        {
-            b.AddCylinder(at, 0.11f * scale, 1.3f * scale, 5, TrunkDark, yaw);
-            Quaternion q = Quaternion.Euler(0f, yaw, 0f);
-            b.AddCylinder(at + Vector3.up * 0.9f * scale, 0.05f * scale, 0.6f * scale, 4, TrunkDark, yaw, q * Quaternion.Euler(0f, 0f, 50f));
-            b.AddCylinder(at + Vector3.up * 1.05f * scale, 0.04f * scale, 0.5f * scale, 4, TrunkDark, yaw, q * Quaternion.Euler(0f, 0f, -45f));
-        }
-
-        private static void AddBush(MeshBuilder b, Vector3 at, float size, System.Random rng, bool berries)
-        {
-            Color c = Color.Lerp(LeafDark, Leaf, (float)rng.NextDouble());
-            b.AddBlob(at + Vector3.up * size * 0.35f, new Vector3(size, size * 0.7f, size), c, rng, 1);
-            if (!berries) return;
-            for (int i = 0; i < 5; i++)
-            {
-                Vector3 off = new Vector3(((float)rng.NextDouble() - 0.5f) * size * 1.4f, size * (0.45f + (float)rng.NextDouble() * 0.3f), ((float)rng.NextDouble() - 0.5f) * size * 1.4f);
-                b.AddBlob(at + off, Vector3.one * 0.07f, Hex(0xc23b2e), rng, 0);
-            }
-        }
-
-        private static void AddRock(MeshBuilder b, Vector3 at, float size, System.Random rng, bool mossy)
-        {
-            float t = (float)rng.NextDouble();
-            Color c = t < 0.33f ? RockDark : t < 0.75f ? Rock : RockLight;
-            b.AddBlob(at + Vector3.up * size * 0.25f, new Vector3(size, size * (0.55f + t * 0.3f), size * (0.8f + t * 0.3f)), c, rng, 0, jitter: 0.28f);
-            if (mossy) b.AddBlob(at + Vector3.up * size * 0.55f, new Vector3(size * 0.6f, size * 0.2f, size * 0.6f), MossStone, rng, 0, jitter: 0.2f);
-        }
-
+        // ─── Hình dạng vẽ tay còn lại (gói model không có khúc gỗ đổ / lau sậy) ──
         private static void AddLog(MeshBuilder b, Vector3 at, float length, float yaw)
         {
             Quaternion q = Quaternion.Euler(0f, yaw, 0f) * Quaternion.Euler(0f, 0f, 90f);
             b.AddCylinder(at + Quaternion.Euler(0f, yaw, 0f) * new Vector3(-length * 0.5f, 0f, 0f), 0.13f, length, 6, TrunkColor, 0f, q);
-        }
-
-        private static void AddGrassTuft(MeshBuilder b, Vector3 at, System.Random rng)
-        {
-            Color c = Color.Lerp(GrassMid, GrassYellow, (float)rng.NextDouble() * 0.7f);
-            for (int i = 0; i < 3; i++)
-            {
-                float a = ((float)rng.NextDouble() * 360f) * Mathf.Deg2Rad;
-                float h = 0.18f + (float)rng.NextDouble() * 0.15f;
-                var dir = new Vector3(Mathf.Cos(a), 0f, Mathf.Sin(a));
-                Vector3 side = Vector3.Cross(dir, Vector3.up) * 0.035f;
-                Vector3 tip = at + Vector3.up * h + dir * 0.06f;
-                b.AddDoubleSided(at - side, at + side, tip, c);
-            }
-        }
-
-        private static void AddFlower(MeshBuilder b, Vector3 at, System.Random rng)
-        {
-            AddGrassTuft(b, at, rng);
-            Color c = FlowerColors[rng.Next(FlowerColors.Length)];
-            b.AddBlob(at + Vector3.up * 0.26f, Vector3.one * 0.06f, c, rng, 0);
-        }
-
-        private static void AddPebbles(MeshBuilder b, Vector3 at, System.Random rng)
-        {
-            for (int i = 0; i < 3; i++)
-            {
-                Vector3 off = new Vector3(((float)rng.NextDouble() - 0.5f) * 0.5f, 0.02f, ((float)rng.NextDouble() - 0.5f) * 0.5f);
-                b.AddBlob(at + off, new Vector3(0.08f, 0.04f, 0.07f), (float)rng.NextDouble() < 0.5f ? Rock : RockLight, rng, 0);
-            }
         }
 
         private static void AddReeds(MeshBuilder b, Vector3 at, System.Random rng)
